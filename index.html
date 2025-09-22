@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Casino Royale - Premium Online Casino</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;500;700&family=Cinzel:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="loading-content">
+            <div class="casino-logo-loading">
+                <i class="fas fa-crown"></i>
+                <h1>Casino Royale</h1>
+            </div>
+            <div class="loading-spinner"></div>
+            <p>Loading your premium gaming experience...</p>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="main-header">
+        <div class="header-container">
+            <div class="logo-section">
+                <div class="logo">
+                    <i class="fas fa-crown"></i>
+                    <span class="logo-text">Casino Royale</span>
+                </div>
+                <div class="logo-tagline">Premium Gaming Experience</div>
+            </div>
+
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="#home"><i class="fas fa-home"></i> Home</a></li>
+                    <li><a href="dashboard.html" id="dashboardLink" style="display: none;"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                    <li><a href="#games"><i class="fas fa-gamepad"></i> Games</a></li>
+                    <li><a href="#promotions"><i class="fas fa-gift"></i> Promotions</a></li>
+                    <li><a href="#tournaments"><i class="fas fa-trophy"></i> Tournaments</a></li>
+                    <li><a href="#vip"><i class="fas fa-star"></i> VIP</a></li>
+                </ul>
+            </nav>
+
+            <div class="header-right">
+                <div class="user-balance" id="userBalance" style="display: none;">
+                    <div class="balance-item">
+                        <i class="fas fa-coins"></i>
+                        <span>Balance: $<span id="balanceAmount">0.00</span></span>
+                    </div>
+                    <button class="deposit-btn">
+                        <i class="fas fa-plus"></i> Deposit
+                    </button>
+                </div>
+                <div class="auth-buttons">
+                    <button class="login-btn">
+                        <i class="fas fa-sign-in-alt"></i> Login
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Promotional Banner -->
+    <div class="promo-banner">
+        <div class="promo-content">
+            <div class="promo-text">
+                <i class="fas fa-fire"></i>
+                <span>🎉 Welcome Bonus: Get 100% up to $500 + 50 Free Spins!</span>
+                <i class="fas fa-fire"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Hero Section -->
+    <main class="hero-main" id="home">
+        <div class="hero-background">
+            <div class="floating-chips">
+                <div class="chip chip-1"></div>
+                <div class="chip chip-2"></div>
+                <div class="chip chip-3"></div>
+                <div class="chip chip-4"></div>
+            </div>
+        </div>
+
+        <div class="hero-container">
+            <!-- Left side content -->
+            <div class="hero-left">
+                <div class="hero-badge">
+                    <i class="fas fa-medal"></i>
+                    <span>Licensed & Secure</span>
+                </div>
+
+                <div class="hero-text">
+                    <h1 class="main-title">
+                        <span class="title-line1">Ready to</span>
+                        <span class="title-line2">Win Big?</span>
+                    </h1>
+                    <p class="subtitle">
+                        Experience the thrill of our <span class="fortune-text">Fortune Wheel</span>
+                        <br>and discover hundreds of premium games
+                    </p>
+                    <div class="hero-stats">
+                        <div class="stat-item">
+                            <div class="stat-number">$2.5M+</div>
+                            <div class="stat-label">Total Winnings</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number">50K+</div>
+                            <div class="stat-label">Happy Players</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number">24/7</div>
+                            <div class="stat-label">Support</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right side - Fortune Wheel -->
+            <div class="hero-right">
+                <div class="wheel-section">
+                    <div class="wheel-title">
+                        <h3>Fortune Wheel</h3>
+                        <p>Spin for instant prizes!</p>
+                    </div>
+
+                    <div class="wheel-container">
+                        <div class="wheel-glow"></div>
+                        <div class="fortune-wheel" id="fortuneWheel">
+                            <div class="wheel-pointer"></div>
+                            <div class="wheel-segment segment-1">500$</div>
+                            <div class="wheel-segment segment-2">LOSE</div>
+                            <div class="wheel-segment segment-3">200$</div>
+                            <div class="wheel-segment segment-4">WIN</div>
+                            <div class="wheel-segment segment-5">300$</div>
+                            <div class="wheel-segment segment-6">1000$</div>
+                            <div class="wheel-segment segment-7">LOSE</div>
+                            <div class="wheel-segment segment-8">100$</div>
+                            <div class="wheel-center">
+                                <i class="fas fa-play"></i>
+                            </div>
+                        </div>
+                        <div class="wheel-sparkles">
+                            <div class="sparkle sparkle-1"></div>
+                            <div class="sparkle sparkle-2"></div>
+                            <div class="sparkle sparkle-3"></div>
+                        </div>
+                    </div>
+
+                    <button class="spin-button" id="spinButton">
+                        <i class="fas fa-sync"></i>
+                        <span>Spin Now</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Winners -->
+        <div class="winners-section">
+            <div class="winners-container">
+                <div class="winners-header">
+                    <i class="fas fa-trophy"></i>
+                    <h4>Recent Big Winners</h4>
+                </div>
+                <div class="winners-ticker" id="winnersTicker">
+                    <div class="winner-item">
+                        <div class="winner-avatar">🎭</div>
+                        <div class="winner-info">
+                            <div class="winner-name">Player***123</div>
+                            <div class="winner-game">Fortune Wheel</div>
+                        </div>
+                        <div class="winner-amount">$1,250.00</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Quick Access Games -->
+    <section class="featured-games" id="featured">
+        <div class="container">
+            <div class="section-header">
+                <h2>🔥 Hot Games</h2>
+                <p>Most popular games right now</p>
+            </div>
+            <div class="featured-grid" id="featuredGrid">
+                <!-- Featured games will load here -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Game Categories -->
+    <section class="game-categories" id="games">
+        <div class="container">
+            <div class="section-header">
+                <h2>Game Categories</h2>
+                <p>Choose your preferred gaming experience</p>
+            </div>
+
+            <div class="category-tabs">
+                <button class="category-tab active" data-category="all">
+                    <i class="fas fa-th"></i>
+                    <span>All Games</span>
+                </button>
+                <button class="category-tab" data-category="slots">
+                    <i class="fas fa-coins"></i>
+                    <span>Slots</span>
+                </button>
+                <button class="category-tab" data-category="table">
+                    <i class="fas fa-table"></i>
+                    <span>Table Games</span>
+                </button>
+                <button class="category-tab" data-category="live">
+                    <i class="fas fa-video"></i>
+                    <span>Live Casino</span>
+                </button>
+                <button class="category-tab" data-category="jackpot">
+                    <i class="fas fa-gem"></i>
+                    <span>Jackpots</span>
+                </button>
+            </div>
+
+            <div class="games-grid" id="gamesGrid">
+                <!-- Games will be loaded here -->
+            </div>
+
+            <div class="load-more">
+                <button class="load-more-btn">
+                    <i class="fas fa-plus"></i>
+                    Load More Games
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Promotions Section -->
+    <section class="promotions-section" id="promotions">
+        <div class="container">
+            <div class="section-header">
+                <h2>🎁 Current Promotions</h2>
+                <p>Don't miss out on these amazing offers</p>
+            </div>
+
+            <div class="promotions-grid">
+                <div class="promo-card welcome-bonus">
+                    <div class="promo-icon">🎁</div>
+                    <h3>Welcome Package</h3>
+                    <p>100% Bonus up to $500<br>+ 50 Free Spins</p>
+                    <button class="claim-btn">Claim Now</button>
+                </div>
+                <div class="promo-card reload-bonus">
+                    <div class="promo-icon">🔄</div>
+                    <h3>Daily Reload</h3>
+                    <p>50% Bonus up to $200<br>Every Day</p>
+                    <button class="claim-btn">Claim Now</button>
+                </div>
+                <div class="promo-card cashback">
+                    <div class="promo-icon">💰</div>
+                    <h3>Weekly Cashback</h3>
+                    <p>Up to 20% Cashback<br>Every Week</p>
+                    <button class="claim-btn">Claim Now</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- VIP Section -->
+    <section class="vip-section" id="vip">
+        <div class="container">
+            <div class="vip-content">
+                <div class="vip-left">
+                    <div class="vip-badge">
+                        <i class="fas fa-crown"></i>
+                        <span>VIP PROGRAM</span>
+                    </div>
+                    <h2>Join the Elite</h2>
+                    <p>Experience luxury gaming with exclusive perks, dedicated support, and premium rewards.</p>
+                    <ul class="vip-benefits">
+                        <li><i class="fas fa-check"></i> Personal Account Manager</li>
+                        <li><i class="fas fa-check"></i> Exclusive Bonuses & Promotions</li>
+                        <li><i class="fas fa-check"></i> Faster Withdrawals</li>
+                        <li><i class="fas fa-check"></i> Special Events & Tournaments</li>
+                    </ul>
+                    <button class="vip-join-btn">Learn More</button>
+                </div>
+                <div class="vip-right">
+                    <div class="vip-levels">
+                        <div class="vip-level bronze">
+                            <i class="fas fa-medal"></i>
+                            <span>Bronze</span>
+                        </div>
+                        <div class="vip-level silver">
+                            <i class="fas fa-award"></i>
+                            <span>Silver</span>
+                        </div>
+                        <div class="vip-level gold">
+                            <i class="fas fa-trophy"></i>
+                            <span>Gold</span>
+                        </div>
+                        <div class="vip-level diamond">
+                            <i class="fas fa-gem"></i>
+                            <span>Diamond</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="main-footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <div class="footer-logo">
+                        <i class="fas fa-crown"></i>
+                        <span>Casino Royale</span>
+                    </div>
+                    <p>Experience the ultimate online casino with premium games, secure transactions, and 24/7 support.</p>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-facebook"></i></a>
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                        <a href="#"><i class="fab fa-youtube"></i></a>
+                    </div>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="#games">Games</a></li>
+                        <li><a href="#promotions">Promotions</a></li>
+                        <li><a href="#vip">VIP Program</a></li>
+                        <li><a href="#support">Support</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Support</h4>
+                    <ul>
+                        <li><a href="#faq">FAQ</a></li>
+                        <li><a href="#contact">Contact Us</a></li>
+                        <li><a href="#live-chat">Live Chat</a></li>
+                        <li><a href="#responsible">Responsible Gaming</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Security & Licensing</h4>
+                    <div class="security-badges">
+                        <div class="badge">🔒 SSL Encrypted</div>
+                        <div class="badge">✅ Licensed</div>
+                        <div class="badge">🛡️ Fair Gaming</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; 2024 Casino Royale. All rights reserved. | <a href="#terms">Terms & Conditions</a> | <a href="#privacy">Privacy Policy</a></p>
+                <p class="disclaimer">Play responsibly. Gambling can be addictive. 18+</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Chat Widget -->
+    <div class="chat-widget">
+        <button class="chat-toggle" id="chatToggle">
+            <i class="fas fa-comments"></i>
+            <span class="chat-badge">1</span>
+        </button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
