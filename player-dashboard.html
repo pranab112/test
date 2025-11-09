@@ -3529,10 +3529,10 @@
 
                 container.innerHTML = requests.map(req => `
                     <div class="user-card">
-                        ${createAvatarHTML(req.from_user, 'user-card-avatar', `openProfileModal(${req.from_user.id})`)}
-                        <div class="user-card-info" style="cursor: pointer;" onclick="openProfileModal(${req.from_user.id})">
-                            <div class="user-card-name">${req.from_user.full_name || req.from_user.username}</div>
-                            <div class="user-card-id">ID: ${req.from_user.user_id}</div>
+                        ${createAvatarHTML(req.sender, 'user-card-avatar', `openProfileModal(${req.sender.id})`)}
+                        <div class="user-card-info" style="cursor: pointer;" onclick="openProfileModal(${req.sender.id})">
+                            <div class="user-card-name">${req.sender.full_name || req.sender.username}</div>
+                            <div class="user-card-id">ID: ${req.sender.user_id}</div>
                         </div>
                         <div style="display: flex; gap: 0.5rem;">
                             <button class="btn-icon btn-success" onclick="handleFriendRequest(${req.id}, 'accepted')">
