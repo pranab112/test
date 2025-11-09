@@ -3024,7 +3024,7 @@
     <div class="notification" id="notification"></div>
 
     <script>
-        const API_URL = 'http://127.0.0.1:8000';
+        const API_URL = window.location.protocol + '//' + window.location.host;
         let authToken = localStorage.getItem('playerAuthToken');
         let currentUser = null;
         let animationsEnabled = true;
@@ -3933,7 +3933,8 @@
         // WebSocket
         function connectWebSocket() {
             console.log('Player Dashboard v2.1 - File URL Fix Active');
-            socket = new WebSocket(`ws://127.0.0.1:8000/ws?token=${authToken}`);
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            socket = new WebSocket(`${wsProtocol}//${window.location.host}/ws?token=${authToken}`);
 
             socket.onmessage = async (event) => {
                 const data = JSON.parse(event.data);

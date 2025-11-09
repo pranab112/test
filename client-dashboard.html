@@ -3663,7 +3663,7 @@
     <div class="notification" id="notification"></div>
 
     <script>
-        const API_URL = 'http://127.0.0.1:8000';
+        const API_URL = window.location.protocol + '//' + window.location.host;
         let authToken = localStorage.getItem('authToken');
         let currentUser = null;
         let currentChatUser = null;
@@ -4560,7 +4560,8 @@
             if (!authToken) return;
             console.log('Client Dashboard v2.1 - File URL Fix Active');
 
-            const wsUrl = `ws://127.0.0.1:8000/ws?token=${authToken}`;
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${wsProtocol}//${window.location.host}/ws?token=${authToken}`;
             socket = new WebSocket(wsUrl);
 
             socket.onopen = () => {

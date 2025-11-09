@@ -1120,7 +1120,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         // Configuration
-        const API_URL = 'http://127.0.0.1:8000';
+        const API_URL = window.location.protocol + '//' + window.location.host;
         let authToken = localStorage.getItem('adminToken');
         let currentUser = null;
         let charts = {};
