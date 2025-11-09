@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1,
+    "sender_id": 2,
+    "receiver_id": 1,
+    "status": "ACCEPTED",
+    "created_at": "2025-11-08 04:35:22",
+    "updated_at": "2025-11-08 04:38:17"
+  },
+  {
+    "id": 2,
+    "sender_id": 4,
+    "receiver_id": 5,
+    "status": "ACCEPTED",
+    "created_at": "2025-11-08 04:40:48",
+    "updated_at": null
+  }
+]

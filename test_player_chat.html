@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Player Chat</title>
+</head>
+<body>
+    <h1>Player Chat Test</h1>
+    <button onclick="testChat()">Test Load Conversations</button>
+    <div id="result"></div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+        const authToken = localStorage.getItem('playerAuthToken');
+
+        async function testChat() {
+            const resultDiv = document.getElementById('result');
+
+            if (!authToken) {
+                resultDiv.innerHTML = '<p style="color: red;">No player auth token found. Please login as a player first.</p>';
+                return;
+            }
+
+            try {
+                // Get current user
+                const userResponse = await fetch(`${API_URL}/auth/me`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (!userResponse.ok) {
+                    resultDiv.innerHTML = '<p style="color: red;">Invalid token. Please login again.</p>';
+                    return;
+                }
+
+                const user = await userResponse.json();
+                resultDiv.innerHTML = `<p>Logged in as: ${user.username} (ID: ${user.id})</p>`;
+
+                // Get conversations
+                const response = await fetch(`${API_URL}/chat/conversations`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (!response.ok) {
+                    resultDiv.innerHTML += `<p style="color: red;">Failed to load conversations: ${response.status}</p>`;
+                    return;
+                }
+
+                const conversations = await response.json();
+
+                if (conversations.length === 0) {
+                    resultDiv.innerHTML += '<p>No conversations found. Make sure you have friends who have sent messages.</p>';
+                } else {
+                    resultDiv.innerHTML += `<p style="color: green;">Found ${conversations.length} conversations:</p>`;
+                    conversations.forEach(conv => {
+                        const lastMsg = conv.last_message;
+                        resultDiv.innerHTML += `
+                            <div style="border: 1px solid #ccc; padding: 10px; margin: 10px;">
+                                <strong>${conv.friend.username}</strong> (ID: ${conv.friend.id})<br>
+                                Unread: ${conv.unread_count}<br>
+                                Last message: ${lastMsg ? lastMsg.content || lastMsg.message_type : 'No messages'}
+                            </div>
+                        `;
+                    });
+                }
+
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

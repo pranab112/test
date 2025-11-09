@@ -1,0 +1,16 @@
+{
+  "users": 5,
+  "payment_methods": 0,
+  "games": 0,
+  "friends": 4,
+  "friend_requests": 2,
+  "messages": 4,
+  "reviews": 0,
+  "promotions": 0,
+  "player_wallets": 0,
+  "client_payment_methods": 0,
+  "client_games": 0,
+  "game_credentials": 0,
+  "reports": 0,
+  "promotion_claims": 0
+}
