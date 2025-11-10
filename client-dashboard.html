@@ -5183,24 +5183,39 @@
                         paymentMethodsSection.style.display = 'none';
                     }
 
-                    // Update available games for players
+                    // Update available games for clients and players
                     const gamesSection = document.getElementById('profileGamesSection');
                     const gamesContainer = document.getElementById('profileAvailableGames');
 
-                    if (profile.user_type === 'player' && profile.available_games) {
+                    if (profile.user_type === 'client') {
+                        // Load client's selected games from localStorage
+                        const savedGames = localStorage.getItem(`selectedGames_${profile.user_id}`);
+                        if (savedGames && savedGames !== '[]') {
+                            const selectedGameIds = JSON.parse(savedGames);
+                            const clientGames = allGames.filter(game => selectedGameIds.includes(game.id));
+
+                            if (clientGames.length > 0) {
+                                gamesSection.style.display = 'block';
+                                gamesContainer.innerHTML = clientGames.map(game => `
+                                    <div class="profile-game-card" title="${game.name}">
+                                        <div class="profile-game-icon">
+                                            <img src="${API_URL}/static/images/games/${game.image}" alt="${game.name}"
+                                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                            <i class="fas fa-gamepad" style="font-size: 1.5rem; color: var(--primary-gold); display: none;"></i>
+                                        </div>
+                                        <div class="profile-game-name">${game.name}</div>
+                                    </div>
+                                `).join('');
+                            } else {
+                                gamesSection.style.display = 'none';
+                            }
+                        } else {
+                            gamesSection.style.display = 'none';
+                        }
+                    } else if (profile.user_type === 'player' && profile.available_games) {
                         gamesSection.style.display = 'block';
 
                         if (profile.available_games.length > 0) {
-                            // Group games by category for better display
-                            const gamesByCategory = {};
-                            profile.available_games.forEach(game => {
-                                const category = game.category || 'other';
-                                if (!gamesByCategory[category]) {
-                                    gamesByCategory[category] = [];
-                                }
-                                gamesByCategory[category].push(game);
-                            });
-
                             gamesContainer.innerHTML = profile.available_games.map(game => `
                                 <div class="profile-game-card" title="${game.display_name}">
                                     <div class="profile-game-icon">

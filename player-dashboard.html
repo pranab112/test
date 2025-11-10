@@ -3067,6 +3067,41 @@
         let mediaRecorder = null;
         let audioChunks = [];
 
+        // Games list for displaying client games
+        let allGames = [
+            { id: 1, name: "Blue Dragon", image: "bluedragon.png", category: "slots" },
+            { id: 2, name: "Cash Frenzy", image: "cashfrenzy 1.png", category: "slots" },
+            { id: 3, name: "Cash Machine", image: "cashmachine.png", category: "slots" },
+            { id: 4, name: "Casino Ignite", image: "casinoignitee.jpg", category: "casino" },
+            { id: 5, name: "Casino Royale", image: "casinoroyale.png", category: "casino" },
+            { id: 6, name: "E-Games", image: "Egames.png", category: "multi-game" },
+            { id: 7, name: "Fire Kirin", image: "firekirin.png", category: "fish" },
+            { id: 8, name: "Game Room Online", image: "Gameroom online.png", category: "multi-game" },
+            { id: 9, name: "Game Vault", image: "gamevault.png", category: "multi-game" },
+            { id: 10, name: "High Stake", image: "Highstake.jpg", category: "casino" },
+            { id: 11, name: "Joker 777", image: "joker 777.png", category: "slots" },
+            { id: 12, name: "Juwa Online", image: "juwaonline.png", category: "multi-game" },
+            { id: 13, name: "Loot", image: "loot.jpg", category: "slots" },
+            { id: 14, name: "Mega Spin", image: "Megaspin.jpg", category: "slots" },
+            { id: 15, name: "Milky Way", image: "milkyway 2.png", category: "multi-game" },
+            { id: 16, name: "Moolah", image: "moolah.jpg", category: "slots" },
+            { id: 17, name: "Orion Stars", image: "orionstars.jpg", category: "multi-game" },
+            { id: 18, name: "Panda Master", image: "Panda Master.jpg", category: "multi-game" },
+            { id: 19, name: "Para Casino", image: "Paracasino.jpg", category: "casino" },
+            { id: 20, name: "River Monster", image: "rivermonster 1.png", category: "fish" },
+            { id: 21, name: "River Sweeps", image: "riversweeps 1.png", category: "sweepstakes" },
+            { id: 22, name: "River Sweeps 2", image: "riversweeps 2.png", category: "sweepstakes" },
+            { id: 23, name: "River Sweeps 3", image: "riversweeps 3.png", category: "sweepstakes" },
+            { id: 24, name: "Sirius", image: "sirus.png", category: "multi-game" },
+            { id: 25, name: "Ultra Panda", image: "ultrapanda.png", category: "multi-game" },
+            { id: 26, name: "VBlink", image: "vblink 2.png", category: "multi-game" },
+            { id: 27, name: "Vega Sweeps", image: "Vega Sweeps.png", category: "sweepstakes" },
+            { id: 28, name: "Vegas X", image: "vegas x.png", category: "casino" },
+            { id: 29, name: "Vegas Roll", image: "vegasroll.png", category: "casino" },
+            { id: 30, name: "Win Star", image: "winstar.png", category: "casino" },
+            { id: 31, name: "Yolo 777", image: "yolo777.png", category: "slots" }
+        ];
+
         // Helper function to format time ago
         function timeAgo(dateString) {
             if (!dateString) return 'Never';
@@ -4464,22 +4499,35 @@
 
             // Display available games for clients
             const gamesSection = document.getElementById('profileGames');
-            if (profile.user_type === 'client' && profile.available_games && profile.available_games.length > 0) {
-                gamesSection.style.display = 'block';
-                const gamesList = document.getElementById('profileGamesList');
-                gamesList.innerHTML = profile.available_games.map(game => `
-                    <div style="background: rgba(255,255,255,0.05); padding: 0.5rem; border-radius: 8px; text-align: center; border: 1px solid rgba(255,215,0,0.2);">
-                        <div style="width: 50px; height: 50px; margin: 0 auto 0.5rem; border-radius: 4px; overflow: hidden; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center;">
-                            ${game.icon_url ?
-                                `<img src="${API_URL}${game.icon_url}" alt="${game.display_name}" style="width: 100%; height: 100%; object-fit: cover;">` :
-                                `<i class="fas fa-gamepad" style="font-size: 1.5rem; color: var(--primary-gold);"></i>`
-                            }
-                        </div>
-                        <div style="font-size: 0.75rem; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                            ${game.display_name}
-                        </div>
-                    </div>
-                `).join('');
+            if (profile.user_type === 'client') {
+                // Load client's selected games from localStorage
+                const savedGames = localStorage.getItem(`selectedGames_${profile.user_id}`);
+                if (savedGames && savedGames !== '[]') {
+                    const selectedGameIds = JSON.parse(savedGames);
+                    const clientGames = allGames.filter(game => selectedGameIds.includes(game.id));
+
+                    if (clientGames.length > 0) {
+                        gamesSection.style.display = 'block';
+                        const gamesList = document.getElementById('profileGamesList');
+                        gamesList.innerHTML = clientGames.map(game => `
+                            <div style="background: rgba(255,255,255,0.05); padding: 0.5rem; border-radius: 8px; text-align: center; border: 1px solid rgba(255,215,0,0.2);">
+                                <div style="width: 50px; height: 50px; margin: 0 auto 0.5rem; border-radius: 4px; overflow: hidden; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center;">
+                                    <img src="${API_URL}/static/images/games/${game.image}" alt="${game.name}"
+                                         style="width: 100%; height: 100%; object-fit: cover;"
+                                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                    <i class="fas fa-gamepad" style="font-size: 1.5rem; color: var(--primary-gold); display: none;"></i>
+                                </div>
+                                <div style="font-size: 0.75rem; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    ${game.name}
+                                </div>
+                            </div>
+                        `).join('');
+                    } else {
+                        gamesSection.style.display = 'none';
+                    }
+                } else {
+                    gamesSection.style.display = 'none';
+                }
             } else {
                 gamesSection.style.display = 'none';
             }
