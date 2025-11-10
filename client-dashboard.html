@@ -6244,17 +6244,43 @@
 
         async function loadAvailableGames() {
             try {
-                const response = await fetch(`${API_URL}/games/`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
+                // Hardcoded games list based on available images
+                allGames = [
+                    { id: 1, name: "Blue Dragon", image: "bluedragon.png", category: "slots" },
+                    { id: 2, name: "Cash Frenzy", image: "cashfrenzy 1.png", category: "slots" },
+                    { id: 3, name: "Cash Machine", image: "cashmachine.png", category: "slots" },
+                    { id: 4, name: "Casino Ignite", image: "casinoignitee.jpg", category: "casino" },
+                    { id: 5, name: "Casino Royale", image: "casinoroyale.png", category: "casino" },
+                    { id: 6, name: "E-Games", image: "Egames.png", category: "multi-game" },
+                    { id: 7, name: "Fire Kirin", image: "firekirin.png", category: "fish" },
+                    { id: 8, name: "Game Room Online", image: "Gameroom online.png", category: "multi-game" },
+                    { id: 9, name: "Game Vault", image: "gamevault.png", category: "multi-game" },
+                    { id: 10, name: "High Stake", image: "Highstake.jpg", category: "casino" },
+                    { id: 11, name: "Joker 777", image: "joker 777.png", category: "slots" },
+                    { id: 12, name: "Juwa Online", image: "juwaonline.png", category: "multi-game" },
+                    { id: 13, name: "Loot", image: "loot.jpg", category: "slots" },
+                    { id: 14, name: "Mega Spin", image: "Megaspin.jpg", category: "slots" },
+                    { id: 15, name: "Milky Way", image: "milkyway 2.png", category: "multi-game" },
+                    { id: 16, name: "Moolah", image: "moolah.jpg", category: "slots" },
+                    { id: 17, name: "Orion Stars", image: "orionstars.jpg", category: "multi-game" },
+                    { id: 18, name: "Panda Master", image: "Panda Master.jpg", category: "multi-game" },
+                    { id: 19, name: "Para Casino", image: "Paracasino.jpg", category: "casino" },
+                    { id: 20, name: "River Monster", image: "rivermonster 1.png", category: "fish" },
+                    { id: 21, name: "River Sweeps", image: "riversweeps 1.png", category: "sweepstakes" },
+                    { id: 22, name: "River Sweeps 2", image: "riversweeps 2.png", category: "sweepstakes" },
+                    { id: 23, name: "River Sweeps 3", image: "riversweeps 3.png", category: "sweepstakes" },
+                    { id: 24, name: "Sirius", image: "sirus.png", category: "multi-game" },
+                    { id: 25, name: "Ultra Panda", image: "ultrapanda.png", category: "multi-game" },
+                    { id: 26, name: "VBlink", image: "vblink 2.png", category: "multi-game" },
+                    { id: 27, name: "Vega Sweeps", image: "Vega Sweeps.png", category: "sweepstakes" },
+                    { id: 28, name: "Vegas X", image: "vegas x.png", category: "casino" },
+                    { id: 29, name: "Vegas Roll", image: "vegasroll.png", category: "casino" },
+                    { id: 30, name: "Win Star", image: "winstar.png", category: "casino" },
+                    { id: 31, name: "Yolo 777", image: "yolo777.png", category: "slots" }
+                ];
 
-                if (response.ok) {
-                    allGames = await response.json();
-                    displayGames();
-                    loadClientGames();
-                }
+                displayGames();
+                loadClientGames();
             } catch (error) {
                 console.error('Error loading games:', error);
                 showNotification('Failed to load available games', 'error');
@@ -6263,17 +6289,14 @@
 
         async function loadClientGames() {
             try {
-                const response = await fetch(`${API_URL}/games/my-games`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    selectedGameIds = new Set(data.available_games.map(g => g.id));
-                    updateGameSelection();
+                // Load selected games from localStorage
+                const savedGames = localStorage.getItem(`selectedGames_${currentUser.user_id}`);
+                if (savedGames) {
+                    selectedGameIds = new Set(JSON.parse(savedGames));
+                } else {
+                    selectedGameIds = new Set();
                 }
+                updateGameSelection();
             } catch (error) {
                 console.error('Error loading client games:', error);
             }
@@ -6289,12 +6312,11 @@
                 <div class="game-card ${selectedGameIds.has(game.id) ? 'selected' : ''}"
                      data-game-id="${game.id}" onclick="toggleGame(${game.id})">
                     <div class="game-icon">
-                        ${game.icon_url ?
-                            `<img src="${API_URL}${game.icon_url}" alt="${game.display_name}">` :
-                            `<i class="fas fa-gamepad" style="font-size: 2rem; color: var(--primary-gold);"></i>`
-                        }
+                        <img src="${API_URL}/static/images/games/${game.image}" alt="${game.name}"
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                        <i class="fas fa-gamepad" style="font-size: 2rem; color: var(--primary-gold); display: none;"></i>
                     </div>
-                    <p class="game-name">${game.display_name}</p>
+                    <p class="game-name">${game.name}</p>
                 </div>
             `).join('');
         }
@@ -6356,23 +6378,15 @@
 
         async function saveGameSelection() {
             try {
-                const response = await fetch(`${API_URL}/games/update-games`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        game_ids: Array.from(selectedGameIds)
-                    })
-                });
+                // Save selected games to localStorage
+                localStorage.setItem(`selectedGames_${currentUser.user_id}`, JSON.stringify(Array.from(selectedGameIds)));
 
-                if (response.ok) {
-                    showNotification('Game selection saved successfully!', 'success');
-                } else {
-                    const error = await response.json();
-                    showNotification(error.detail || 'Failed to save game selection', 'error');
-                }
+                // Get selected game names for display
+                const selectedGames = allGames.filter(game => selectedGameIds.has(game.id));
+                const gameNames = selectedGames.map(game => game.name).join(', ');
+
+                showNotification(`Game selection saved successfully! Selected: ${selectedGames.length} games`, 'success');
+                console.log('Selected games:', gameNames);
             } catch (error) {
                 console.error('Error saving game selection:', error);
                 showNotification('Failed to save game selection', 'error');
