@@ -2315,10 +2315,6 @@
                     <span>Promotions</span>
                     <span class="badge" id="promotionsBadge" style="display: none; background: var(--primary); color: white; padding: 2px 6px; border-radius: 10px; margin-left: auto;">0</span>
                 </a>
-                <a href="#" class="nav-item" data-section="analytics">
-                    <i class="fas fa-chart-line"></i>
-                    <span>Analytics</span>
-                </a>
                 <a href="#" class="nav-item" data-section="reviews">
                     <i class="fas fa-star"></i>
                     <span>Reviews</span>
@@ -2597,34 +2593,6 @@
                 </div>
             </div>
 
-
-            <!-- Analytics Section -->
-            <div class="content-area" id="analytics-section">
-                <h2 class="section-title">Analytics Dashboard</h2>
-                <div class="dashboard-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <div class="stat-label">Total Friends</div>
-                        <div class="stat-value" id="analyticsActiveFriends">0</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fas fa-comments"></i>
-                        </div>
-                        <div class="stat-label">Messages Sent</div>
-                        <div class="stat-value" id="analyticsMessagesSent">0</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fas fa-handshake"></i>
-                        </div>
-                        <div class="stat-label">Friend Requests</div>
-                        <div class="stat-value" id="analyticsFriendRequests">0</div>
-                    </div>
-                </div>
-            </div>
 
             <!-- Promotions Section -->
             <div class="content-area" id="promotions-section">
@@ -3402,15 +3370,9 @@
                 if (statsResponse.ok) {
                     const stats = await statsResponse.json();
                     document.getElementById('totalMessages').textContent = stats.messages_sent;
-                    document.getElementById('analyticsMessagesSent').textContent = stats.messages_sent;
                 } else {
                     document.getElementById('totalMessages').textContent = '0';
-                    document.getElementById('analyticsMessagesSent').textContent = '0';
                 }
-
-                // Analytics stats
-                document.getElementById('analyticsActiveFriends').textContent = friendCount;
-                document.getElementById('analyticsFriendRequests').textContent = requestCount;
 
                 // Update recent activity
                 updateRecentActivity();
