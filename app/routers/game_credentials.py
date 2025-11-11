@@ -55,7 +55,6 @@ async def create_game_credential(
     notification_message = models.Message(
         sender_id=current_user.id,
         receiver_id=credential.player_id,
-        conversation_id=None,
         message_type=models.MessageType.TEXT,
         content=f"Your {game.display_name} game credentials have been created:\nUsername: {credential.game_username}\nPassword: {credential.game_password}"
     )
@@ -153,7 +152,6 @@ async def update_game_credential(
     notification_message = models.Message(
         sender_id=current_user.id,
         receiver_id=credential.player_id,
-        conversation_id=None,
         message_type=models.MessageType.TEXT,
         content=f"Your {game.display_name} game credentials have been updated:\nNew Username: {credential_update.game_username}\nNew Password: {credential_update.game_password}"
     )
@@ -206,7 +204,6 @@ async def delete_game_credential(
     notification_message = models.Message(
         sender_id=current_user.id,
         receiver_id=player_id,
-        conversation_id=None,
         message_type=models.MessageType.TEXT,
         content=f"Your {game.display_name} game credentials have been removed."
     )

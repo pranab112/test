@@ -3897,7 +3897,7 @@
 
             const formData = new FormData();
             formData.append('receiver_id', currentChatUser.id);
-            formData.append('image', file);
+            formData.append('file', file);  // Fixed: Changed 'image' to 'file'
 
             try {
                 const response = await fetch(`${API_URL}/chat/send/image`, {
@@ -3925,6 +3925,9 @@
                     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                     mediaRecorder = new MediaRecorder(stream);
 
+                    // Track recording start time for duration calculation
+                    window.recordingStartTime = Date.now();
+
                     mediaRecorder.ondataavailable = (event) => {
                         audioChunks.push(event.data);
                     };
@@ -3933,9 +3936,13 @@
                         const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                         audioChunks = [];
 
+                        // Calculate duration in seconds
+                        const duration = Math.floor((Date.now() - window.recordingStartTime) / 1000);
+
                         const formData = new FormData();
                         formData.append('receiver_id', currentChatUser.id);
-                        formData.append('voice', audioBlob, 'voice.webm');
+                        formData.append('duration', duration);  // Fixed: Added required duration parameter
+                        formData.append('file', audioBlob, 'voice.webm');  // Fixed: Changed 'voice' to 'file'
 
                         try {
                             const response = await fetch(`${API_URL}/chat/send/voice`, {
@@ -3947,6 +3954,8 @@
                             if (response.ok) {
                                 await loadMessages(currentChatUser.id);
                                 await loadConversations();
+                            } else {
+                                showNotification('Failed to send voice message', 'error');
                             }
                         } catch (error) {
                             showNotification('Failed to send voice message', 'error');

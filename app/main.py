@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from app.database import engine, Base
 from app.routers import auth, friends, users, chat
 from app.websocket import websocket_endpoint
+from app.config import settings
 import os
 
 # Create database tables
@@ -11,10 +12,12 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Casino Royal SaaS", version="1.0.0")
 
-# Configure CORS - Allow all origins including null (for local development)
+# Configure CORS - Use environment variable for allowed origins
+# SECURITY WARNING: "*" allows all origins - Configure CORS_ORIGINS in .env for production
+# Example in .env: CORS_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify your frontend URLs
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
