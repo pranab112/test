@@ -5187,31 +5187,22 @@
                     const gamesSection = document.getElementById('profileGamesSection');
                     const gamesContainer = document.getElementById('profileAvailableGames');
 
-                    if (profile.user_type === 'client') {
-                        // Load client's selected games from localStorage
-                        const savedGames = localStorage.getItem(`selectedGames_${profile.user_id}`);
-                        if (savedGames && savedGames !== '[]') {
-                            const selectedGameIds = JSON.parse(savedGames);
-                            const clientGames = allGames.filter(game => selectedGameIds.includes(game.id));
-
-                            if (clientGames.length > 0) {
-                                gamesSection.style.display = 'block';
-                                gamesContainer.innerHTML = clientGames.map(game => `
-                                    <div class="profile-game-card" title="${game.name}">
-                                        <div class="profile-game-icon">
-                                            <img src="${API_URL}/static/images/games/${game.image}" alt="${game.name}"
-                                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                                            <i class="fas fa-gamepad" style="font-size: 1.5rem; color: var(--primary-gold); display: none;"></i>
-                                        </div>
-                                        <div class="profile-game-name">${game.name}</div>
-                                    </div>
-                                `).join('');
-                            } else {
-                                gamesSection.style.display = 'none';
-                            }
-                        } else {
-                            gamesSection.style.display = 'none';
-                        }
+                    if (profile.user_type === 'client' && profile.available_games && profile.available_games.length > 0) {
+                        // Use games data from API response (FIXED: was using localStorage)
+                        gamesSection.style.display = 'block';
+                        gamesContainer.innerHTML = profile.available_games.map(game => `
+                            <div class="profile-game-card" title="${game.display_name}">
+                                <div class="profile-game-icon">
+                                    ${game.icon_url ?
+                                        `<img src="${game.icon_url}" alt="${game.display_name}"
+                                             onerror="this.style.display='none'; this.parentElement.querySelector('.fa-gamepad').style.display='block';">
+                                         <i class="fas fa-gamepad" style="font-size: 1.5rem; color: var(--primary-gold); display: none;"></i>` :
+                                        `<i class="fas fa-gamepad" style="font-size: 1.5rem; color: var(--primary-gold);"></i>`
+                                    }
+                                </div>
+                                <div class="profile-game-name">${game.display_name}</div>
+                            </div>
+                        `).join('');
                     } else if (profile.user_type === 'player' && profile.available_games) {
                         gamesSection.style.display = 'block';
 
@@ -6304,16 +6295,31 @@
 
         async function loadClientGames() {
             try {
-                // Load selected games from localStorage
-                const savedGames = localStorage.getItem(`selectedGames_${currentUser.user_id}`);
-                if (savedGames) {
-                    selectedGameIds = new Set(JSON.parse(savedGames));
+                // Load selected games from backend database (FIXED: was using localStorage)
+                const response = await fetch(`${API_URL}/games/my-games`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    // Extract game IDs from the response
+                    if (data.available_games && Array.isArray(data.available_games)) {
+                        selectedGameIds = new Set(data.available_games.map(game => game.id));
+                    } else {
+                        selectedGameIds = new Set();
+                    }
                 } else {
+                    // If API fails, start with empty selection
                     selectedGameIds = new Set();
                 }
+
                 updateGameSelection();
             } catch (error) {
                 console.error('Error loading client games:', error);
+                selectedGameIds = new Set();
+                updateGameSelection();
             }
         }
 
@@ -6393,8 +6399,23 @@
 
         async function saveGameSelection() {
             try {
-                // Save selected games to localStorage
-                localStorage.setItem(`selectedGames_${currentUser.user_id}`, JSON.stringify(Array.from(selectedGameIds)));
+                // Save selected games to backend database (FIXED: was only saving to localStorage)
+                const response = await fetch(`${API_URL}/games/update-games`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        game_ids: Array.from(selectedGameIds)
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to save games to server');
+                }
+
+                const result = await response.json();
 
                 // Get selected game names for display
                 const selectedGames = allGames.filter(game => selectedGameIds.has(game.id));
@@ -6402,6 +6423,9 @@
 
                 showNotification(`Game selection saved successfully! Selected: ${selectedGames.length} games`, 'success');
                 console.log('Selected games:', gameNames);
+
+                // Reload profile to show updated games
+                await loadCurrentUserProfile();
             } catch (error) {
                 console.error('Error saving game selection:', error);
                 showNotification('Failed to save game selection', 'error');

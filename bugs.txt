@@ -481,3 +481,79 @@ I've conducted a comprehensive analysis of your entire casino project, examining
 
   DEPLOYMENT:
   Frontend-only fix. Deploy updated player-dashboard.html to Render.
+
+  ================================
+  ISSUE #2 UPDATED: ROOT CAUSE FOUND & FIXED
+  ================================
+
+  ADDITIONAL BUGS DISCOVERED:
+  After user reported games still not showing, deeper investigation revealed the true ROOT CAUSE.
+
+  PROBLEM: Games were NEVER being saved to the database!
+
+  BUG #1 - saveGameSelection() NOT calling backend API (CRITICAL!)
+  Location: client-dashboard.html:6394-6409
+  Issue: Function was only saving to localStorage, NEVER calling /games/update-games API
+  Impact: Games never saved to database, so API returns empty array
+
+  BEFORE (BROKEN):
+  ```javascript
+  async function saveGameSelection() {
+      // Save selected games to localStorage only
+      localStorage.setItem(`selectedGames_${currentUser.user_id}`, JSON.stringify(Array.from(selectedGameIds)));
+      showNotification('Game selection saved successfully!', 'success');
+  }
+  ```
+
+  AFTER (FIXED):
+  ```javascript
+  async function saveGameSelection() {
+      // Save to backend database via API
+      const response = await fetch(`${API_URL}/games/update-games`, {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({
+              game_ids: Array.from(selectedGameIds)
+          })
+      });
+      // ... error handling and reload profile
+  }
+  ```
+
+  BUG #2 - loadClientGames() NOT calling backend API
+  Location: client-dashboard.html:6296-6309
+  Issue: Function loading from localStorage instead of /games/my-games API
+  Impact: When client reopens settings, doesn't see previously saved games
+
+  FIXED: Now calls GET /games/my-games to load saved games from database
+
+  BUG #3 - Client profile display using localStorage
+  Location: client-dashboard.html:5190-5214
+  Issue: Displaying games from localStorage instead of profile.available_games
+  Impact: Client sees wrong games in their own profile
+
+  FIXED: Now uses profile.available_games from API response
+
+  COMPLETE FLOW NOW WORKING:
+  1. Client opens settings → loadClientGames() calls /games/my-games API ✅
+  2. Client sees previously saved games pre-selected ✅
+  3. Client selects/deselects games ✅
+  4. Client clicks "Save Games" → saveGameSelection() calls /games/update-games API ✅
+  5. Games saved to database ✅
+  6. Client profile displays games from API data ✅
+  7. Player views client profile → GET /profiles/{id} returns games from database ✅
+  8. Player sees games in profile ✅
+
+  FILES MODIFIED:
+  ✓ client-dashboard.html:
+    - saveGameSelection() function (lines 6394-6427)
+    - loadClientGames() function (lines 6296-6324)
+    - Client profile display (lines 5190-5206)
+  ✓ player-dashboard.html:
+    - Player profile display (lines 4509-4532)
+
+  DEPLOYMENT:
+  Deploy both client-dashboard.html and player-dashboard.html to Render.
