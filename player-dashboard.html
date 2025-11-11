@@ -4508,35 +4508,25 @@
 
             // Display available games for clients
             const gamesSection = document.getElementById('profileGames');
-            if (profile.user_type === 'client') {
-                // Load client's selected games from localStorage
-                const savedGames = localStorage.getItem(`selectedGames_${profile.user_id}`);
-                if (savedGames && savedGames !== '[]') {
-                    const selectedGameIds = JSON.parse(savedGames);
-                    const clientGames = allGames.filter(game => selectedGameIds.includes(game.id));
-
-                    if (clientGames.length > 0) {
-                        gamesSection.style.display = 'block';
-                        const gamesList = document.getElementById('profileGamesList');
-                        gamesList.innerHTML = clientGames.map(game => `
-                            <div style="background: rgba(255,255,255,0.05); padding: 0.5rem; border-radius: 8px; text-align: center; border: 1px solid rgba(255,215,0,0.2);">
-                                <div style="width: 50px; height: 50px; margin: 0 auto 0.5rem; border-radius: 4px; overflow: hidden; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center;">
-                                    <img src="${API_URL}/static/images/games/${game.image}" alt="${game.name}"
-                                         style="width: 100%; height: 100%; object-fit: cover;"
-                                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                                    <i class="fas fa-gamepad" style="font-size: 1.5rem; color: var(--primary-gold); display: none;"></i>
-                                </div>
-                                <div style="font-size: 0.75rem; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                    ${game.name}
-                                </div>
-                            </div>
-                        `).join('');
-                    } else {
-                        gamesSection.style.display = 'none';
-                    }
-                } else {
-                    gamesSection.style.display = 'none';
-                }
+            if (profile.user_type === 'client' && profile.available_games && profile.available_games.length > 0) {
+                // Use games data from API response (Fixed: was using localStorage)
+                gamesSection.style.display = 'block';
+                const gamesList = document.getElementById('profileGamesList');
+                gamesList.innerHTML = profile.available_games.map(game => `
+                    <div style="background: rgba(255,255,255,0.05); padding: 0.5rem; border-radius: 8px; text-align: center; border: 1px solid rgba(255,215,0,0.2);">
+                        <div style="width: 50px; height: 50px; margin: 0 auto 0.5rem; border-radius: 4px; overflow: hidden; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center;">
+                            ${game.icon_url ?
+                                `<img src="${game.icon_url}" alt="${game.display_name}"
+                                     style="width: 100%; height: 100%; object-fit: cover;"
+                                     onerror="this.style.display='none'; this.parentElement.querySelector('.fa-gamepad').style.display='flex';">`
+                                : ''}
+                            <i class="fas fa-gamepad" style="font-size: 1.5rem; color: var(--primary-gold); ${game.icon_url ? 'display: none;' : 'display: flex;'}"></i>
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            ${game.display_name}
+                        </div>
+                    </div>
+                `).join('');
             } else {
                 gamesSection.style.display = 'none';
             }

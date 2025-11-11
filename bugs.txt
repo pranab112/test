@@ -403,3 +403,81 @@ I've conducted a comprehensive analysis of your entire casino project, examining
   DEPLOYMENT:
   These are frontend-only fixes. Simply deploy the updated HTML files to Render.
   No backend changes or database migrations required.
+
+  ================================
+  ISSUE #2: Client Available Games Not Showing in Player Profile View
+  PLATFORM: Render (https://test-xbyp.onrender.com/player)
+  REPORTED BY: User
+  STATUS: ✅ FIXED
+  ================================
+
+  FEATURE FLOW:
+  1. Client updates payment methods via /payment-methods/update-methods API
+  2. Client updates available games via /games/update-games API
+  3. Player views client profile in player dashboard
+  4. Should see: Payment methods + Available games
+
+  BUG ANALYSIS:
+  ✅ Payment Methods: Working correctly - displays data from API
+  ❌ Available Games: BROKEN - ignoring API data, reading localStorage instead
+
+  ROOT CAUSE:
+  Location: player-dashboard.html:4512-4516
+
+  The frontend code was:
+  1. Getting profile data from /profiles/{user_id} API ✅
+  2. API correctly returns "available_games" array for clients ✅ (app/routers/profiles.py:156-165, 183-184)
+  3. Frontend displays payment methods from API ✅
+  4. Frontend IGNORES "available_games" from API ❌
+  5. Instead reads from localStorage which is never set ❌
+  6. Result: Games never display even when client has configured them ❌
+
+  WRONG CODE (Before Fix):
+  ```javascript
+  // Load client's selected games from localStorage ❌
+  const savedGames = localStorage.getItem(`selectedGames_${profile.user_id}`);
+  if (savedGames && savedGames !== '[]') {
+      const selectedGameIds = JSON.parse(savedGames);
+      const clientGames = allGames.filter(game => selectedGameIds.includes(game.id));
+  ```
+
+  FIX APPLIED:
+  Changed to use profile.available_games from API response directly
+
+  ```javascript
+  // Use games data from API response (Fixed: was using localStorage) ✅
+  if (profile.user_type === 'client' && profile.available_games && profile.available_games.length > 0) {
+      gamesSection.style.display = 'block';
+      const gamesList = document.getElementById('profileGamesList');
+      gamesList.innerHTML = profile.available_games.map(game => ...)
+  ```
+
+  ADDITIONAL FIXES:
+  - Changed to use game.display_name instead of game.name
+  - Changed to use game.icon_url from API (correct field name)
+  - Added fallback to gamepad icon when image fails to load
+  - Simplified logic - removed unnecessary localStorage dependency
+
+  VERIFICATION:
+  Backend APIs Working:
+  ✅ POST /payment-methods/update-methods - Client can update payment methods
+  ✅ POST /games/update-games - Client can update games
+  ✅ GET /profiles/{user_id} - Returns both payment methods and games arrays
+
+  Frontend Working:
+  ✅ Payment methods displayed correctly
+  ✅ Games now displayed correctly (FIXED)
+
+  FILES MODIFIED:
+  ✓ player-dashboard.html (lines 4509-4532)
+
+  TESTING REQUIRED:
+  1. Client logs in and updates payment methods
+  2. Client selects available games from games list
+  3. Player views client profile
+  4. Verify payment methods are visible
+  5. Verify all selected games are visible with icons/names
+  6. Verify non-client profiles don't show these sections
+
+  DEPLOYMENT:
+  Frontend-only fix. Deploy updated player-dashboard.html to Render.
