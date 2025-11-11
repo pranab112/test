@@ -6435,9 +6435,6 @@
 
                 showNotification(`Game selection saved successfully! Selected: ${selectedGames.length} games`, 'success');
                 console.log('Selected games:', gameNames);
-
-                // Reload profile to show updated games
-                await loadCurrentUserProfile();
             } catch (error) {
                 console.error('Error saving game selection:', error);
                 showNotification('Failed to save game selection', 'error');
