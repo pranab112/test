@@ -7,6 +7,83 @@ from app.database import get_db
 
 router = APIRouter(prefix="/games", tags=["games"])
 
+@router.post("/populate")
+async def populate_games(db: Session = Depends(get_db)):
+    """
+    Populate games table with default games
+    ADMIN ONLY - Call this once to initialize games
+    """
+    # List of default games
+    games_data = [
+        ('bluedragon', 'Blue Dragon', '/static/images/games/bluedragon.png', 'slots'),
+        ('cashfrenzy', 'Cash Frenzy', '/static/images/games/cashfrenzy 1.png', 'slots'),
+        ('cashmachine', 'Cash Machine', '/static/images/games/cashmachine.png', 'slots'),
+        ('casinoignite', 'Casino Ignite', '/static/images/games/casinoignitee.jpg', 'casino'),
+        ('casinoroyale', 'Casino Royale', '/static/images/games/casinoroyale.png', 'casino'),
+        ('egames', 'E-Games', '/static/images/games/Egames.png', 'multi-game'),
+        ('firekirin', 'Fire Kirin', '/static/images/games/firekirin.png', 'fish'),
+        ('gameroom', 'Gameroom Online', '/static/images/games/Gameroom online.png', 'multi-game'),
+        ('gamevault', 'Game Vault', '/static/images/games/gamevault.png', 'multi-game'),
+        ('highstake', 'High Stake', '/static/images/games/Highstake.jpg', 'casino'),
+        ('joker777', 'Joker 777', '/static/images/games/joker 777.png', 'slots'),
+        ('juwa', 'Juwa Online', '/static/images/games/juwaonline.png', 'multi-game'),
+        ('loot', 'Loot', '/static/images/games/loot.jpg', 'slots'),
+        ('megaspin', 'Mega Spin', '/static/images/games/Megaspin.jpg', 'slots'),
+        ('milkyway', 'Milky Way', '/static/images/games/milkyway 2.png', 'multi-game'),
+        ('moolah', 'Moolah', '/static/images/games/moolah.jpg', 'slots'),
+        ('orionstars', 'Orion Stars', '/static/images/games/orionstars.jpg', 'multi-game'),
+        ('pandamaster', 'Panda Master', '/static/images/games/Panda Master.jpg', 'multi-game'),
+        ('paracasino', 'Para Casino', '/static/images/games/Paracasino.jpg', 'casino'),
+        ('rivermonster', 'River Monster', '/static/images/games/rivermonster 1.png', 'fish'),
+        ('riversweeps1', 'River Sweeps', '/static/images/games/riversweeps 1.png', 'sweepstakes'),
+        ('riversweeps2', 'River Sweeps 2', '/static/images/games/riversweeps 2.png', 'sweepstakes'),
+        ('riversweeps3', 'River Sweeps 3', '/static/images/games/riversweeps 3.png', 'sweepstakes'),
+        ('sirius', 'Sirius', '/static/images/games/sirus.png', 'multi-game'),
+        ('ultrapanda', 'Ultra Panda', '/static/images/games/ultrapanda.png', 'multi-game'),
+        ('vblink', 'VBlink', '/static/images/games/vblink 2.png', 'multi-game'),
+        ('vegasweeps', 'Vega Sweeps', '/static/images/games/Vega Sweeps.png', 'sweepstakes'),
+        ('vegasx', 'Vegas X', '/static/images/games/vegas x.png', 'casino'),
+        ('vegasroll', 'Vegas Roll', '/static/images/games/vegasroll.png', 'casino'),
+        ('winstar', 'Win Star', '/static/images/games/winstar.png', 'casino'),
+        ('yolo777', 'Yolo 777', '/static/images/games/yolo777.png', 'slots')
+    ]
+
+    # Check if games already exist
+    existing_count = db.query(models.Game).count()
+    if existing_count > 0:
+        return {
+            "message": f"Games table already has {existing_count} games",
+            "status": "already_populated"
+        }
+
+    # Insert games
+    inserted = 0
+    for name, display_name, icon_url, category in games_data:
+        try:
+            game = models.Game(
+                name=name,
+                display_name=display_name,
+                icon_url=icon_url,
+                category=category,
+                is_active=True
+            )
+            db.add(game)
+            inserted += 1
+        except Exception as e:
+            print(f"Error inserting {name}: {e}")
+
+    db.commit()
+
+    # Verify
+    final_count = db.query(models.Game).count()
+
+    return {
+        "message": f"Successfully populated {final_count} games",
+        "inserted": inserted,
+        "total": final_count,
+        "status": "success"
+    }
+
 @router.get("/", response_model=List[schemas.GameResponse])
 async def get_available_games(
     db: Session = Depends(get_db)
