@@ -1,6 +1,6 @@
 # Casino Royal - Full Stack Casino Platform
 
-A professional casino gaming platform with backend API, user authentication, game management, and fortune wheel functionality.
+A professional casino gaming platform with dual backend systems (Node.js + FastAPI), featuring SaaS capabilities, user authentication, game management, and fortune wheel functionality.
 
 ## 🎰 Features
 
@@ -10,32 +10,35 @@ A professional casino gaming platform with backend API, user authentication, gam
 - **Game Gallery**: 30+ casino games with direct links to actual gaming sites
 - **User Authentication**: Login/registration with JWT tokens
 - **Real-time Updates**: Live winners ticker and dynamic content
+- **Dual User System**: Separate registration and login for Clients and Players
+- **Friend Request System**: Users can search and send friend requests
 
 ### Backend
-- **RESTful API**: Complete API with Express.js
+- **Dual Stack**: Express.js (Node.js) + FastAPI (Python)
 - **User Management**: Registration, authentication, profile management
 - **Game System**: Game tracking, popularity scoring, play statistics
 - **Fortune Wheel**: Weighted random results with prize distribution
 - **Admin Panel**: User management, game management, system statistics
-- **SQLite Database**: Lightweight database with full transaction logging
+- **Database**: SQLite (easily switchable to PostgreSQL)
+- **Real-time Updates**: Friend requests and lists update in real-time
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 - Node.js (v14 or higher)
 - npm (v6 or higher)
-- Python (for Excel data conversion)
+- Python 3.8+
 
 ### Installation
 
-1. **Install Dependencies**
+1. **Install Node.js Dependencies**
    ```bash
    npm install
    ```
 
-2. **Install Python Dependencies** (for Excel processing)
+2. **Install Python Dependencies**
    ```bash
-   pip install pandas openpyxl
+   pip install -r requirements.txt
    ```
 
 3. **Environment Setup**
@@ -44,21 +47,30 @@ A professional casino gaming platform with backend API, user authentication, gam
    # Update passwords and secrets for production use
    ```
 
-4. **Initialize Database**
+4. **Initialize Database** (for Node.js backend)
    ```bash
    npm run init-db
    ```
 
-5. **Start the Server**
+5. **Start the Servers**
+
+   Node.js Server:
    ```bash
    npm start
    # or for development
    npm run dev
    ```
 
+   FastAPI Server:
+   ```bash
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+   ```
+
 6. **Access the Application**
-   - Open your browser to `http://localhost:3000`
-   - The backend API is available at `http://localhost:3000/api`
+   - Node.js API: `http://localhost:3000`
+   - FastAPI: `http://localhost:8000`
+   - Client Dashboard: Open `client-dashboard.html`
+   - Player Dashboard: Open `player-dashboard.html`
 
 ## 📁 Project Structure
 
@@ -334,3 +346,50 @@ This project is for educational and demonstration purposes. Please ensure compli
 ---
 
 **🎰 Casino Royal - Where Fortune Meets Technology! 🎰**
+
+---
+
+## FastAPI Backend (SaaS Features)
+
+### Friend System Features
+- **User Search**: Search users by username or unique ID
+- **Unique User IDs**: Each user gets an auto-generated unique ID for easy sharing
+- **Dashboard Views**: Separate dashboards for clients and players with different features
+
+### FastAPI Endpoints
+
+#### Authentication
+- `POST /auth/register` - Register new user
+- `POST /auth/login` - Login user
+- `GET /auth/me` - Get current user info
+
+#### Friends
+- `POST /friends/request` - Send friend request
+- `GET /friends/requests/sent` - Get sent requests
+- `GET /friends/requests/received` - Get received requests
+- `PUT /friends/requests/{id}` - Accept/reject request
+- `GET /friends/list` - Get friends list
+- `DELETE /friends/{id}` - Remove friend
+
+#### Users
+- `GET /users/search` - Search users
+- `GET /users/{user_id}` - Get user by ID
+
+### Usage
+
+#### For Clients
+1. Open `client-dashboard.html`
+2. Register with company details or login
+3. Your unique Client ID will be displayed
+4. Search for players or other clients by username or ID
+5. Send and manage friend requests
+6. View your friends list
+
+#### For Players
+1. Open `player-dashboard.html`
+2. Register as a player or login
+3. Your unique Player ID will be displayed
+4. Search for clients or other players
+5. Filter search by user type (clients only/players only)
+6. Send and manage friend requests
+7. View your level and credits

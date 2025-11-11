@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-section {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        .info {
+            color: blue;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Admin Dashboard Test</h1>
+
+    <div class="test-section">
+        <h2>Step 1: Login Test</h2>
+        <button onclick="testLogin()">Test Admin Login</button>
+        <div id="loginResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Step 2: Get User Info</h2>
+        <button onclick="testGetUser()">Get Current User</button>
+        <div id="userResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Step 3: Full Login Flow</h2>
+        <button onclick="testFullFlow()">Test Full Login Flow</button>
+        <div id="fullFlowResult"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://127.0.0.1:8000';
+        let authToken = null;
+
+        async function testLogin() {
+            const resultDiv = document.getElementById('loginResult');
+            resultDiv.innerHTML = '<div class="info">Testing login...</div>';
+
+            try {
+                const formData = new FormData();
+                formData.append('username', 'admin1');
+                formData.append('password', 'admin123');
+
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                console.log('Login response status:', response.status);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    authToken = data.access_token;
+
+                    resultDiv.innerHTML = `
+                        <div class="success">✓ Login successful!</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                        <div>User Type: <strong>${data.user_type}</strong></div>
+                        <div>Is Admin: <strong>${data.user_type === 'admin' ? 'YES' : 'NO'}</strong></div>
+                    `;
+
+                    localStorage.setItem('adminToken', authToken);
+                } else {
+                    const error = await response.text();
+                    resultDiv.innerHTML = `<div class="error">✗ Login failed: ${response.status}</div><pre>${error}</pre>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">✗ Error: ${error.message}</div>`;
+            }
+        }
+
+        async function testGetUser() {
+            const resultDiv = document.getElementById('userResult');
+
+            if (!authToken) {
+                authToken = localStorage.getItem('adminToken');
+                if (!authToken) {
+                    resultDiv.innerHTML = '<div class="error">Please login first!</div>';
+                    return;
+                }
+            }
+
+            resultDiv.innerHTML = '<div class="info">Getting user info...</div>';
+
+            try {
+                const response = await fetch(`${API_URL}/auth/me`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                console.log('Get user response status:', response.status);
+
+                if (response.ok) {
+                    const data = await response.json();
+
+                    resultDiv.innerHTML = `
+                        <div class="success">✓ User info retrieved!</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                        <div>Username: <strong>${data.username}</strong></div>
+                        <div>User Type: <strong>${data.user_type}</strong></div>
+                        <div>Is Admin: <strong>${data.user_type === 'admin' ? 'YES' : 'NO'}</strong></div>
+                    `;
+                } else {
+                    const error = await response.text();
+                    resultDiv.innerHTML = `<div class="error">✗ Failed to get user: ${response.status}</div><pre>${error}</pre>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">✗ Error: ${error.message}</div>`;
+            }
+        }
+
+        async function testFullFlow() {
+            const resultDiv = document.getElementById('fullFlowResult');
+            resultDiv.innerHTML = '<div class="info">Testing full login flow...</div>';
+
+            try {
+                // Step 1: Login
+                const formData = new FormData();
+                formData.append('username', 'admin1');
+                formData.append('password', 'admin123');
+
+                const loginResponse = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!loginResponse.ok) {
+                    throw new Error(`Login failed: ${loginResponse.status}`);
+                }
+
+                const loginData = await loginResponse.json();
+                authToken = loginData.access_token;
+
+                // Step 2: Get user info
+                const userResponse = await fetch(`${API_URL}/auth/me`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (!userResponse.ok) {
+                    throw new Error(`Get user failed: ${userResponse.status}`);
+                }
+
+                const userData = await userResponse.json();
+
+                // Step 3: Check if admin
+                if (userData.user_type !== 'admin') {
+                    throw new Error('User is not an admin!');
+                }
+
+                resultDiv.innerHTML = `
+                    <div class="success">✓ Full flow successful!</div>
+                    <h3>Step 1: Login</h3>
+                    <pre>${JSON.stringify(loginData, null, 2)}</pre>
+                    <h3>Step 2: User Info</h3>
+                    <pre>${JSON.stringify(userData, null, 2)}</pre>
+                    <h3>Step 3: Admin Check</h3>
+                    <div class="success">✓ User is confirmed as admin!</div>
+                    <p>Dashboard should now be visible.</p>
+                `;
+
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">✗ Flow failed: ${error.message}</div>`;
+            }
+        }
+
+        // Check if there's a saved token on page load
+        window.addEventListener('load', () => {
+            const savedToken = localStorage.getItem('adminToken');
+            if (savedToken) {
+                authToken = savedToken;
+                console.log('Found saved token');
+            }
+        });
+    </script>
+</body>
+</html>

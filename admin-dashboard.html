@@ -1,0 +1,1981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Casino Royal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --dark: #1f2937;
+            --darker: #111827;
+            --light: #f3f4f6;
+            --white: #ffffff;
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+            --border: #e5e7eb;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+        }
+
+        /* Login Container */
+        .login-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .login-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .login-header h1 {
+            color: var(--primary);
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .login-header p {
+            color: var(--text-secondary);
+        }
+
+        /* Dashboard Layout */
+        .dashboard-container {
+            display: none;
+            min-height: 100vh;
+            background: var(--light);
+        }
+
+        .dashboard-container.active {
+            display: flex;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--white);
+            box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+        }
+
+        .sidebar-header h2 {
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .admin-info {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            background: var(--light);
+        }
+
+        .admin-info h3 {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .admin-info p {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .nav-menu {
+            flex: 1;
+            padding: 1rem 0;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.5rem;
+            color: var(--text-primary);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            font-size: 0.95rem;
+        }
+
+        .nav-item:hover {
+            background: var(--light);
+            color: var(--primary);
+        }
+
+        .nav-item.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .nav-item i {
+            width: 20px;
+        }
+
+        .nav-badge {
+            margin-left: auto;
+            background: var(--danger);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            padding: 1.5rem 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        /* Content Area */
+        .content {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .stat-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .stat-icon.blue {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+        }
+
+        .stat-icon.green {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+
+        .stat-icon.purple {
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--secondary);
+        }
+
+        .stat-icon.red {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+
+        .stat-icon.orange {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        .approval-info {
+            background: #f3f4f6;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            color: #6b7280;
+        }
+
+        .stat-change.warning {
+            color: #f59e0b;
+        }
+
+        .stat-change.neutral {
+            color: #6b7280;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+
+        .stat-change {
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .stat-change.positive {
+            color: var(--success);
+        }
+
+        .stat-change.negative {
+            color: var(--danger);
+        }
+
+        /* Data Table */
+        .data-section {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .table-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .search-box {
+            position: relative;
+            flex: 1;
+            max-width: 400px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.875rem;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+        }
+
+        .filter-select {
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: white;
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th {
+            background: var(--light);
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .data-table td {
+            padding: 1rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-primary);
+        }
+
+        .data-table tbody tr:hover {
+            background: var(--light);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
+        .user-details {
+            flex: 1;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .user-email {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+
+        .badge-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+
+        .badge-warning {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        .badge-primary {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+        }
+
+        .badge-secondary {
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--secondary);
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-warning {
+            background: var(--warning);
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #d97706;
+        }
+
+        .btn-secondary {
+            background: var(--light);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        .btn-icon {
+            padding: 0.5rem;
+            border-radius: 6px;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .form-input,
+        .form-textarea {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.875rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            border: none;
+            background: var(--light);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover {
+            background: var(--border);
+        }
+
+        /* Notifications */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            max-width: 400px;
+            z-index: 2000;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .notification.success {
+            background: var(--success);
+            color: white;
+        }
+
+        .notification.error {
+            background: var(--danger);
+            color: white;
+        }
+
+        .notification.warning {
+            background: var(--warning);
+            color: white;
+        }
+
+        .notification.info {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .pagination-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border);
+            background: white;
+            color: var(--text-primary);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.3s ease;
+        }
+
+        .pagination-btn:hover {
+            background: var(--light);
+        }
+
+        .pagination-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Charts CSS removed - Activity Overview and User Distribution sections removed */
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: -280px;
+                height: 100vh;
+                z-index: 100;
+                transition: left 0.3s ease;
+            }
+
+            .sidebar.active {
+                left: 0;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+
+            .table-controls {
+                flex-direction: column;
+            }
+
+            .search-box {
+                max-width: 100%;
+            }
+        }
+
+        /* Content Sections */
+        .content-section {
+            display: none;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            border: 3px solid var(--border);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Section -->
+    <div id="loginSection" class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <h1><i class="fas fa-crown"></i> Admin Portal</h1>
+                <p>Casino Royal Management System</p>
+            </div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <input type="text" class="form-input" id="loginUsername" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" class="form-input" id="loginPassword" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <i class="fas fa-sign-in-alt"></i> Login as Admin
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Dashboard Section -->
+    <div id="dashboardSection" class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-crown"></i> Admin Panel</h2>
+            </div>
+
+            <div class="admin-info">
+                <h3>Logged in as</h3>
+                <p id="adminName">Admin User</p>
+                <p style="font-size: 0.875rem; color: var(--text-secondary);" id="adminId">ID: -</p>
+            </div>
+
+            <nav class="nav-menu">
+                <button class="nav-item active" data-section="overview">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Overview</span>
+                </button>
+                <button class="nav-item" data-section="users">
+                    <i class="fas fa-users"></i>
+                    <span>Users</span>
+                    <span class="nav-badge" id="totalUsersBadge">0</span>
+                </button>
+                <button class="nav-item" data-section="approvals">
+                    <i class="fas fa-user-check"></i>
+                    <span>Approvals</span>
+                    <span class="nav-badge" id="pendingApprovalsCount" style="display: none;">0</span>
+                </button>
+                <button class="nav-item" data-section="messages">
+                    <i class="fas fa-envelope"></i>
+                    <span>Messages</span>
+                </button>
+                <button class="nav-item" data-section="promotions">
+                    <i class="fas fa-gift"></i>
+                    <span>Promotions</span>
+                </button>
+                <button class="nav-item" data-section="reports">
+                    <i class="fas fa-flag"></i>
+                    <span>Reports</span>
+                    <span class="nav-badge" id="pendingReportsBadge" style="display: none;">0</span>
+                </button>
+                <button class="nav-item" data-section="reviews">
+                    <i class="fas fa-star"></i>
+                    <span>Reviews</span>
+                </button>
+                <button class="nav-item" data-section="broadcast">
+                    <i class="fas fa-bullhorn"></i>
+                    <span>Broadcast</span>
+                </button>
+                <button class="nav-item" onclick="logout()">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <h1 class="header-title" id="pageTitle">Overview</h1>
+                <div class="header-actions">
+                    <button class="btn btn-secondary" onclick="refreshData()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div class="content">
+                <!-- Overview Section -->
+                <section class="content-section active" id="overview-section">
+                    <div class="stats-grid" id="statsGrid">
+                        <!-- Stats will be loaded here -->
+                    </div>
+
+                </section>
+
+                <!-- Users Section -->
+                <section class="content-section" id="users-section">
+                    <div class="data-section">
+                        <div class="section-header">
+                            <h2 class="section-title">Manage Users</h2>
+                        </div>
+
+                        <div class="table-controls">
+                            <div class="search-box">
+                                <i class="fas fa-search"></i>
+                                <input type="text" placeholder="Search users..." id="userSearch">
+                            </div>
+                            <select class="filter-select" id="userTypeFilter">
+                                <option value="">All Types</option>
+                                <option value="client">Clients</option>
+                                <option value="player">Players</option>
+                                <option value="admin">Admins</option>
+                            </select>
+                            <select class="filter-select" id="userStatusFilter">
+                                <option value="">All Status</option>
+                                <option value="true">Active</option>
+                                <option value="false">Inactive</option>
+                            </select>
+                        </div>
+
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Joined</th>
+                                    <th>Last Active</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody">
+                                <!-- Users will be loaded here -->
+                            </tbody>
+                        </table>
+
+                        <div class="pagination" id="usersPagination">
+                            <!-- Pagination will be loaded here -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Approvals Section -->
+                <section class="content-section" id="approvals-section">
+                    <div class="data-section">
+                        <div class="section-header">
+                            <h2 class="section-title">Pending Client Approvals</h2>
+                        </div>
+
+                        <div class="approval-info">
+                            <p>Newly registered clients require admin approval before they can access the system.</p>
+                        </div>
+
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Company</th>
+                                    <th>Full Name</th>
+                                    <th>Registered</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="approvalsTableBody">
+                                <!-- Pending approvals will be loaded here -->
+                            </tbody>
+                        </table>
+
+                        <div id="noApprovalsMessage" style="display: none; text-align: center; padding: 2rem; color: #6b7280;">
+                            <i class="fas fa-check-circle" style="font-size: 3rem; color: #10b981; margin-bottom: 1rem;"></i>
+                            <p>No pending approvals at this time.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Messages Section -->
+                <section class="content-section" id="messages-section">
+                    <div class="data-section">
+                        <div class="section-header">
+                            <h2 class="section-title">System Messages</h2>
+                        </div>
+
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>From</th>
+                                    <th>To</th>
+                                    <th>Type</th>
+                                    <th>Content</th>
+                                    <th>Time</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="messagesTableBody">
+                                <!-- Messages will be loaded here -->
+                            </tbody>
+                        </table>
+
+                        <div class="pagination" id="messagesPagination">
+                            <!-- Pagination will be loaded here -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Promotions Section -->
+                <section class="content-section" id="promotions-section">
+                    <div class="data-section">
+                        <div class="section-header">
+                            <h2 class="section-title">Promotions Management</h2>
+                        </div>
+
+                        <div class="table-controls">
+                            <select class="filter-select" id="promotionStatusFilter">
+                                <option value="">All Status</option>
+                                <option value="active">Active</option>
+                                <option value="expired">Expired</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                        </div>
+
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Client</th>
+                                    <th>Type</th>
+                                    <th>Value</th>
+                                    <th>Claims</th>
+                                    <th>Status</th>
+                                    <th>Expires</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="promotionsTableBody">
+                                <!-- Promotions will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Reports Section -->
+                <section class="content-section" id="reports-section">
+                    <div class="data-section">
+                        <div class="section-header">
+                            <h2 class="section-title">User Reports</h2>
+                        </div>
+
+                        <div class="table-controls">
+                            <select class="filter-select" id="reportStatusFilter">
+                                <option value="">All Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="reviewed">Reviewed</option>
+                                <option value="resolved">Resolved</option>
+                                <option value="dismissed">Dismissed</option>
+                            </select>
+                        </div>
+
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Reporter</th>
+                                    <th>Reported User</th>
+                                    <th>Reason</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reportsTableBody">
+                                <!-- Reports will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Reviews Section -->
+                <section class="content-section" id="reviews-section">
+                    <div class="data-section">
+                        <div class="section-header">
+                            <h2 class="section-title">Reviews Management</h2>
+                        </div>
+
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Reviewer</th>
+                                    <th>Reviewed</th>
+                                    <th>Rating</th>
+                                    <th>Title</th>
+                                    <th>Comment</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reviewsTableBody">
+                                <!-- Reviews will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Broadcast Section -->
+                <section class="content-section" id="broadcast-section">
+                    <div class="data-section">
+                        <div class="section-header">
+                            <h2 class="section-title">Broadcast Message</h2>
+                        </div>
+
+                        <form id="broadcastForm">
+                            <div class="form-group">
+                                <label class="form-label">Target Audience</label>
+                                <select class="form-input" id="broadcastTarget">
+                                    <option value="">All Users</option>
+                                    <option value="client">Clients Only</option>
+                                    <option value="player">Players Only</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Message</label>
+                                <textarea class="form-textarea" id="broadcastMessage" required placeholder="Enter your broadcast message..."></textarea>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i> Send Broadcast
+                            </button>
+                        </form>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal" id="reportModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Review Report</h2>
+                <button class="modal-close" onclick="closeModal('reportModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="reportModalBody">
+                <!-- Report details will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Configuration
+        const API_URL = window.location.protocol + '//' + window.location.host;
+        let authToken = localStorage.getItem('adminToken');
+        let currentUser = null;
+        let charts = {};
+
+        // Check authentication
+        window.onload = function() {
+            if (authToken) {
+                initDashboard();
+            } else {
+                document.getElementById('loginSection').style.display = 'flex';
+                document.getElementById('dashboardSection').classList.remove('active');
+            }
+        };
+
+        // Login
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                console.log('Starting login for:', username);
+                const formData = new FormData();
+                formData.append('username', username);
+                formData.append('password', password);
+
+                console.log('Making request to:', `${API_URL}/auth/login`);
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    body: formData
+                });
+                console.log('Response status:', response.status);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Login response:', data);
+                    console.log('User type:', data.user_type);
+                    console.log('Is admin?', data.user_type === 'admin');
+
+                    // Check if user is admin
+                    if (data.user_type !== 'admin') {
+                        console.error('Access denied - user_type is:', data.user_type);
+                        showNotification('Access denied. Admin privileges required.', 'error');
+                        return;
+                    }
+
+                    authToken = data.access_token;
+                    localStorage.setItem('adminToken', authToken);
+                    await initDashboard();
+                } else {
+                    console.error('Login failed with status:', response.status);
+                    const errorData = await response.json();
+                    console.error('Error details:', errorData);
+                    showNotification('Invalid credentials', 'error');
+                }
+            } catch (error) {
+                console.error('Login exception:', error);
+                showNotification('Login failed: ' + error.message, 'error');
+            }
+        });
+
+        // Initialize Dashboard
+        async function initDashboard() {
+            console.log('Initializing dashboard...');
+            try {
+                // Get current user
+                console.log('Fetching current user from:', `${API_URL}/auth/me`);
+                const response = await fetch(`${API_URL}/auth/me`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                console.log('Auth/me response status:', response.status);
+
+                if (response.ok) {
+                    currentUser = await response.json();
+                    console.log('Current user:', currentUser);
+
+                    // Check if user is admin
+                    if (currentUser.user_type !== 'admin') {
+                        showNotification('Access denied. Admin privileges required.', 'error');
+                        logout();
+                        return;
+                    }
+
+                    document.getElementById('adminName').textContent = currentUser.full_name || currentUser.username;
+                    document.getElementById('adminId').textContent = `ID: ${currentUser.user_id}`;
+
+                    document.getElementById('loginSection').style.display = 'none';
+                    document.getElementById('dashboardSection').classList.add('active');
+
+                    await loadDashboardStats();
+                    setupEventListeners();
+                } else {
+                    console.error('Failed to get user info, status:', response.status);
+                    const errorText = await response.text();
+                    console.error('Error response:', errorText);
+                    showNotification('Failed to load user information', 'error');
+                    logout();
+                }
+            } catch (error) {
+                console.error('Failed to initialize dashboard:', error);
+                showNotification('Failed to initialize dashboard: ' + error.message, 'error');
+                logout();
+            }
+        }
+
+        // Setup Event Listeners
+        function setupEventListeners() {
+            // Navigation
+            document.querySelectorAll('.nav-item[data-section]').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    const section = item.dataset.section;
+                    switchSection(section);
+                });
+            });
+
+            // Filters
+            document.getElementById('userSearch').addEventListener('input', debounce(loadUsers, 500));
+            document.getElementById('userTypeFilter').addEventListener('change', loadUsers);
+            document.getElementById('userStatusFilter').addEventListener('change', loadUsers);
+            document.getElementById('promotionStatusFilter').addEventListener('change', loadPromotions);
+            document.getElementById('reportStatusFilter').addEventListener('change', loadReports);
+
+            // Broadcast form
+            document.getElementById('broadcastForm').addEventListener('submit', sendBroadcast);
+        }
+
+        // Switch Section
+        function switchSection(section) {
+            // Update navigation
+            document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+            document.querySelector(`.nav-item[data-section="${section}"]`).classList.add('active');
+
+            // Update content
+            document.querySelectorAll('.content-section').forEach(sec => sec.classList.remove('active'));
+            document.getElementById(`${section}-section`).classList.add('active');
+
+            // Update page title
+            const titles = {
+                'overview': 'Overview',
+                'users': 'User Management',
+                'messages': 'Messages',
+                'promotions': 'Promotions',
+                'reports': 'Reports',
+                'reviews': 'Reviews',
+                'broadcast': 'Broadcast'
+            };
+            document.getElementById('pageTitle').textContent = titles[section] || 'Dashboard';
+
+            // Load section data
+            switch(section) {
+                case 'overview':
+                    loadDashboardStats();
+                    break;
+                case 'users':
+                    loadUsers();
+                    break;
+                case 'approvals':
+                    loadPendingApprovals();
+                    break;
+                case 'messages':
+                    loadMessages();
+                    break;
+                case 'promotions':
+                    loadPromotions();
+                    break;
+                case 'reports':
+                    loadReports();
+                    break;
+                case 'reviews':
+                    loadReviews();
+                    break;
+            }
+        }
+
+        // Load Dashboard Stats
+        async function loadDashboardStats() {
+            try {
+                const response = await fetch(`${API_URL}/admin/dashboard-stats`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const stats = await response.json();
+                    displayStats(stats);
+                    // Charts removed - no longer needed
+
+                    // Update badges
+                    document.getElementById('totalUsersBadge').textContent = stats.users.total;
+
+                    if (stats.reports.pending > 0) {
+                        document.getElementById('pendingReportsBadge').textContent = stats.reports.pending;
+                        document.getElementById('pendingReportsBadge').style.display = 'inline-block';
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+            }
+        }
+
+        // Display Stats
+        function displayStats(stats) {
+            const statsGrid = document.getElementById('statsGrid');
+            statsGrid.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <div class="stat-icon blue">
+                            <i class="fas fa-users"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value">${stats.users.total}</div>
+                    <div class="stat-label">Total Users</div>
+                    <div class="stat-change positive">
+                        <i class="fas fa-user-plus"></i> ${stats.users.recent_registrations} this week
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <div class="stat-icon green">
+                            <i class="fas fa-circle"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value">${stats.users.online}</div>
+                    <div class="stat-label">Online Now</div>
+                    <div class="stat-change positive">
+                        ${stats.users.active} active users
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <div class="stat-icon orange">
+                            <i class="fas fa-user-clock"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value">${stats.users.pending_approvals || 0}</div>
+                    <div class="stat-label">Pending Approvals</div>
+                    <div class="stat-change ${stats.users.pending_approvals > 0 ? 'warning' : 'neutral'}">
+                        ${stats.users.pending_approvals > 0 ? 'Action required' : 'All clear'}
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <div class="stat-icon purple">
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value">${stats.messages.total}</div>
+                    <div class="stat-label">Total Messages</div>
+                    <div class="stat-change positive">
+                        ${stats.messages.today} today
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <div class="stat-icon red">
+                            <i class="fas fa-flag"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value">${stats.reports.pending}</div>
+                    <div class="stat-label">Pending Reports</div>
+                    <div class="stat-change ${stats.reports.pending > 0 ? 'negative' : 'positive'}">
+                        ${stats.reports.pending > 0 ? 'Requires attention' : 'All clear'}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Charts removed - Activity Overview and User Distribution sections have been removed
+
+        // Load Users
+        async function loadUsers() {
+            try {
+                const search = document.getElementById('userSearch').value;
+                const userType = document.getElementById('userTypeFilter').value;
+                const isActive = document.getElementById('userStatusFilter').value;
+
+                let url = `${API_URL}/admin/users?limit=50`;
+                if (search) url += `&search=${search}`;
+                if (userType) url += `&user_type=${userType}`;
+                if (isActive) url += `&is_active=${isActive}`;
+
+                const response = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    displayUsers(data.users);
+                }
+            } catch (error) {
+                console.error('Failed to load users:', error);
+            }
+        }
+
+        // Display Users
+        function displayUsers(users) {
+            const tbody = document.getElementById('usersTableBody');
+            tbody.innerHTML = users.map(user => `
+                <tr>
+                    <td>
+                        <div class="user-info">
+                            <div class="user-avatar">${user.full_name ? user.full_name[0] : user.username[0]}</div>
+                            <div class="user-details">
+                                <div class="user-name">${user.full_name || user.username}</div>
+                                <div class="user-email">${user.email}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge badge-${user.user_type === 'client' ? 'primary' : 'secondary'}">
+                            ${user.user_type}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge badge-${user.is_active ? 'success' : 'danger'}">
+                            ${user.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                    </td>
+                    <td>${new Date(user.created_at).toLocaleDateString()}</td>
+                    <td>${user.last_activity ? timeAgo(user.last_activity) : 'Never'}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn btn-icon btn-warning" onclick="toggleUserStatus(${user.id})">
+                                <i class="fas fa-${user.is_active ? 'ban' : 'check'}"></i>
+                            </button>
+                            ${user.user_type !== 'admin' ? `
+                                <button class="btn btn-icon btn-danger" onclick="deleteUser(${user.id})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Toggle User Status
+        async function toggleUserStatus(userId) {
+            if (!confirm('Toggle user status?')) return;
+
+            try {
+                const response = await fetch(`${API_URL}/admin/users/${userId}/toggle-status`, {
+                    method: 'PATCH',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    showNotification('User status updated', 'success');
+                    loadUsers();
+                } else {
+                    showNotification('Failed to update user status', 'error');
+                }
+            } catch (error) {
+                showNotification('Error updating user', 'error');
+            }
+        }
+
+        // Delete User
+        async function deleteUser(userId) {
+            if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
+
+            try {
+                const response = await fetch(`${API_URL}/admin/users/${userId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    showNotification('User deleted successfully', 'success');
+                    loadUsers();
+                } else {
+                    showNotification('Failed to delete user', 'error');
+                }
+            } catch (error) {
+                showNotification('Error deleting user', 'error');
+            }
+        }
+
+        // Load Messages
+        async function loadMessages() {
+            try {
+                const response = await fetch(`${API_URL}/admin/messages?limit=50`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    displayMessages(data.messages);
+                }
+            } catch (error) {
+                console.error('Failed to load messages:', error);
+            }
+        }
+
+        // Display Messages
+        function displayMessages(messages) {
+            const tbody = document.getElementById('messagesTableBody');
+            tbody.innerHTML = messages.map(msg => `
+                <tr>
+                    <td>${msg.sender.username}</td>
+                    <td>${msg.receiver.username}</td>
+                    <td>
+                        <span class="badge badge-primary">${msg.message_type}</span>
+                    </td>
+                    <td>${msg.content ? msg.content.substring(0, 50) + '...' : '-'}</td>
+                    <td>${timeAgo(msg.created_at)}</td>
+                    <td>
+                        <span class="badge badge-${msg.is_read ? 'success' : 'warning'}">
+                            ${msg.is_read ? 'Read' : 'Unread'}
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Load Promotions
+        async function loadPromotions() {
+            try {
+                const status = document.getElementById('promotionStatusFilter').value;
+                let url = `${API_URL}/admin/promotions?limit=50`;
+                if (status) url += `&status=${status}`;
+
+                const response = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    displayPromotions(data.promotions);
+                }
+            } catch (error) {
+                console.error('Failed to load promotions:', error);
+            }
+        }
+
+        // Display Promotions
+        function displayPromotions(promotions) {
+            const tbody = document.getElementById('promotionsTableBody');
+            tbody.innerHTML = promotions.map(promo => `
+                <tr>
+                    <td>${promo.title}</td>
+                    <td>${promo.client.username}</td>
+                    <td>
+                        <span class="badge badge-primary">${promo.promotion_type}</span>
+                    </td>
+                    <td>${promo.value}</td>
+                    <td>${promo.total_claims || 0}</td>
+                    <td>
+                        <span class="badge badge-${
+                            promo.status === 'active' ? 'success' :
+                            promo.status === 'expired' ? 'warning' :
+                            'danger'
+                        }">
+                            ${promo.status}
+                        </span>
+                    </td>
+                    <td>${new Date(promo.end_date).toLocaleDateString()}</td>
+                    <td>
+                        ${promo.status === 'active' ? `
+                            <button class="btn btn-icon btn-danger" onclick="cancelPromotion(${promo.id})">
+                                <i class="fas fa-ban"></i>
+                            </button>
+                        ` : '-'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Cancel Promotion
+        async function cancelPromotion(promotionId) {
+            if (!confirm('Cancel this promotion?')) return;
+
+            try {
+                const response = await fetch(`${API_URL}/admin/promotions/${promotionId}/cancel`, {
+                    method: 'PATCH',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    showNotification('Promotion cancelled', 'success');
+                    loadPromotions();
+                }
+            } catch (error) {
+                showNotification('Failed to cancel promotion', 'error');
+            }
+        }
+
+        // Load Reports
+        async function loadReports() {
+            try {
+                const status = document.getElementById('reportStatusFilter').value;
+                let url = `${API_URL}/admin/reports?limit=50`;
+                if (status) url += `&status=${status}`;
+
+                const response = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    displayReports(data.reports);
+                }
+            } catch (error) {
+                console.error('Failed to load reports:', error);
+            }
+        }
+
+        // Display Reports
+        function displayReports(reports) {
+            const tbody = document.getElementById('reportsTableBody');
+            tbody.innerHTML = reports.map(report => `
+                <tr>
+                    <td>${report.reporter.username}</td>
+                    <td>${report.reported_user.username}</td>
+                    <td>${report.reason.substring(0, 50)}...</td>
+                    <td>
+                        <span class="badge badge-${
+                            report.status === 'pending' ? 'warning' :
+                            report.status === 'resolved' ? 'success' :
+                            report.status === 'dismissed' ? 'secondary' :
+                            'primary'
+                        }">
+                            ${report.status}
+                        </span>
+                    </td>
+                    <td>${new Date(report.created_at).toLocaleDateString()}</td>
+                    <td>
+                        <button class="btn btn-icon btn-primary" onclick="reviewReport(${report.id})">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Review Report
+        async function reviewReport(reportId) {
+            // Open modal with report details
+            const modal = document.getElementById('reportModal');
+            modal.classList.add('active');
+
+            // Load report details and show options to update status
+            const modalBody = document.getElementById('reportModalBody');
+            modalBody.innerHTML = `
+                <div class="form-group">
+                    <label class="form-label">Update Status</label>
+                    <select class="form-input" id="reportStatus">
+                        <option value="reviewed">Mark as Reviewed</option>
+                        <option value="resolved">Mark as Resolved</option>
+                        <option value="dismissed">Dismiss Report</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Admin Notes</label>
+                    <textarea class="form-textarea" id="adminNotes" placeholder="Add notes..."></textarea>
+                </div>
+                <button class="btn btn-primary" onclick="updateReportStatus(${reportId})">
+                    Update Report
+                </button>
+            `;
+        }
+
+        // Update Report Status
+        async function updateReportStatus(reportId) {
+            const status = document.getElementById('reportStatus').value;
+            const notes = document.getElementById('adminNotes').value;
+
+            try {
+                const response = await fetch(`${API_URL}/admin/reports/${reportId}/status`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        status: status,
+                        admin_notes: notes
+                    })
+                });
+
+                if (response.ok) {
+                    showNotification('Report updated', 'success');
+                    closeModal('reportModal');
+                    loadReports();
+                    loadDashboardStats();
+                }
+            } catch (error) {
+                showNotification('Failed to update report', 'error');
+            }
+        }
+
+        // Load Pending Approvals
+        async function loadPendingApprovals() {
+            try {
+                const response = await fetch(`${API_URL}/admin/pending-approvals`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const tbody = document.getElementById('approvalsTableBody');
+                    tbody.innerHTML = '';
+
+                    if (data.pending_users.length === 0) {
+                        document.getElementById('noApprovalsMessage').style.display = 'block';
+                        document.querySelector('#approvals-section .data-table').style.display = 'none';
+                    } else {
+                        document.getElementById('noApprovalsMessage').style.display = 'none';
+                        document.querySelector('#approvals-section .data-table').style.display = 'table';
+
+                        data.pending_users.forEach(user => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${user.username}</td>
+                                <td>${user.email}</td>
+                                <td>${user.company_name || 'N/A'}</td>
+                                <td>${user.full_name || 'N/A'}</td>
+                                <td>${new Date(user.created_at).toLocaleDateString()}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-success" onclick="approveUser(${user.id})">
+                                        <i class="fas fa-check"></i> Approve
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" onclick="rejectUser(${user.id})">
+                                        <i class="fas fa-times"></i> Reject
+                                    </button>
+                                </td>
+                            `;
+                            tbody.appendChild(row);
+                        });
+                    }
+
+                    // Update badge count
+                    const badge = document.getElementById('pendingApprovalsCount');
+                    if (data.total > 0) {
+                        badge.textContent = data.total;
+                        badge.style.display = 'inline';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load pending approvals:', error);
+                showNotification('Failed to load pending approvals', 'error');
+            }
+        }
+
+        // Approve User
+        async function approveUser(userId) {
+            if (!confirm('Are you sure you want to approve this user?')) return;
+
+            try {
+                const response = await fetch(`${API_URL}/admin/users/${userId}/approve`, {
+                    method: 'PATCH',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    showNotification('User approved successfully', 'success');
+                    loadPendingApprovals();
+                    loadDashboardStats();
+                } else {
+                    showNotification('Failed to approve user', 'error');
+                }
+            } catch (error) {
+                console.error('Failed to approve user:', error);
+                showNotification('Failed to approve user', 'error');
+            }
+        }
+
+        // Reject User
+        async function rejectUser(userId) {
+            if (!confirm('Are you sure you want to reject this user?')) return;
+
+            try {
+                const response = await fetch(`${API_URL}/admin/users/${userId}/reject`, {
+                    method: 'PATCH',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    showNotification('User approval rejected', 'success');
+                    loadPendingApprovals();
+                    loadDashboardStats();
+                } else {
+                    showNotification('Failed to reject user', 'error');
+                }
+            } catch (error) {
+                console.error('Failed to reject user:', error);
+                showNotification('Failed to reject user', 'error');
+            }
+        }
+
+        // Load Reviews
+        async function loadReviews() {
+            try {
+                const response = await fetch(`${API_URL}/admin/reviews?limit=50`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    displayReviews(data.reviews);
+                }
+            } catch (error) {
+                console.error('Failed to load reviews:', error);
+            }
+        }
+
+        // Display Reviews
+        function displayReviews(reviews) {
+            const tbody = document.getElementById('reviewsTableBody');
+            tbody.innerHTML = reviews.map(review => `
+                <tr>
+                    <td>${review.reviewer.username}</td>
+                    <td>${review.reviewee.username}</td>
+                    <td>${'⭐'.repeat(review.rating)}</td>
+                    <td>${review.title}</td>
+                    <td>${review.comment ? review.comment.substring(0, 50) + '...' : '-'}</td>
+                    <td>${new Date(review.created_at).toLocaleDateString()}</td>
+                    <td>
+                        <button class="btn btn-icon btn-danger" onclick="deleteReview(${review.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Delete Review
+        async function deleteReview(reviewId) {
+            if (!confirm('Delete this review?')) return;
+
+            try {
+                const response = await fetch(`${API_URL}/admin/reviews/${reviewId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    showNotification('Review deleted', 'success');
+                    loadReviews();
+                }
+            } catch (error) {
+                showNotification('Failed to delete review', 'error');
+            }
+        }
+
+        // Send Broadcast
+        async function sendBroadcast(e) {
+            e.preventDefault();
+
+            const target = document.getElementById('broadcastTarget').value;
+            const message = document.getElementById('broadcastMessage').value;
+
+            try {
+                const body = { message };
+                if (target) body.user_type = target;
+
+                const response = await fetch(`${API_URL}/admin/broadcast-message`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    showNotification(`Broadcast sent to ${result.recipients} users`, 'success');
+                    document.getElementById('broadcastForm').reset();
+                } else {
+                    showNotification('Failed to send broadcast', 'error');
+                }
+            } catch (error) {
+                showNotification('Error sending broadcast', 'error');
+            }
+        }
+
+        // Utility Functions
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `
+                <i class="fas fa-${
+                    type === 'success' ? 'check-circle' :
+                    type === 'error' ? 'exclamation-circle' :
+                    type === 'warning' ? 'exclamation-triangle' :
+                    'info-circle'
+                }"></i>
+                <span>${message}</span>
+            `;
+
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        function timeAgo(timestamp) {
+            const now = new Date();
+            const then = new Date(timestamp);
+            const seconds = Math.floor((now - then) / 1000);
+
+            if (seconds < 60) return 'Just now';
+            if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
+            if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
+            if (seconds < 604800) return `${Math.floor(seconds / 86400)} days ago`;
+            return then.toLocaleDateString();
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        function refreshData() {
+            const activeSection = document.querySelector('.nav-item.active').dataset.section;
+            switchSection(activeSection);
+        }
+
+        function logout() {
+            localStorage.removeItem('adminToken');
+            authToken = null;
+            currentUser = null;
+            window.location.reload();
+        }
+
+        // Add slideOut animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideOut {
+                to {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
