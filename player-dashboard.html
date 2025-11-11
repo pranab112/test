@@ -4392,6 +4392,10 @@
                     }
                 } else {
                     const profileData = await response.json();
+                    console.log('=== API RESPONSE ===');
+                    console.log('Status:', response.status);
+                    console.log('Profile Data:', profileData);
+                    console.log('===================');
                     displayProfile(profileData);
                 }
 
@@ -4412,6 +4416,14 @@
         }
 
         function displayProfile(profile) {
+            // DEBUG: Log profile data
+            console.log('=== PROFILE DATA ===');
+            console.log('User Type:', profile.user_type);
+            console.log('Available Games:', profile.available_games);
+            console.log('Payment Methods:', profile.accepted_payment_methods);
+            console.log('Full Profile:', profile);
+            console.log('===================');
+
             // Set avatar with profile picture
             const profileAvatarElement = document.getElementById('profileAvatar');
             if (profile.profile_picture) {
@@ -4508,7 +4520,14 @@
 
             // Display available games for clients
             const gamesSection = document.getElementById('profileGames');
+            console.log('=== GAMES SECTION DEBUG ===');
+            console.log('User type check:', profile.user_type === 'client');
+            console.log('Games exist check:', !!profile.available_games);
+            console.log('Games length:', profile.available_games ? profile.available_games.length : 0);
+            console.log('Will display games:', profile.user_type === 'client' && profile.available_games && profile.available_games.length > 0);
+
             if (profile.user_type === 'client' && profile.available_games && profile.available_games.length > 0) {
+                console.log('✅ Displaying games section');
                 // Use games data from API response (Fixed: was using localStorage)
                 gamesSection.style.display = 'block';
                 const gamesList = document.getElementById('profileGamesList');
@@ -4528,8 +4547,11 @@
                     </div>
                 `).join('');
             } else {
+                console.log('❌ NOT displaying games section');
+                console.log('Reason: Either not a client, no games array, or empty games array');
                 gamesSection.style.display = 'none';
             }
+            console.log('==========================');
         }
 
         async function loadProfileReviews(userId) {

@@ -6399,6 +6399,11 @@
 
         async function saveGameSelection() {
             try {
+                console.log('=== SAVING GAMES ===');
+                console.log('Selected game IDs:', Array.from(selectedGameIds));
+                console.log('Number of games:', selectedGameIds.size);
+                console.log('User ID:', currentUser.user_id);
+
                 // Save selected games to backend database (FIXED: was only saving to localStorage)
                 const response = await fetch(`${API_URL}/games/update-games`, {
                     method: 'POST',
@@ -6411,11 +6416,18 @@
                     })
                 });
 
+                console.log('API Response Status:', response.status);
+
                 if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API Error:', errorText);
                     throw new Error('Failed to save games to server');
                 }
 
                 const result = await response.json();
+                console.log('API Response:', result);
+                console.log('✅ Games saved successfully to database');
+                console.log('===================');
 
                 // Get selected game names for display
                 const selectedGames = allGames.filter(game => selectedGameIds.has(game.id));
