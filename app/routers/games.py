@@ -7,11 +7,12 @@ from app.database import get_db
 
 router = APIRouter(prefix="/games", tags=["games"])
 
-@router.post("/populate")
+@router.get("/populate")
 async def populate_games(db: Session = Depends(get_db)):
     """
     Populate games table with default games
     ADMIN ONLY - Call this once to initialize games
+    Access via browser: https://your-domain.com/games/populate
     """
     # List of default games
     games_data = [
