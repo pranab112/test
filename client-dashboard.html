@@ -3476,9 +3476,6 @@
                     <button class="profile-tab-btn active" onclick="switchProfileTab('reviews')">
                         Reviews (<span id="profileReviewsTabCount">0</span>)
                     </button>
-                    <button class="profile-tab-btn" onclick="switchProfileTab('friends')">
-                        Friends (<span id="profileFriendsTabCount">0</span>)
-                    </button>
                     <button class="profile-tab-btn" onclick="switchProfileTab('reports')">
                         Reports
                     </button>
@@ -3490,13 +3487,6 @@
                     <div id="profileReviewsTab" class="profile-tab-pane active">
                         <div id="profileReviewsList" class="profile-reviews-list">
                             <!-- Reviews will be loaded here -->
-                        </div>
-                    </div>
-
-                    <!-- Friends Tab -->
-                    <div id="profileFriendsTab" class="profile-tab-pane" style="display:none;">
-                        <div id="profileFriendsList" class="profile-friends-grid">
-                            <!-- Friends will be loaded here -->
                         </div>
                     </div>
 
@@ -5155,7 +5145,6 @@
 
                     // Update tab counts
                     document.getElementById('profileReviewsTabCount').textContent = profile.reviews_received;
-                    document.getElementById('profileFriendsTabCount').textContent = profile.total_friends;
 
                     // Update payment methods for clients
                     const paymentMethodsSection = document.getElementById('profilePaymentMethodsSection');
@@ -5326,10 +5315,6 @@
             if (tab === 'reviews') {
                 document.getElementById('profileReviewsTab').style.display = 'block';
                 document.getElementById('profileReviewsTab').classList.add('active');
-            } else if (tab === 'friends') {
-                document.getElementById('profileFriendsTab').style.display = 'block';
-                document.getElementById('profileFriendsTab').classList.add('active');
-                loadProfileFriends(currentProfileUserId);
             } else if (tab === 'reports') {
                 document.getElementById('profileReportsTab').style.display = 'block';
                 document.getElementById('profileReportsTab').classList.add('active');

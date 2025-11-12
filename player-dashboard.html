@@ -2842,7 +2842,6 @@
                 <!-- Tabs -->
                 <div class="profile-tabs" style="display: flex; gap: 1rem; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,215,0,0.2);">
                     <button class="profile-tab active" onclick="switchProfileTab('reviews')" data-tab="reviews" style="background: none; border: none; color: var(--text-primary); padding: 1rem; cursor: pointer; position: relative;">Reviews</button>
-                    <button class="profile-tab" onclick="switchProfileTab('friends')" data-tab="friends" style="background: none; border: none; color: var(--text-secondary); padding: 1rem; cursor: pointer;">Friends</button>
                     <button class="profile-tab" onclick="switchProfileTab('reports')" data-tab="reports" style="background: none; border: none; color: var(--text-secondary); padding: 1rem; cursor: pointer;">Reports</button>
                 </div>
 
@@ -2852,13 +2851,6 @@
                     <div id="profileReviewsTab" class="profile-tab-content">
                         <div id="profileReviews">
                             <p style="color: var(--text-secondary);">Loading reviews...</p>
-                        </div>
-                    </div>
-
-                    <!-- Friends Tab -->
-                    <div id="profileFriendsTab" class="profile-tab-content" style="display: none;">
-                        <div id="profileFriends">
-                            <p style="color: var(--text-secondary);">Loading friends...</p>
                         </div>
                     </div>
 
@@ -4360,8 +4352,6 @@
 
                 // Load reviews
                 loadProfileReviews(userId);
-                // Load friends
-                loadProfileFriends(userId);
             } catch (error) {
                 console.error('Error loading profile:', error);
                 showNotification('Failed to load profile', 'error');
@@ -4658,15 +4648,9 @@
             // Show/hide tab content
             if (tab === 'reviews') {
                 document.getElementById('profileReviewsTab').style.display = 'block';
-                document.getElementById('profileFriendsTab').style.display = 'none';
-                document.getElementById('profileReportsTab').style.display = 'none';
-            } else if (tab === 'friends') {
-                document.getElementById('profileReviewsTab').style.display = 'none';
-                document.getElementById('profileFriendsTab').style.display = 'block';
                 document.getElementById('profileReportsTab').style.display = 'none';
             } else if (tab === 'reports') {
                 document.getElementById('profileReviewsTab').style.display = 'none';
-                document.getElementById('profileFriendsTab').style.display = 'none';
                 document.getElementById('profileReportsTab').style.display = 'block';
 
                 // Load reports when reports tab is opened
