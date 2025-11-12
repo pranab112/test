@@ -4323,6 +4323,9 @@
             const modal = document.getElementById('profileModal');
             modal.classList.add('active');
 
+            // Store userId for later use in tabs
+            currentProfileUserId = userId;
+
             try {
                 // Fetch profile data
                 const response = await fetch(`${API_URL}/profiles/${userId}`, {
@@ -4654,11 +4657,8 @@
                 document.getElementById('profileReportsTab').style.display = 'block';
 
                 // Load reports when reports tab is opened
-                const modal = document.getElementById('profileModal');
-                const userIdElement = modal.querySelector('#profileUserId');
-                if (userIdElement && userIdElement.textContent) {
-                    const userId = parseInt(userIdElement.textContent);
-                    loadUserReports(userId);
+                if (currentProfileUserId) {
+                    loadUserReports(currentProfileUserId);
                 }
             }
         }
