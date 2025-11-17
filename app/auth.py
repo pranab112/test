@@ -2,6 +2,8 @@ from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
 import hashlib
+from passlib.context import CryptContext
+import logging
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional as Opt
@@ -9,6 +11,12 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app import models, schemas
+
+# Setup logging
+logger = logging.getLogger(__name__)
+
+# Password hashing with bcrypt (backward compatible with SHA256)
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -24,11 +32,27 @@ class OptionalHTTPBearer(HTTPBearer):
 
 oauth2_scheme_optional = OptionalHTTPBearer(auto_error=False)
 
-def verify_password(plain_password, hashed_password):
-    return get_password_hash(plain_password) == hashed_password
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify password - supports BOTH old SHA256 and new bcrypt"""
 
-def get_password_hash(password):
-    return hashlib.sha256(password.encode()).hexdigest()
+    # Try bcrypt first (new format - starts with $2b$)
+    try:
+        if hashed_password.startswith("$2b$"):
+            return pwd_context.verify(plain_password, hashed_password)
+    except Exception as e:
+        logger.warning(f"Error verifying bcrypt password: {e}")
+
+    # Fallback to SHA256 (old format - 64 char hex string)
+    sha256_hash = hashlib.sha256(plain_password.encode()).hexdigest()
+    if sha256_hash == hashed_password:
+        logger.info("User authenticated with legacy SHA256 password")
+        return True
+
+    return False
+
+def get_password_hash(password: str) -> str:
+    """Hash password using bcrypt (new passwords)"""
+    return pwd_context.hash(password)
 
 def authenticate_user(db: Session, username: str, password: str):
     user = db.query(models.User).filter(models.User.username == username).first()

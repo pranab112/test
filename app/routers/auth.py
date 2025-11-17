@@ -1,12 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
 import random
 import string
+import logging
 from app import models, schemas, auth
 from app.database import get_db
 from app.config import settings
+from app.rate_limit import conditional_rate_limit, RateLimits
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
@@ -14,7 +18,8 @@ def generate_user_id():
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
 
 @router.post("/register", response_model=schemas.UserResponse)
-def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
+@conditional_rate_limit(RateLimits.REGISTER)
+def register(request: Request, user: schemas.UserCreate, db: Session = Depends(get_db)):
     # Check if email exists
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:
@@ -54,7 +59,8 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     return db_user
 
 @router.post("/login", response_model=schemas.Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+@conditional_rate_limit(RateLimits.LOGIN)
+def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = auth.authenticate_user(db, form_data.username, form_data.password)
     if user is None:
         # Client account pending approval
@@ -68,6 +74,17 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    # LAZY MIGRATION: If old SHA256 hash detected, upgrade to bcrypt
+    if user.hashed_password and not user.hashed_password.startswith("$2b$"):
+        try:
+            # Re-hash the password with bcrypt
+            user.hashed_password = auth.get_password_hash(form_data.password)
+            db.commit()
+            logger.info(f"Upgraded password hash to bcrypt for user {user.id} ({user.username})")
+        except Exception as e:
+            logger.error(f"Failed to upgrade password hash for user {user.id}: {e}")
+            # Continue even if migration fails - user can still log in
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = auth.create_access_token(

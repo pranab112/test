@@ -1,8 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
+import logging
 from app import models, schemas, auth
 from app.database import get_db
+from app.encryption import encrypt_credential, decrypt_credential
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/game-credentials", tags=["game-credentials"])
 
@@ -38,14 +42,25 @@ async def create_game_credential(
     if existing:
         raise HTTPException(status_code=400, detail="Credentials already exist for this player and game")
 
-    # Create new credentials
+    # Create new credentials with DUAL-WRITE pattern
+    # Store both plaintext (for backward compatibility) and encrypted versions
     db_credential = models.GameCredentials(
         player_id=credential.player_id,
         game_id=credential.game_id,
+        # OLD - keep for rollback safety
         game_username=credential.game_username,
         game_password=credential.game_password,
+        # NEW - encrypted versions
+        game_username_encrypted=encrypt_credential(credential.game_username),
+        game_password_encrypted=encrypt_credential(credential.game_password),
         created_by_client_id=current_user.id
     )
+
+    # Log if encryption is active
+    if db_credential.game_username_encrypted:
+        logger.info(f"Created encrypted credentials for player {credential.player_id} game {credential.game_id}")
+    else:
+        logger.warning(f"Created plaintext credentials for player {credential.player_id} game {credential.game_id} (encryption disabled)")
 
     db.add(db_credential)
     db.commit()
@@ -61,15 +76,24 @@ async def create_game_credential(
     db.add(notification_message)
     db.commit()
 
-    # Prepare response with game info
+    # Prepare response with game info (DUAL-READ pattern)
+    # Prefer encrypted, fallback to plaintext
+    username = (decrypt_credential(db_credential.game_username_encrypted)
+               if db_credential.game_username_encrypted
+               else db_credential.game_username)
+
+    password = (decrypt_credential(db_credential.game_password_encrypted)
+               if db_credential.game_password_encrypted
+               else db_credential.game_password)
+
     response_data = {
         "id": db_credential.id,
         "player_id": db_credential.player_id,
         "game_id": db_credential.game_id,
         "game_name": game.name,
         "game_display_name": game.display_name,
-        "game_username": db_credential.game_username,
-        "game_password": db_credential.game_password,
+        "game_username": username,
+        "game_password": password,
         "created_by_client_id": db_credential.created_by_client_id,
         "created_at": db_credential.created_at,
         "updated_at": db_credential.updated_at
@@ -101,17 +125,26 @@ async def get_player_credentials(
         models.Game, models.GameCredentials.game_id == models.Game.id
     ).filter(models.GameCredentials.player_id == player_id).all()
 
-    # Format response
+    # Format response with DUAL-READ pattern
     formatted_credentials = []
     for credential, game in credentials:
+        # Prefer encrypted, fallback to plaintext
+        username = (decrypt_credential(credential.game_username_encrypted)
+                   if credential.game_username_encrypted
+                   else credential.game_username)
+
+        password = (decrypt_credential(credential.game_password_encrypted)
+                   if credential.game_password_encrypted
+                   else credential.game_password)
+
         formatted_credentials.append(schemas.GameCredentialResponse(
             id=credential.id,
             player_id=credential.player_id,
             game_id=credential.game_id,
             game_name=game.name,
             game_display_name=game.display_name,
-            game_username=credential.game_username,
-            game_password=credential.game_password,
+            game_username=username,
+            game_password=password,
             created_by_client_id=credential.created_by_client_id,
             created_at=credential.created_at,
             updated_at=credential.updated_at
@@ -141,9 +174,18 @@ async def update_game_credential(
     # Get game info for notification
     game = db.query(models.Game).filter(models.Game.id == credential.game_id).first()
 
-    # Update the credential
+    # Update the credential with DUAL-WRITE pattern
+    # Update both plaintext and encrypted versions
     credential.game_username = credential_update.game_username
     credential.game_password = credential_update.game_password
+    credential.game_username_encrypted = encrypt_credential(credential_update.game_username)
+    credential.game_password_encrypted = encrypt_credential(credential_update.game_password)
+
+    # Log encryption status
+    if credential.game_username_encrypted:
+        logger.info(f"Updated encrypted credentials for credential {credential_id}")
+    else:
+        logger.warning(f"Updated plaintext credentials for credential {credential_id} (encryption disabled)")
 
     db.commit()
     db.refresh(credential)
@@ -158,15 +200,24 @@ async def update_game_credential(
     db.add(notification_message)
     db.commit()
 
-    # Prepare response
+    # Prepare response with DUAL-READ pattern
+    # Prefer encrypted, fallback to plaintext
+    username = (decrypt_credential(credential.game_username_encrypted)
+               if credential.game_username_encrypted
+               else credential.game_username)
+
+    password = (decrypt_credential(credential.game_password_encrypted)
+               if credential.game_password_encrypted
+               else credential.game_password)
+
     response_data = {
         "id": credential.id,
         "player_id": credential.player_id,
         "game_id": credential.game_id,
         "game_name": game.name,
         "game_display_name": game.display_name,
-        "game_username": credential.game_username,
-        "game_password": credential.game_password,
+        "game_username": username,
+        "game_password": password,
         "created_by_client_id": credential.created_by_client_id,
         "created_at": credential.created_at,
         "updated_at": credential.updated_at
@@ -227,17 +278,26 @@ async def get_my_credentials(
         models.Game, models.GameCredentials.game_id == models.Game.id
     ).filter(models.GameCredentials.player_id == current_user.id).all()
 
-    # Format response
+    # Format response with DUAL-READ pattern
     formatted_credentials = []
     for credential, game in credentials:
+        # Prefer encrypted, fallback to plaintext
+        username = (decrypt_credential(credential.game_username_encrypted)
+                   if credential.game_username_encrypted
+                   else credential.game_username)
+
+        password = (decrypt_credential(credential.game_password_encrypted)
+                   if credential.game_password_encrypted
+                   else credential.game_password)
+
         formatted_credentials.append(schemas.GameCredentialResponse(
             id=credential.id,
             player_id=credential.player_id,
             game_id=credential.game_id,
             game_name=game.name,
             game_display_name=game.display_name,
-            game_username=credential.game_username,
-            game_password=credential.game_password,
+            game_username=username,
+            game_password=password,
             created_by_client_id=credential.created_by_client_id,
             created_at=credential.created_at,
             updated_at=credential.updated_at

@@ -332,8 +332,10 @@ class GameCredentials(Base):
     id = Column(Integer, primary_key=True, index=True)
     player_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     game_id = Column(Integer, ForeignKey("games.id"), nullable=False)
-    game_username = Column(String, nullable=False)
-    game_password = Column(String, nullable=False)
+    game_username = Column(String, nullable=False)  # Keep for backward compatibility
+    game_password = Column(String, nullable=False)  # Keep for backward compatibility
+    game_username_encrypted = Column(Text, nullable=True)  # New encrypted column
+    game_password_encrypted = Column(Text, nullable=True)  # New encrypted column
     created_by_client_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

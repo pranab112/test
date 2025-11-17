@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.database import engine, Base
@@ -6,33 +6,76 @@ from app.routers import auth, friends, users, chat
 from app.websocket import websocket_endpoint
 from app.config import settings
 import os
+import logging
+
+# Setup logging based on environment
+logging.basicConfig(
+    level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Casino Royal SaaS", version="1.0.0")
-
-# Configure CORS - Use environment variable for allowed origins
-# SECURITY WARNING: "*" allows all origins - Configure CORS_ORIGINS in .env for production
-# Example in .env: CORS_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+app = FastAPI(
+    title="Casino Royal SaaS",
+    version="1.0.0",
+    docs_url="/docs" if settings.is_development else None,  # Disable docs in production
+    redoc_url="/redoc" if settings.is_development else None  # Disable redoc in production
 )
 
-# Custom middleware to handle null origin specifically
-@app.middleware("http")
-async def cors_handler(request, call_next):
-    response = await call_next(request)
-    origin = request.headers.get("origin")
-    if origin == "null" or origin is None:
-        response.headers["Access-Control-Allow-Origin"] = "*"
-        response.headers["Access-Control-Allow-Methods"] = "*"
-        response.headers["Access-Control-Allow-Headers"] = "*"
-    return response
+# Log environment on startup
+logger.info(f"Starting application in {settings.ENVIRONMENT} environment")
+logger.info(f"CORS origins configured: {settings.cors_origins_list}")
+logger.info(f"Rate limiting: {'ENABLED' if settings.ENABLE_RATE_LIMITING else 'DISABLED'}")
+
+# Configure CORS with environment-aware settings
+try:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins_list,
+        allow_credentials=settings.allow_credentials,
+        allow_methods=settings.allowed_methods,
+        allow_headers=settings.allowed_headers,
+    )
+except ValueError as e:
+    logger.error(f"CORS configuration error: {e}")
+    if settings.is_production:
+        raise  # Don't start in production with invalid CORS
+
+# Custom middleware to handle null origin (DEVELOPMENT ONLY)
+if settings.is_development:
+    @app.middleware("http")
+    async def dev_cors_handler(request: Request, call_next):
+        """Development-only middleware to handle null origin from local files"""
+        response = await call_next(request)
+        origin = request.headers.get("origin")
+        if origin == "null" or origin is None:
+            response.headers["Access-Control-Allow-Origin"] = "*"
+            response.headers["Access-Control-Allow-Methods"] = "*"
+            response.headers["Access-Control-Allow-Headers"] = "*"
+            logger.debug(f"Allowed null origin request to {request.url.path}")
+        return response
+else:
+    # Production security headers
+    @app.middleware("http")
+    async def security_headers(request: Request, call_next):
+        """Add security headers in production"""
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
+
+# Setup rate limiting (must be done before including routers)
+from app.rate_limit import setup_rate_limiting
+setup_rate_limiting(app)
+
+# Setup exception handlers
+from app.exceptions import setup_exception_handlers
+setup_exception_handlers(app)
 
 # Include routers
 app.include_router(auth.router)
@@ -61,6 +104,8 @@ from app.routers import admin
 app.include_router(admin.router)
 from app.routers import client
 app.include_router(client.router)
+from app.routers import monitoring
+app.include_router(monitoring.router)
 
 # Mount static files for uploads
 if not os.path.exists("uploads"):
