@@ -152,63 +152,75 @@ async def get_player_credentials(
     db: Session = Depends(get_db)
 ):
     """Get all game credentials for a specific player"""
-    # Players can only view their own credentials, clients can view any
-    if current_user.user_type == models.UserType.PLAYER and current_user.id != player_id:
-        raise HTTPException(status_code=403, detail="Players can only view their own credentials")
+    try:
+        logger.info(f"Fetching credentials for player {player_id} by user {current_user.id}")
 
-    # Verify the player exists
-    player = db.query(models.User).filter(
-        models.User.id == player_id,
-        models.User.user_type == models.UserType.PLAYER
-    ).first()
-    if not player:
-        raise HTTPException(status_code=404, detail="Player not found")
+        # Players can only view their own credentials, clients can view any
+        if current_user.user_type == models.UserType.PLAYER and current_user.id != player_id:
+            raise HTTPException(status_code=403, detail="Players can only view their own credentials")
 
-    # Get all credentials for the player with game info
-    credentials = db.query(models.GameCredentials, models.Game).join(
-        models.Game, models.GameCredentials.game_id == models.Game.id
-    ).filter(models.GameCredentials.player_id == player_id).all()
+        # Verify the player exists
+        player = db.query(models.User).filter(
+            models.User.id == player_id,
+            models.User.user_type == models.UserType.PLAYER
+        ).first()
+        if not player:
+            logger.warning(f"Player {player_id} not found")
+            raise HTTPException(status_code=404, detail="Player not found")
 
-    # Format response with DUAL-READ pattern
-    formatted_credentials = []
-    for credential, game in credentials:
-        # Prefer encrypted, fallback to plaintext
-        username = None
-        password = None
+        # Get all credentials for the player with game info
+        credentials = db.query(models.GameCredentials, models.Game).join(
+            models.Game, models.GameCredentials.game_id == models.Game.id
+        ).filter(models.GameCredentials.player_id == player_id).all()
 
-        # Try to decrypt if encrypted versions exist
-        if credential.game_username_encrypted:
-            try:
-                username = decrypt_credential(credential.game_username_encrypted)
-            except Exception as e:
-                logger.error(f"Failed to decrypt username for credential {credential.id}: {e}")
+        # Format response with DUAL-READ pattern
+        formatted_credentials = []
+        for credential, game in credentials:
+            # Prefer encrypted, fallback to plaintext
+            username = None
+            password = None
 
-        if credential.game_password_encrypted:
-            try:
-                password = decrypt_credential(credential.game_password_encrypted)
-            except Exception as e:
-                logger.error(f"Failed to decrypt password for credential {credential.id}: {e}")
+            # Try to decrypt if encrypted versions exist
+            if credential.game_username_encrypted:
+                try:
+                    username = decrypt_credential(credential.game_username_encrypted)
+                except Exception as e:
+                    logger.error(f"Failed to decrypt username for credential {credential.id}: {e}")
 
-        # Fallback to plaintext if decryption failed or not encrypted
-        if not username:
-            username = credential.game_username
-        if not password:
-            password = credential.game_password
+            if credential.game_password_encrypted:
+                try:
+                    password = decrypt_credential(credential.game_password_encrypted)
+                except Exception as e:
+                    logger.error(f"Failed to decrypt password for credential {credential.id}: {e}")
 
-        formatted_credentials.append(schemas.GameCredentialResponse(
-            id=credential.id,
-            player_id=credential.player_id,
-            game_id=credential.game_id,
-            game_name=game.name,
-            game_display_name=game.display_name,
-            game_username=username,
-            game_password=password,
-            created_by_client_id=credential.created_by_client_id,
-            created_at=credential.created_at,
-            updated_at=credential.updated_at
-        ))
+            # Fallback to plaintext if decryption failed or not encrypted
+            if not username:
+                username = credential.game_username
+            if not password:
+                password = credential.game_password
 
-    return schemas.GameCredentialListResponse(credentials=formatted_credentials)
+            formatted_credentials.append(schemas.GameCredentialResponse(
+                id=credential.id,
+                player_id=credential.player_id,
+                game_id=credential.game_id,
+                game_name=game.name,
+                game_display_name=game.display_name,
+                game_username=username,
+                game_password=password,
+                created_by_client_id=credential.created_by_client_id,
+                created_at=credential.created_at,
+                updated_at=credential.updated_at
+            ))
+
+        return schemas.GameCredentialListResponse(credentials=formatted_credentials)
+
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        # Log unexpected errors
+        logger.error(f"Unexpected error in get_player_credentials: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An error occurred while fetching game credentials")
 
 @router.put("/{credential_id}", response_model=schemas.GameCredentialResponse)
 async def update_game_credential(
@@ -218,95 +230,107 @@ async def update_game_credential(
     db: Session = Depends(get_db)
 ):
     """Update existing game credentials"""
-    # Only clients can update game credentials
-    if current_user.user_type != models.UserType.CLIENT:
-        raise HTTPException(status_code=403, detail="Only clients can update game credentials")
-
-    # Get the credential with game info
-    credential = db.query(models.GameCredentials).filter(
-        models.GameCredentials.id == credential_id
-    ).first()
-    if not credential:
-        raise HTTPException(status_code=404, detail="Game credential not found")
-
-    # Get game info for notification
-    game = db.query(models.Game).filter(models.Game.id == credential.game_id).first()
-
-    # Update the credential with DUAL-WRITE pattern
-    # Update both plaintext and encrypted versions
-    credential.game_username = credential_update.game_username
-    credential.game_password = credential_update.game_password
-
-    # Try to encrypt (returns None if encryption disabled)
     try:
-        credential.game_username_encrypted = encrypt_credential(credential_update.game_username)
-        credential.game_password_encrypted = encrypt_credential(credential_update.game_password)
-    except Exception as e:
-        logger.error(f"Failed to encrypt updated credentials: {e}")
-        credential.game_username_encrypted = None
-        credential.game_password_encrypted = None
+        logger.info(f"Client {current_user.id} updating credential {credential_id}")
 
-    # Log encryption status
-    if credential.game_username_encrypted:
-        logger.info(f"Updated encrypted credentials for credential {credential_id}")
-    else:
-        logger.warning(f"Updated plaintext credentials for credential {credential_id} (encryption disabled)")
+        # Only clients can update game credentials
+        if current_user.user_type != models.UserType.CLIENT:
+            raise HTTPException(status_code=403, detail="Only clients can update game credentials")
 
-    db.commit()
-    db.refresh(credential)
+        # Get the credential with game info
+        credential = db.query(models.GameCredentials).filter(
+            models.GameCredentials.id == credential_id
+        ).first()
+        if not credential:
+            logger.warning(f"Credential {credential_id} not found")
+            raise HTTPException(status_code=404, detail="Game credential not found")
 
-    # Send notification message to player
-    try:
-        notification_message = models.Message(
-            sender_id=current_user.id,
-            receiver_id=credential.player_id,
-            message_type=models.MessageType.TEXT,
-            content=f"Your {game.display_name} game credentials have been updated:\nNew Username: {credential_update.game_username}\nNew Password: {credential_update.game_password}"
-        )
-        db.add(notification_message)
+        # Get game info for notification
+        game = db.query(models.Game).filter(models.Game.id == credential.game_id).first()
+
+        # Update the credential with DUAL-WRITE pattern
+        # Update both plaintext and encrypted versions
+        credential.game_username = credential_update.game_username
+        credential.game_password = credential_update.game_password
+
+        # Try to encrypt (returns None if encryption disabled)
+        try:
+            credential.game_username_encrypted = encrypt_credential(credential_update.game_username)
+            credential.game_password_encrypted = encrypt_credential(credential_update.game_password)
+        except Exception as e:
+            logger.error(f"Failed to encrypt updated credentials: {e}")
+            credential.game_username_encrypted = None
+            credential.game_password_encrypted = None
+
+        # Log encryption status
+        if credential.game_username_encrypted:
+            logger.info(f"Updated encrypted credentials for credential {credential_id}")
+        else:
+            logger.warning(f"Updated plaintext credentials for credential {credential_id} (encryption disabled)")
+
         db.commit()
+        db.refresh(credential)
+
+        # Send notification message to player
+        try:
+            notification_message = models.Message(
+                sender_id=current_user.id,
+                receiver_id=credential.player_id,
+                message_type=models.MessageType.TEXT,
+                content=f"Your {game.display_name} game credentials have been updated:\nNew Username: {credential_update.game_username}\nNew Password: {credential_update.game_password}"
+            )
+            db.add(notification_message)
+            db.commit()
+        except Exception as e:
+            logger.error(f"Failed to send notification message: {e}")
+            # Continue - not critical
+
+        # Prepare response with DUAL-READ pattern
+        # Prefer encrypted, fallback to plaintext
+        username = None
+        password = None
+
+        # Try to decrypt if encrypted versions exist
+        if credential.game_username_encrypted:
+            try:
+                username = decrypt_credential(credential.game_username_encrypted)
+            except Exception as e:
+                logger.error(f"Failed to decrypt username: {e}")
+
+        if credential.game_password_encrypted:
+            try:
+                password = decrypt_credential(credential.game_password_encrypted)
+            except Exception as e:
+                logger.error(f"Failed to decrypt password: {e}")
+
+        # Fallback to plaintext if decryption failed or not encrypted
+        if not username:
+            username = credential.game_username
+        if not password:
+            password = credential.game_password
+
+        response_data = {
+            "id": credential.id,
+            "player_id": credential.player_id,
+            "game_id": credential.game_id,
+            "game_name": game.name,
+            "game_display_name": game.display_name,
+            "game_username": username,
+            "game_password": password,
+            "created_by_client_id": credential.created_by_client_id,
+            "created_at": credential.created_at,
+            "updated_at": credential.updated_at
+        }
+
+        return schemas.GameCredentialResponse(**response_data)
+
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except Exception as e:
-        logger.error(f"Failed to send notification message: {e}")
-        # Continue - not critical
-
-    # Prepare response with DUAL-READ pattern
-    # Prefer encrypted, fallback to plaintext
-    username = None
-    password = None
-
-    # Try to decrypt if encrypted versions exist
-    if credential.game_username_encrypted:
-        try:
-            username = decrypt_credential(credential.game_username_encrypted)
-        except Exception as e:
-            logger.error(f"Failed to decrypt username: {e}")
-
-    if credential.game_password_encrypted:
-        try:
-            password = decrypt_credential(credential.game_password_encrypted)
-        except Exception as e:
-            logger.error(f"Failed to decrypt password: {e}")
-
-    # Fallback to plaintext if decryption failed or not encrypted
-    if not username:
-        username = credential.game_username
-    if not password:
-        password = credential.game_password
-
-    response_data = {
-        "id": credential.id,
-        "player_id": credential.player_id,
-        "game_id": credential.game_id,
-        "game_name": game.name,
-        "game_display_name": game.display_name,
-        "game_username": username,
-        "game_password": password,
-        "created_by_client_id": credential.created_by_client_id,
-        "created_at": credential.created_at,
-        "updated_at": credential.updated_at
-    }
-
-    return schemas.GameCredentialResponse(**response_data)
+        # Log unexpected errors
+        logger.error(f"Unexpected error in update_game_credential: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An error occurred while updating game credentials")
 
 @router.delete("/{credential_id}")
 async def delete_game_credential(
@@ -352,52 +376,63 @@ async def get_my_credentials(
     db: Session = Depends(get_db)
 ):
     """Get current user's game credentials (for players)"""
-    # Only players can use this endpoint
-    if current_user.user_type != models.UserType.PLAYER:
-        raise HTTPException(status_code=403, detail="Only players can view their credentials")
+    try:
+        logger.info(f"Player {current_user.id} fetching their credentials")
 
-    # Get all credentials for the current player with game info
-    credentials = db.query(models.GameCredentials, models.Game).join(
-        models.Game, models.GameCredentials.game_id == models.Game.id
-    ).filter(models.GameCredentials.player_id == current_user.id).all()
+        # Only players can use this endpoint
+        if current_user.user_type != models.UserType.PLAYER:
+            raise HTTPException(status_code=403, detail="Only players can view their credentials")
 
-    # Format response with DUAL-READ pattern
-    formatted_credentials = []
-    for credential, game in credentials:
-        # Prefer encrypted, fallback to plaintext
-        username = None
-        password = None
+        # Get all credentials for the current player with game info
+        credentials = db.query(models.GameCredentials, models.Game).join(
+            models.Game, models.GameCredentials.game_id == models.Game.id
+        ).filter(models.GameCredentials.player_id == current_user.id).all()
 
-        # Try to decrypt if encrypted versions exist
-        if credential.game_username_encrypted:
-            try:
-                username = decrypt_credential(credential.game_username_encrypted)
-            except Exception as e:
-                logger.error(f"Failed to decrypt username for credential {credential.id}: {e}")
+        # Format response with DUAL-READ pattern
+        formatted_credentials = []
+        for credential, game in credentials:
+            # Prefer encrypted, fallback to plaintext
+            username = None
+            password = None
 
-        if credential.game_password_encrypted:
-            try:
-                password = decrypt_credential(credential.game_password_encrypted)
-            except Exception as e:
-                logger.error(f"Failed to decrypt password for credential {credential.id}: {e}")
+            # Try to decrypt if encrypted versions exist
+            if credential.game_username_encrypted:
+                try:
+                    username = decrypt_credential(credential.game_username_encrypted)
+                except Exception as e:
+                    logger.error(f"Failed to decrypt username for credential {credential.id}: {e}")
 
-        # Fallback to plaintext if decryption failed or not encrypted
-        if not username:
-            username = credential.game_username
-        if not password:
-            password = credential.game_password
+            if credential.game_password_encrypted:
+                try:
+                    password = decrypt_credential(credential.game_password_encrypted)
+                except Exception as e:
+                    logger.error(f"Failed to decrypt password for credential {credential.id}: {e}")
 
-        formatted_credentials.append(schemas.GameCredentialResponse(
-            id=credential.id,
-            player_id=credential.player_id,
-            game_id=credential.game_id,
-            game_name=game.name,
-            game_display_name=game.display_name,
-            game_username=username,
-            game_password=password,
-            created_by_client_id=credential.created_by_client_id,
-            created_at=credential.created_at,
-            updated_at=credential.updated_at
-        ))
+            # Fallback to plaintext if decryption failed or not encrypted
+            if not username:
+                username = credential.game_username
+            if not password:
+                password = credential.game_password
 
-    return schemas.GameCredentialListResponse(credentials=formatted_credentials)
+            formatted_credentials.append(schemas.GameCredentialResponse(
+                id=credential.id,
+                player_id=credential.player_id,
+                game_id=credential.game_id,
+                game_name=game.name,
+                game_display_name=game.display_name,
+                game_username=username,
+                game_password=password,
+                created_by_client_id=credential.created_by_client_id,
+                created_at=credential.created_at,
+                updated_at=credential.updated_at
+            ))
+
+        return schemas.GameCredentialListResponse(credentials=formatted_credentials)
+
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        # Log unexpected errors
+        logger.error(f"Unexpected error in get_my_credentials: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An error occurred while fetching your credentials")
