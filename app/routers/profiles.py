@@ -6,8 +6,12 @@ from datetime import datetime
 import os
 import uuid
 import shutil
+import logging
 from app import models, schemas, auth
 from app.database import get_db
+from app.s3_storage import s3_storage
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/profiles", tags=["profiles"])
 
@@ -449,41 +453,81 @@ async def upload_profile_picture(
     # Reset file pointer
     await file.seek(0)
 
-    # Create uploads directory if it doesn't exist
-    upload_dir = "uploads/profile_pictures"
-    os.makedirs(upload_dir, exist_ok=True)
-
     # Generate unique filename
     file_extension = file.filename.split('.')[-1].lower() if '.' in file.filename else 'jpg'
     if file_extension not in ['jpg', 'jpeg', 'png', 'gif', 'webp']:
         raise HTTPException(status_code=400, detail="Invalid file type. Allowed: jpg, jpeg, png, gif, webp")
 
     unique_filename = f"{uuid.uuid4()}.{file_extension}"
-    file_path = os.path.join(upload_dir, unique_filename)
 
-    # Save file
-    try:
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Failed to save file")
-
-    # Remove old profile picture if exists
-    if user.profile_picture:
-        old_file_path = user.profile_picture
-        if os.path.exists(old_file_path):
+    # Upload file (S3 or local fallback)
+    file_url = None
+    if s3_storage.enabled:
+        # Upload to S3
+        try:
+            file.file.seek(0)  # Reset file pointer
+            file_url = s3_storage.upload_file(
+                file.file,
+                unique_filename,
+                folder="uploads/profile_pictures",
+                content_type=file.content_type
+            )
+            if file_url:
+                logger.info(f"Profile picture uploaded to S3: {file_url}")
+            else:
+                raise Exception("S3 upload returned None")
+        except Exception as e:
+            logger.error(f"S3 upload failed: {e}, falling back to local storage")
+            # Fallback to local if S3 fails
+            upload_dir = "uploads/profile_pictures"
+            os.makedirs(upload_dir, exist_ok=True)
+            file_path = os.path.join(upload_dir, unique_filename)
+            file.file.seek(0)
             try:
-                os.remove(old_file_path)
-            except:
-                pass  # Continue even if old file deletion fails
+                with open(file_path, "wb") as buffer:
+                    shutil.copyfileobj(file.file, buffer)
+                file_url = f"/{file_path}"
+            except Exception as save_error:
+                raise HTTPException(status_code=500, detail="Failed to save file")
+    else:
+        # Local filesystem (development/fallback)
+        upload_dir = "uploads/profile_pictures"
+        os.makedirs(upload_dir, exist_ok=True)
+        file_path = os.path.join(upload_dir, unique_filename)
+        try:
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+            file_url = f"/{file_path}"
+            logger.warning(f"Profile picture saved locally (ephemeral): {file_url}")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail="Failed to save file")
+
+    # Remove old profile picture if exists (only for local files)
+    if user.profile_picture:
+        old_file_url = user.profile_picture
+        # If it's an S3 URL, try to delete from S3
+        if s3_storage.enabled and old_file_url.startswith('https://'):
+            try:
+                s3_storage.delete_file(old_file_url)
+                logger.info(f"Deleted old profile picture from S3")
+            except Exception as e:
+                logger.error(f"Failed to delete old S3 file: {e}")
+        # If it's a local file path
+        elif old_file_url.startswith('/'):
+            old_file_path = old_file_url.lstrip('/')
+            if os.path.exists(old_file_path):
+                try:
+                    os.remove(old_file_path)
+                except Exception as e:
+                    logger.error(f"Failed to delete old local file: {e}")
 
     # Update user profile picture in database
-    user.profile_picture = f"/{file_path}"
+    user.profile_picture = file_url
     db.commit()
 
     return {
         "message": "Profile picture uploaded successfully",
-        "profile_picture_url": f"/{file_path}"
+        "profile_picture_url": file_url
     }
 
 @router.delete("/{user_id}/profile-picture")

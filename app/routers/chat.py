@@ -7,9 +7,13 @@ import shutil
 from datetime import datetime
 import uuid
 import asyncio
+import logging
 from app import models, schemas, auth
 from app.database import get_db
 from app.websocket import manager
+from app.s3_storage import s3_storage, save_upload_file_locally
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -92,20 +96,47 @@ async def send_image_message(
             detail="Invalid image format. Allowed: JPEG, PNG, GIF, WebP"
         )
 
-    # Save file
+    # Save file (S3 or local fallback)
     file_extension = file.filename.split(".")[-1]
     unique_filename = f"{uuid.uuid4()}.{file_extension}"
-    file_path = f"{UPLOAD_DIR}/images/{unique_filename}"
 
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    file_url = None
+    if s3_storage.enabled:
+        # Upload to S3
+        try:
+            file.file.seek(0)  # Reset file pointer
+            file_url = s3_storage.upload_file(
+                file.file,
+                unique_filename,
+                folder="uploads/images",
+                content_type=file.content_type
+            )
+            if file_url:
+                logger.info(f"Image uploaded to S3: {file_url}")
+            else:
+                raise Exception("S3 upload returned None")
+        except Exception as e:
+            logger.error(f"S3 upload failed: {e}, falling back to local storage")
+            # Fallback to local if S3 fails
+            file_path = f"{UPLOAD_DIR}/images/{unique_filename}"
+            file.file.seek(0)
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+            file_url = f"/uploads/images/{unique_filename}"
+    else:
+        # Local filesystem (development/fallback)
+        file_path = f"{UPLOAD_DIR}/images/{unique_filename}"
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        file_url = f"/uploads/images/{unique_filename}"
+        logger.warning(f"Image saved locally (ephemeral): {file_url}")
 
     # Create message
     message = models.Message(
         sender_id=current_user.id,
         receiver_id=receiver_id,
         message_type=models.MessageType.IMAGE,
-        file_url=f"/uploads/images/{unique_filename}",
+        file_url=file_url,
         file_name=file.filename
     )
 
@@ -151,20 +182,47 @@ async def send_voice_message(
             detail="Invalid audio format"
         )
 
-    # Save file
+    # Save file (S3 or local fallback)
     file_extension = file.filename.split(".")[-1] if "." in file.filename else "webm"
     unique_filename = f"{uuid.uuid4()}.{file_extension}"
-    file_path = f"{UPLOAD_DIR}/voice/{unique_filename}"
 
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    file_url = None
+    if s3_storage.enabled:
+        # Upload to S3
+        try:
+            file.file.seek(0)  # Reset file pointer
+            file_url = s3_storage.upload_file(
+                file.file,
+                unique_filename,
+                folder="uploads/voice",
+                content_type=file.content_type
+            )
+            if file_url:
+                logger.info(f"Voice message uploaded to S3: {file_url}")
+            else:
+                raise Exception("S3 upload returned None")
+        except Exception as e:
+            logger.error(f"S3 upload failed: {e}, falling back to local storage")
+            # Fallback to local if S3 fails
+            file_path = f"{UPLOAD_DIR}/voice/{unique_filename}"
+            file.file.seek(0)
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+            file_url = f"/uploads/voice/{unique_filename}"
+    else:
+        # Local filesystem (development/fallback)
+        file_path = f"{UPLOAD_DIR}/voice/{unique_filename}"
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        file_url = f"/uploads/voice/{unique_filename}"
+        logger.warning(f"Voice message saved locally (ephemeral): {file_url}")
 
     # Create message
     message = models.Message(
         sender_id=current_user.id,
         receiver_id=receiver_id,
         message_type=models.MessageType.VOICE,
-        file_url=f"/uploads/voice/{unique_filename}",
+        file_url=file_url,
         file_name=file.filename,
         duration=duration
     )
