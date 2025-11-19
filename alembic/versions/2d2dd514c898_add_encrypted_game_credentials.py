@@ -20,11 +20,20 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema - add encrypted columns for game credentials."""
+    # Make migration idempotent - only add columns if they don't exist
+    from sqlalchemy import inspect
+    conn = op.get_bind()
+    inspector = inspect(conn)
+    columns = [col['name'] for col in inspector.get_columns('game_credentials')]
+
     # Add NEW columns for encrypted data (keeping old columns for backward compatibility)
-    op.add_column('game_credentials',
-        sa.Column('game_username_encrypted', sa.Text(), nullable=True))
-    op.add_column('game_credentials',
-        sa.Column('game_password_encrypted', sa.Text(), nullable=True))
+    if 'game_username_encrypted' not in columns:
+        op.add_column('game_credentials',
+            sa.Column('game_username_encrypted', sa.Text(), nullable=True))
+
+    if 'game_password_encrypted' not in columns:
+        op.add_column('game_credentials',
+            sa.Column('game_password_encrypted', sa.Text(), nullable=True))
 
     # Note: We keep the old columns (game_username, game_password) to ensure backward compatibility
     # Data will be migrated gradually using dual-write pattern
