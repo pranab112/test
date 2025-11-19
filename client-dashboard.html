@@ -3772,7 +3772,16 @@
                     showNotification('Registration successful! Please login.', 'success');
                     document.getElementById('showLogin').click();
                 } else {
-                    showNotification(data.detail || 'Registration failed', 'error');
+                    // Make error messages more user-friendly
+                    let errorMessage = data.detail || 'Registration failed';
+
+                    if (errorMessage.toLowerCase().includes('email already registered')) {
+                        errorMessage = 'This email is already registered. Please use a different email or try logging in.';
+                    } else if (errorMessage.toLowerCase().includes('username already taken')) {
+                        errorMessage = 'This username is already taken. Please choose a different username.';
+                    }
+
+                    showNotification(errorMessage, 'error');
                 }
             } catch (error) {
                 showNotification('Connection error', 'error');
@@ -4039,7 +4048,17 @@
                     loadPlayers();
                 } else {
                     const error = await response.json();
-                    showNotification(error.detail || 'Registration failed', 'error');
+
+                    // Make error messages more user-friendly
+                    let errorMessage = error.detail || 'Registration failed';
+
+                    if (errorMessage.toLowerCase().includes('email already registered')) {
+                        errorMessage = 'This email is already registered. Please use a different email address.';
+                    } else if (errorMessage.toLowerCase().includes('username already taken')) {
+                        errorMessage = 'This username is already taken. Please choose a different username.';
+                    }
+
+                    showNotification(errorMessage, 'error');
                 }
             } catch (error) {
                 showNotification('Connection error', 'error');
@@ -4838,9 +4857,12 @@
             notification.style.borderColor = type === 'error' ? '#ff6b6b' : '#FFD700';
             notification.style.color = type === 'error' ? '#ff6b6b' : '#FFD700';
 
+            // Error messages stay longer (5 seconds) so users can read them
+            const displayTime = type === 'error' ? 5000 : 3000;
+
             setTimeout(() => {
                 notification.classList.remove('show');
-            }, 3000);
+            }, displayTime);
         }
 
         function showAddFriend() {
