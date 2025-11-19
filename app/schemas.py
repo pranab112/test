@@ -11,14 +11,14 @@ class UserBase(BaseModel):
     user_type: UserType
 
 class UserCreate(UserBase):
-    password: str
+    password: str = Field(..., max_length=72, description="Password (max 72 characters due to bcrypt limit)")
     company_name: Optional[str] = None  # For clients
 
 class PlayerCreateByClient(BaseModel):
     email: EmailStr
     username: str
     full_name: str
-    password: Optional[str] = None  # Optional - will generate if not provided
+    password: Optional[str] = Field(None, max_length=72, description="Password (optional, max 72 characters)")
 
 class UserResponse(UserBase):
     id: int
@@ -43,7 +43,7 @@ class PlayerRegistrationResponse(UserResponse):
 
 class UserLogin(BaseModel):
     username: str
-    password: str
+    password: str = Field(..., max_length=72)
 
 class Token(BaseModel):
     access_token: str

@@ -38,6 +38,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     # Try bcrypt first (new format - starts with $2b$)
     try:
         if hashed_password.startswith("$2b$"):
+            # Truncate password to 72 bytes for bcrypt verification
+            password_bytes = plain_password.encode('utf-8')
+            if len(password_bytes) > 72:
+                plain_password = password_bytes[:72].decode('utf-8', errors='ignore')
+
             return pwd_context.verify(plain_password, hashed_password)
     except Exception as e:
         logger.warning(f"Error verifying bcrypt password: {e}")
@@ -51,7 +56,18 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return False
 
 def get_password_hash(password: str) -> str:
-    """Hash password using bcrypt (new passwords)"""
+    """Hash password using bcrypt (new passwords)
+
+    Note: bcrypt has a 72-byte limit. Passwords are automatically truncated
+    to prevent errors while maintaining security.
+    """
+    # Truncate password to 72 bytes (bcrypt limit)
+    # This prevents ValueError when password is too long
+    password_bytes = password.encode('utf-8')
+    if len(password_bytes) > 72:
+        logger.warning(f"Password exceeds 72 bytes ({len(password_bytes)} bytes), truncating for bcrypt")
+        password = password_bytes[:72].decode('utf-8', errors='ignore')
+
     return pwd_context.hash(password)
 
 def authenticate_user(db: Session, username: str, password: str):

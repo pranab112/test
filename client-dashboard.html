@@ -2576,7 +2576,7 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Password</label>
-                    <input type="password" id="loginPassword" class="form-input" required>
+                    <input type="password" id="loginPassword" class="form-input" maxlength="72" required>
                 </div>
                 <button type="submit" class="btn-primary" style="width: 100%; padding: 1rem;">
                     Login
@@ -2611,7 +2611,8 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Password</label>
-                    <input type="password" id="password" class="form-input" required>
+                    <input type="password" id="password" class="form-input" maxlength="72" required>
+                    <small style="color: #888; font-size: 0.75rem;">Maximum 72 characters</small>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Company Name</label>
@@ -3600,8 +3601,8 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Password (Optional)</label>
-                    <input type="password" id="playerPassword" class="form-input" placeholder="Leave blank to auto-generate">
-                    <small style="color: #888;">If left blank, a temporary password will be generated</small>
+                    <input type="password" id="playerPassword" class="form-input" maxlength="72" placeholder="Leave blank to auto-generate">
+                    <small style="color: #888;">If left blank, a temporary password will be generated. Max 72 characters.</small>
                 </div>
                 <div class="form-actions">
                     <button type="button" class="btn-secondary" onclick="closeRegisterPlayerModal()">Cancel</button>
