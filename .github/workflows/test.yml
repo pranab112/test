@@ -57,6 +57,19 @@ jobs:
         alembic upgrade head || echo "::warning::Migrations skipped - tests use in-memory database"
       continue-on-error: true
 
+    - name: Verify test environment
+      run: |
+        echo "=== Checking installed packages ==="
+        pip list | grep -E "(boto3|faker|httpx|pytest|fastapi)"
+        echo ""
+        echo "=== Testing critical imports ==="
+        python -c "from app import models, schemas; print('✓ Core imports OK')" || echo "✗ Core imports FAILED"
+        python -c "from app.main import app; print('✓ Main app import OK')" || echo "✗ Main app import FAILED"
+        python -c "import tests.conftest; print('✓ Conftest import OK')" || echo "✗ Conftest import FAILED"
+        echo ""
+        echo "=== Running single test file first ==="
+        pytest tests/test_auth.py -v || echo "::warning::Auth tests failed"
+
     - name: Run tests with coverage
       run: |
         pytest --cov=app --cov-report=xml --cov-report=html --cov-report=term -v
