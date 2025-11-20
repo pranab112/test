@@ -7,7 +7,6 @@ from app.database import get_db
 from app.models import UserType
 import random
 import string
-import hashlib
 
 router = APIRouter(prefix="/client", tags=["client"])
 
@@ -51,8 +50,8 @@ def register_player(
     # Generate temporary password if not provided
     password = player.password if player.password else generate_temp_password()
 
-    # Hash the password
-    hashed_password = hashlib.sha256(password.encode()).hexdigest()
+    # Hash the password using bcrypt (secure with salt)
+    hashed_password = auth.get_password_hash(password)
 
     # Generate unique user_id
     user_id = generate_user_id()
@@ -235,9 +234,9 @@ def bulk_register_players(
                 })
                 continue
 
-            # Generate password
+            # Generate password and hash using bcrypt (secure with salt)
             password = player_data.password if player_data.password else generate_temp_password()
-            hashed_password = hashlib.sha256(password.encode()).hexdigest()
+            hashed_password = auth.get_password_hash(password)
 
             # Generate unique user_id
             user_id = generate_user_id()
