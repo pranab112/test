@@ -30,7 +30,7 @@ def upgrade() -> None:
         """Create index only if it doesn't already exist"""
         existing_indexes = [idx['name'] for idx in inspector.get_indexes(table_name)]
         if index_name not in existing_indexes:
-            create_index_if_not_exists(index_name, table_name, columns)
+            op.create_index(index_name, table_name, columns)
 
     # ========== USER TABLE INDEXES ==========
     # Authentication lookups
