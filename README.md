@@ -1,5 +1,12 @@
 # Casino Royal - Full Stack Casino Platform
 
+[![Test Suite](https://github.com/pranab112/test/actions/workflows/test.yml/badge.svg)](https://github.com/pranab112/test/actions/workflows/test.yml)
+[![Deploy to Render](https://github.com/pranab112/test/actions/workflows/deploy.yml/badge.svg)](https://github.com/pranab112/test/actions/workflows/deploy.yml)
+[![codecov](https://codecov.io/gh/pranab112/test/branch/main/graph/badge.svg)](https://codecov.io/gh/pranab112/test)
+[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.120.3-009688.svg)](https://fastapi.tiangolo.com)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 A professional casino gaming platform with dual backend systems (Node.js + FastAPI), featuring SaaS capabilities, user authentication, game management, and fortune wheel functionality.
 
 ## 🎰 Features
