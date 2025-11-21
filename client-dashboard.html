@@ -4083,6 +4083,8 @@
                 password: document.getElementById('playerPassword').value || null
             };
 
+            console.log('Registering player:', playerData);
+
             try {
                 const response = await fetch(`${API_URL}/client/register-player`, {
                     method: 'POST',
@@ -4092,6 +4094,8 @@
                     },
                     body: JSON.stringify(playerData)
                 });
+
+                console.log('Response status:', response.status);
 
                 if (response.ok) {
                     const result = await response.json();
@@ -4108,9 +4112,14 @@
                     loadPlayers();
                 } else {
                     const error = await response.json();
+                    console.error('Registration error:', error);
 
                     // Make error messages more user-friendly
-                    let errorMessage = error.detail || 'Registration failed';
+                    let errorMessage = error.detail || error.message || error.error?.message || 'Registration failed';
+
+                    if (typeof errorMessage === 'object') {
+                        errorMessage = JSON.stringify(errorMessage);
+                    }
 
                     if (errorMessage.toLowerCase().includes('username already taken')) {
                         errorMessage = 'This username is already taken. Please choose a different username.';
@@ -4119,7 +4128,8 @@
                     showNotification(errorMessage, 'error');
                 }
             } catch (error) {
-                showNotification('Connection error', 'error');
+                console.error('Connection error:', error);
+                showNotification('Connection error: ' + error.message, 'error');
             }
         }
 
