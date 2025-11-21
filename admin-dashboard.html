@@ -830,6 +830,11 @@
                     <i class="fas fa-star"></i>
                     <span>Reviews</span>
                 </button>
+                <button class="nav-item" data-section="platform-offers">
+                    <i class="fas fa-gift"></i>
+                    <span>Platform Offers</span>
+                    <span class="nav-badge" id="activeOffersBadge" style="display: none;">0</span>
+                </button>
                 <button class="nav-item" data-section="broadcast">
                     <i class="fas fa-bullhorn"></i>
                     <span>Broadcast</span>
@@ -1098,6 +1103,79 @@
                         </form>
                     </div>
                 </section>
+
+                <!-- Platform Offers Section -->
+                <section class="content-section" id="platform-offers-section">
+                    <div class="data-section">
+                        <div class="section-header">
+                            <h2 class="section-title">Platform Offers Management</h2>
+                            <button class="btn btn-primary" onclick="showCreateOfferModal()">
+                                <i class="fas fa-plus"></i> Create Offer
+                            </button>
+                        </div>
+
+                        <div class="table-controls">
+                            <select class="filter-select" id="offerStatusFilter">
+                                <option value="">All Status</option>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                                <option value="expired">Expired</option>
+                            </select>
+                        </div>
+
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Type</th>
+                                    <th>Bonus</th>
+                                    <th>Claims</th>
+                                    <th>Max Claims</th>
+                                    <th>Status</th>
+                                    <th>End Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="platformOffersTableBody">
+                                <!-- Platform offers will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Offer Claims Section -->
+                    <div class="data-section" style="margin-top: 2rem;">
+                        <div class="section-header">
+                            <h2 class="section-title">All Offer Claims</h2>
+                        </div>
+
+                        <div class="table-controls">
+                            <select class="filter-select" id="claimStatusFilter">
+                                <option value="">All Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="approved">Approved</option>
+                                <option value="rejected">Rejected</option>
+                                <option value="completed">Completed</option>
+                            </select>
+                        </div>
+
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Offer</th>
+                                    <th>Player</th>
+                                    <th>Client</th>
+                                    <th>Bonus Amount</th>
+                                    <th>Status</th>
+                                    <th>Claimed At</th>
+                                    <th>Processed At</th>
+                                </tr>
+                            </thead>
+                            <tbody id="offerClaimsTableBody">
+                                <!-- Offer claims will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
             </div>
         </main>
     </div>
@@ -1114,6 +1192,77 @@
             <div id="reportModalBody">
                 <!-- Report details will be loaded here -->
             </div>
+        </div>
+    </div>
+
+    <!-- Create/Edit Offer Modal -->
+    <div class="modal" id="offerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="offerModalTitle">Create Platform Offer</h2>
+                <button class="modal-close" onclick="closeModal('offerModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="offerForm" onsubmit="submitOffer(event)">
+                <input type="hidden" id="editOfferId" value="">
+
+                <div class="form-group">
+                    <label class="form-label">Title *</label>
+                    <input type="text" class="form-input" id="offerTitle" required placeholder="e.g., Email Verification Bonus">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Description *</label>
+                    <textarea class="form-textarea" id="offerDescription" required placeholder="Describe the offer and what players need to do..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Offer Type *</label>
+                    <select class="form-input" id="offerType" required>
+                        <option value="email_verification">Email Verification</option>
+                        <option value="profile_completion">Profile Completion</option>
+                        <option value="first_deposit">First Deposit</option>
+                        <option value="referral">Referral</option>
+                        <option value="loyalty">Loyalty</option>
+                        <option value="special_event">Special Event</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Bonus Amount (Credits) *</label>
+                    <input type="number" class="form-input" id="offerBonusAmount" required min="1" placeholder="e.g., 100">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Requirement Description</label>
+                    <input type="text" class="form-input" id="offerRequirement" placeholder="e.g., Verify your email address">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Max Total Claims (leave empty for unlimited)</label>
+                    <input type="number" class="form-input" id="offerMaxClaims" min="1" placeholder="e.g., 1000">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Max Claims Per Player</label>
+                    <input type="number" class="form-input" id="offerMaxClaimsPerPlayer" value="1" min="1" placeholder="1">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">End Date (optional)</label>
+                    <input type="datetime-local" class="form-input" id="offerEndDate">
+                </div>
+
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> <span id="offerSubmitText">Create Offer</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('offerModal')">
+                        Cancel
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -1242,6 +1391,8 @@
             document.getElementById('userStatusFilter').addEventListener('change', loadUsers);
             document.getElementById('promotionStatusFilter').addEventListener('change', loadPromotions);
             document.getElementById('reportStatusFilter').addEventListener('change', loadReports);
+            document.getElementById('offerStatusFilter').addEventListener('change', loadPlatformOffers);
+            document.getElementById('claimStatusFilter').addEventListener('change', loadOfferClaims);
 
             // Broadcast form
             document.getElementById('broadcastForm').addEventListener('submit', sendBroadcast);
@@ -1265,7 +1416,8 @@
                 'promotions': 'Promotions',
                 'reports': 'Reports',
                 'reviews': 'Reviews',
-                'broadcast': 'Broadcast'
+                'broadcast': 'Broadcast',
+                'platform-offers': 'Platform Offers'
             };
             document.getElementById('pageTitle').textContent = titles[section] || 'Dashboard';
 
@@ -1291,6 +1443,10 @@
                     break;
                 case 'reviews':
                     loadReviews();
+                    break;
+                case 'platform-offers':
+                    loadPlatformOffers();
+                    loadOfferClaims();
                     break;
             }
         }
@@ -1963,6 +2119,311 @@
             authToken = null;
             currentUser = null;
             window.location.reload();
+        }
+
+        // ============= PLATFORM OFFERS FUNCTIONS =============
+
+        // Load Platform Offers
+        async function loadPlatformOffers() {
+            try {
+                const status = document.getElementById('offerStatusFilter').value;
+                let url = `${API_URL}/offers/admin/all?include_inactive=true`;
+
+                const response = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    let offers = await response.json();
+
+                    // Filter by status if selected
+                    if (status) {
+                        offers = offers.filter(o => o.status === status);
+                    }
+
+                    displayPlatformOffers(offers);
+
+                    // Update badge
+                    const activeCount = offers.filter(o => o.status === 'active').length;
+                    const badge = document.getElementById('activeOffersBadge');
+                    if (activeCount > 0) {
+                        badge.textContent = activeCount;
+                        badge.style.display = 'inline';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load platform offers:', error);
+                showNotification('Failed to load platform offers', 'error');
+            }
+        }
+
+        // Display Platform Offers
+        function displayPlatformOffers(offers) {
+            const tbody = document.getElementById('platformOffersTableBody');
+
+            if (offers.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                            No platform offers found. Click "Create Offer" to add one.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = offers.map(offer => `
+                <tr>
+                    <td>
+                        <div style="font-weight: 600;">${offer.title}</div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary);">${offer.description.substring(0, 50)}${offer.description.length > 50 ? '...' : ''}</div>
+                    </td>
+                    <td>
+                        <span class="badge badge-primary">${formatOfferType(offer.offer_type)}</span>
+                    </td>
+                    <td style="font-weight: 600; color: var(--success);">$${offer.bonus_amount}</td>
+                    <td>${offer.total_claims || 0}</td>
+                    <td>${offer.max_claims || 'Unlimited'} / ${offer.max_claims_per_player} per player</td>
+                    <td>
+                        <span class="badge badge-${
+                            offer.status === 'active' ? 'success' :
+                            offer.status === 'inactive' ? 'secondary' :
+                            'warning'
+                        }">
+                            ${offer.status}
+                        </span>
+                    </td>
+                    <td>${offer.end_date ? new Date(offer.end_date).toLocaleDateString() : 'No expiry'}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn btn-icon btn-secondary" onclick="editOffer(${offer.id})" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            ${offer.status === 'active' ? `
+                                <button class="btn btn-icon btn-danger" onclick="deactivateOffer(${offer.id})" title="Deactivate">
+                                    <i class="fas fa-ban"></i>
+                                </button>
+                            ` : `
+                                <button class="btn btn-icon btn-success" onclick="activateOffer(${offer.id})" title="Activate">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                            `}
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Format offer type for display
+        function formatOfferType(type) {
+            const types = {
+                'email_verification': 'Email Verify',
+                'profile_completion': 'Profile',
+                'first_deposit': 'First Deposit',
+                'referral': 'Referral',
+                'loyalty': 'Loyalty',
+                'special_event': 'Special Event'
+            };
+            return types[type] || type;
+        }
+
+        // Load Offer Claims
+        async function loadOfferClaims() {
+            try {
+                const status = document.getElementById('claimStatusFilter').value;
+                let url = `${API_URL}/offers/admin/claims`;
+                if (status) url += `?status_filter=${status}`;
+
+                const response = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const claims = await response.json();
+                    displayOfferClaims(claims);
+                }
+            } catch (error) {
+                console.error('Failed to load offer claims:', error);
+            }
+        }
+
+        // Display Offer Claims
+        function displayOfferClaims(claims) {
+            const tbody = document.getElementById('offerClaimsTableBody');
+
+            if (claims.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                            No offer claims yet.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = claims.map(claim => `
+                <tr>
+                    <td>${claim.offer_title || 'N/A'}</td>
+                    <td>${claim.player_name || 'N/A'}</td>
+                    <td>${claim.client_name || 'N/A'}</td>
+                    <td style="font-weight: 600; color: var(--success);">$${claim.bonus_amount}</td>
+                    <td>
+                        <span class="badge badge-${
+                            claim.status === 'pending' ? 'warning' :
+                            claim.status === 'approved' || claim.status === 'completed' ? 'success' :
+                            'danger'
+                        }">
+                            ${claim.status}
+                        </span>
+                    </td>
+                    <td>${timeAgo(claim.claimed_at)}</td>
+                    <td>${claim.processed_at ? timeAgo(claim.processed_at) : '-'}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Show Create Offer Modal
+        function showCreateOfferModal() {
+            document.getElementById('offerModalTitle').textContent = 'Create Platform Offer';
+            document.getElementById('offerSubmitText').textContent = 'Create Offer';
+            document.getElementById('editOfferId').value = '';
+            document.getElementById('offerForm').reset();
+            document.getElementById('offerMaxClaimsPerPlayer').value = '1';
+            document.getElementById('offerModal').classList.add('active');
+        }
+
+        // Edit Offer
+        async function editOffer(offerId) {
+            try {
+                const response = await fetch(`${API_URL}/offers/admin/all?include_inactive=true`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const offers = await response.json();
+                    const offer = offers.find(o => o.id === offerId);
+
+                    if (offer) {
+                        document.getElementById('offerModalTitle').textContent = 'Edit Platform Offer';
+                        document.getElementById('offerSubmitText').textContent = 'Update Offer';
+                        document.getElementById('editOfferId').value = offer.id;
+                        document.getElementById('offerTitle').value = offer.title;
+                        document.getElementById('offerDescription').value = offer.description;
+                        document.getElementById('offerType').value = offer.offer_type;
+                        document.getElementById('offerBonusAmount').value = offer.bonus_amount;
+                        document.getElementById('offerRequirement').value = offer.requirement_description || '';
+                        document.getElementById('offerMaxClaims').value = offer.max_claims || '';
+                        document.getElementById('offerMaxClaimsPerPlayer').value = offer.max_claims_per_player;
+
+                        if (offer.end_date) {
+                            const endDate = new Date(offer.end_date);
+                            document.getElementById('offerEndDate').value = endDate.toISOString().slice(0, 16);
+                        } else {
+                            document.getElementById('offerEndDate').value = '';
+                        }
+
+                        document.getElementById('offerModal').classList.add('active');
+                    }
+                }
+            } catch (error) {
+                showNotification('Failed to load offer details', 'error');
+            }
+        }
+
+        // Submit Offer (Create or Update)
+        async function submitOffer(e) {
+            e.preventDefault();
+
+            const offerId = document.getElementById('editOfferId').value;
+            const isEdit = !!offerId;
+
+            const offerData = {
+                title: document.getElementById('offerTitle').value,
+                description: document.getElementById('offerDescription').value,
+                offer_type: document.getElementById('offerType').value,
+                bonus_amount: parseInt(document.getElementById('offerBonusAmount').value),
+                requirement_description: document.getElementById('offerRequirement').value || null,
+                max_claims: document.getElementById('offerMaxClaims').value ? parseInt(document.getElementById('offerMaxClaims').value) : null,
+                max_claims_per_player: parseInt(document.getElementById('offerMaxClaimsPerPlayer').value) || 1,
+                end_date: document.getElementById('offerEndDate').value ? new Date(document.getElementById('offerEndDate').value).toISOString() : null
+            };
+
+            try {
+                let url = `${API_URL}/offers/admin/create`;
+                let method = 'POST';
+
+                if (isEdit) {
+                    url = `${API_URL}/offers/admin/${offerId}`;
+                    method = 'PUT';
+                }
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(offerData)
+                });
+
+                if (response.ok) {
+                    showNotification(isEdit ? 'Offer updated successfully' : 'Offer created successfully', 'success');
+                    closeModal('offerModal');
+                    loadPlatformOffers();
+                } else {
+                    const error = await response.json();
+                    showNotification(error.detail || 'Failed to save offer', 'error');
+                }
+            } catch (error) {
+                showNotification('Error saving offer', 'error');
+            }
+        }
+
+        // Deactivate Offer
+        async function deactivateOffer(offerId) {
+            if (!confirm('Deactivate this offer? Players will no longer be able to claim it.')) return;
+
+            try {
+                const response = await fetch(`${API_URL}/offers/admin/${offerId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    showNotification('Offer deactivated', 'success');
+                    loadPlatformOffers();
+                } else {
+                    showNotification('Failed to deactivate offer', 'error');
+                }
+            } catch (error) {
+                showNotification('Error deactivating offer', 'error');
+            }
+        }
+
+        // Activate Offer
+        async function activateOffer(offerId) {
+            try {
+                const response = await fetch(`${API_URL}/offers/admin/${offerId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status: 'active' })
+                });
+
+                if (response.ok) {
+                    showNotification('Offer activated', 'success');
+                    loadPlatformOffers();
+                } else {
+                    showNotification('Failed to activate offer', 'error');
+                }
+            } catch (error) {
+                showNotification('Error activating offer', 'error');
+            }
         }
 
         // Add slideOut animation
