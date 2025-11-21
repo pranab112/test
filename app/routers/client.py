@@ -36,19 +36,24 @@ def register_player(
     """
     Register a new player account as a client.
     The client can create player accounts for their customers.
+    Email is auto-generated from username.
+    Password defaults to username+@135 if not provided.
     """
-    # Check if email exists
-    existing_user = db.query(models.User).filter(models.User.email == player.email).first()
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-
     # Check if username exists
     existing_user = db.query(models.User).filter(models.User.username == player.username).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Username already taken")
 
-    # Generate temporary password if not provided
-    password = player.password if player.password else generate_temp_password()
+    # Auto-generate email from username (username@player.local)
+    email = f"{player.username}@player.local"
+
+    # Check if generated email already exists (shouldn't happen if username is unique)
+    existing_email = db.query(models.User).filter(models.User.email == email).first()
+    if existing_email:
+        raise HTTPException(status_code=400, detail="Username already taken")
+
+    # Generate password as username+@135 if not provided
+    password = player.password if player.password else f"{player.username}@135"
 
     # Hash the password using bcrypt (secure with salt)
     hashed_password = auth.get_password_hash(password)
@@ -60,7 +65,7 @@ def register_player(
 
     # Create new player
     new_player = models.User(
-        email=player.email,
+        email=email,
         username=player.username,
         hashed_password=hashed_password,
         full_name=player.full_name,
@@ -212,20 +217,14 @@ def bulk_register_players(
     """
     Bulk register multiple players at once.
     Useful for importing existing player databases.
+    Email is auto-generated from username.
+    Password defaults to username+@135 if not provided.
     """
     created_players = []
     failed_players = []
 
     for player_data in players:
         try:
-            # Check if email exists
-            if db.query(models.User).filter(models.User.email == player_data.email).first():
-                failed_players.append({
-                    "email": player_data.email,
-                    "reason": "Email already exists"
-                })
-                continue
-
             # Check if username exists
             if db.query(models.User).filter(models.User.username == player_data.username).first():
                 failed_players.append({
@@ -234,8 +233,19 @@ def bulk_register_players(
                 })
                 continue
 
-            # Generate password and hash using bcrypt (secure with salt)
-            password = player_data.password if player_data.password else generate_temp_password()
+            # Auto-generate email from username
+            email = f"{player_data.username}@player.local"
+
+            # Check if generated email exists (shouldn't happen if username is unique)
+            if db.query(models.User).filter(models.User.email == email).first():
+                failed_players.append({
+                    "username": player_data.username,
+                    "reason": "Username already exists"
+                })
+                continue
+
+            # Generate password as username+@135 if not provided
+            password = player_data.password if player_data.password else f"{player_data.username}@135"
             hashed_password = auth.get_password_hash(password)
 
             # Generate unique user_id
@@ -245,7 +255,7 @@ def bulk_register_players(
 
             # Create player
             new_player = models.User(
-                email=player_data.email,
+                email=email,
                 username=player_data.username,
                 hashed_password=hashed_password,
                 full_name=player_data.full_name,
@@ -261,13 +271,13 @@ def bulk_register_players(
             db.add(new_player)
             created_players.append({
                 "username": new_player.username,
-                "email": new_player.email,
+                "email": email,
                 "temp_password": password if not player_data.password else None
             })
 
         except Exception as e:
             failed_players.append({
-                "email": player_data.email,
+                "username": player_data.username,
                 "reason": str(e)
             })
 

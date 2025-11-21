@@ -3589,17 +3589,13 @@
                     <input type="text" id="playerUsername" class="form-input" placeholder="Player username" required>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Email</label>
-                    <input type="email" id="playerEmail" class="form-input" placeholder="player@example.com" required>
-                </div>
-                <div class="form-group">
                     <label class="form-label">Full Name</label>
                     <input type="text" id="playerFullName" class="form-input" placeholder="Player's full name" required>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Password (Optional)</label>
-                    <input type="password" id="playerPassword" class="form-input" maxlength="72" placeholder="Leave blank to auto-generate">
-                    <small style="color: #888;">If left blank, a temporary password will be generated. Max 72 characters.</small>
+                    <input type="password" id="playerPassword" class="form-input" maxlength="72" placeholder="Leave blank for auto-generated">
+                    <small style="color: #888;">If left blank, password will be: username+@135</small>
                 </div>
                 <div class="form-actions">
                     <button type="button" class="btn-secondary" onclick="closeRegisterPlayerModal()">Cancel</button>
@@ -3619,8 +3615,8 @@
             <div class="modal-body">
                 <div class="form-group">
                     <label class="form-label">Import Players (CSV Format)</label>
-                    <textarea id="bulkPlayerData" class="form-input" rows="10" placeholder="username,email,full_name,password&#10;player1,player1@example.com,John Doe,&#10;player2,player2@example.com,Jane Smith,password123&#10;..." style="font-family: monospace;"></textarea>
-                    <small style="color: #888;">Format: username,email,full_name,password (password is optional)</small>
+                    <textarea id="bulkPlayerData" class="form-input" rows="10" placeholder="username,full_name,password&#10;player1,John Doe,&#10;player2,Jane Smith,mypassword123&#10;..." style="font-family: monospace;"></textarea>
+                    <small style="color: #888;">Format: username,full_name,password (password is optional - defaults to username+@135)</small>
                 </div>
                 <div class="bulk-register-preview" id="bulkRegisterPreview" style="display: none;">
                     <h4 style="color: #FFD700; margin-bottom: 1rem;">Preview</h4>
@@ -3629,7 +3625,6 @@
                             <thead>
                                 <tr>
                                     <th>Username</th>
-                                    <th>Email</th>
                                     <th>Full Name</th>
                                     <th>Password</th>
                                 </tr>
@@ -4074,7 +4069,6 @@
             document.getElementById('registerPlayerModal').style.display = 'none';
             // Clear form
             document.getElementById('playerUsername').value = '';
-            document.getElementById('playerEmail').value = '';
             document.getElementById('playerFullName').value = '';
             document.getElementById('playerPassword').value = '';
         }
@@ -4082,9 +4076,9 @@
         async function registerPlayer(event) {
             event.preventDefault();
 
+            const username = document.getElementById('playerUsername').value;
             const playerData = {
-                username: document.getElementById('playerUsername').value,
-                email: document.getElementById('playerEmail').value,
+                username: username,
                 full_name: document.getElementById('playerFullName').value,
                 password: document.getElementById('playerPassword').value || null
             };
@@ -4104,7 +4098,7 @@
 
                     let message = 'Player registered successfully!';
                     if (result.temp_password) {
-                        message += `\n\nTemporary Password: ${result.temp_password}\n\nPlease save this password and share it with the player.`;
+                        message += `\n\nPassword: ${result.temp_password}\n\nPlease save this password and share it with the player.`;
                         alert(message);
                     } else {
                         showNotification(message, 'success');
@@ -4118,9 +4112,7 @@
                     // Make error messages more user-friendly
                     let errorMessage = error.detail || 'Registration failed';
 
-                    if (errorMessage.toLowerCase().includes('email already registered')) {
-                        errorMessage = 'This email is already registered. Please use a different email address.';
-                    } else if (errorMessage.toLowerCase().includes('username already taken')) {
+                    if (errorMessage.toLowerCase().includes('username already taken')) {
                         errorMessage = 'This username is already taken. Please choose a different username.';
                     }
 
@@ -4157,16 +4149,15 @@
                 if (!line || (i === 0 && line.toLowerCase().includes('username'))) continue;
 
                 const parts = line.split(',').map(p => p.trim());
-                if (parts.length < 3) {
-                    showNotification(`Invalid format on line ${i + 1}`, 'error');
+                if (parts.length < 2) {
+                    showNotification(`Invalid format on line ${i + 1}. Need at least username and full_name`, 'error');
                     return;
                 }
 
                 players.push({
                     username: parts[0],
-                    email: parts[1],
-                    full_name: parts[2],
-                    password: parts[3] || null
+                    full_name: parts[1],
+                    password: parts[2] || null
                 });
             }
 
@@ -4180,9 +4171,8 @@
             previewTable.innerHTML = players.map(p => `
                 <tr>
                     <td>${p.username}</td>
-                    <td>${p.email}</td>
                     <td>${p.full_name}</td>
-                    <td>${p.password ? '•••••' : 'Auto-generate'}</td>
+                    <td>${p.password ? '•••••' : `${p.username}@135`}</td>
                 </tr>
             `).join('');
 

@@ -15,10 +15,9 @@ class UserCreate(UserBase):
     company_name: Optional[str] = None  # For clients
 
 class PlayerCreateByClient(BaseModel):
-    email: EmailStr
     username: str
     full_name: str
-    password: Optional[str] = Field(None, max_length=72, description="Password (optional, max 72 characters)")
+    password: Optional[str] = Field(None, max_length=72, description="Password (optional, max 72 characters). If blank, auto-generated as username+@135")
 
 class UserResponse(UserBase):
     id: int
