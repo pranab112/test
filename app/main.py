@@ -161,15 +161,11 @@ app.mount("/static", StaticFiles(directory="."), name="static")
 # WebSocket endpoint
 app.websocket("/ws")(websocket_endpoint)
 
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 
 @app.get("/")
 def read_root():
-    return FileResponse("login.html")
-
-@app.get("/login")
-def serve_login():
-    return FileResponse("login.html")
+    return RedirectResponse(url="/client")
 
 @app.get("/client")
 def serve_client_dashboard():
@@ -178,10 +174,6 @@ def serve_client_dashboard():
 @app.get("/player")
 def serve_player_dashboard():
     return FileResponse("player-dashboard.html")
-
-@app.get("/register")
-def serve_player_registration():
-    return FileResponse("player-register.html")
 
 @app.get("/admin")
 def serve_admin_dashboard():
