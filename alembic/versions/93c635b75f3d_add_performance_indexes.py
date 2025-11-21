@@ -114,7 +114,7 @@ def upgrade() -> None:
     # ========== PLAYER WALLETS TABLE INDEXES ==========
     create_index_if_not_exists('idx_player_wallets_player_id', 'player_wallets', ['player_id'])
 
-    print("✅ All performance indexes created successfully")
+    print("All performance indexes created successfully")
 
 
 def downgrade() -> None:
