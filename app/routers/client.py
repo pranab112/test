@@ -279,3 +279,81 @@ def bulk_register_players(
         "created_players": created_players,
         "failed_players": failed_players
     }
+
+@router.get("/recent-activity", response_model=schemas.RecentActivityResponse)
+async def get_recent_activity(
+    current_user: models.User = Depends(get_client_user),
+    db: Session = Depends(get_db),
+    limit: int = 10
+):
+    """Get recent activity for the client dashboard"""
+    from datetime import datetime, timedelta
+
+    activities = []
+
+    # Get recent friend requests (sent and received)
+    friend_requests_sent = db.query(models.FriendRequest).filter(
+        models.FriendRequest.sender_id == current_user.id
+    ).order_by(models.FriendRequest.created_at.desc()).limit(5).all()
+
+    for fr in friend_requests_sent:
+        activities.append(schemas.ActivityItem(
+            activity_type="friend_request_sent",
+            description="Friend Request Sent",
+            user=fr.receiver.username,
+            timestamp=fr.created_at,
+            status=fr.status.value.title()
+        ))
+
+    friend_requests_received = db.query(models.FriendRequest).filter(
+        models.FriendRequest.receiver_id == current_user.id
+    ).order_by(models.FriendRequest.created_at.desc()).limit(5).all()
+
+    for fr in friend_requests_received:
+        activities.append(schemas.ActivityItem(
+            activity_type="friend_request_received",
+            description="Friend Request Received",
+            user=fr.sender.username,
+            timestamp=fr.created_at,
+            status=fr.status.value.title()
+        ))
+
+    # Get recently registered players by this client
+    recent_players = db.query(models.User).filter(
+        models.User.user_type == UserType.PLAYER,
+        models.User.created_at >= datetime.now() - timedelta(days=7)
+    ).join(
+        models.ClientPlayer,
+        models.ClientPlayer.player_id == models.User.id
+    ).filter(
+        models.ClientPlayer.client_id == current_user.id
+    ).order_by(models.User.created_at.desc()).limit(5).all()
+
+    for player in recent_players:
+        activities.append(schemas.ActivityItem(
+            activity_type="player_registered",
+            description="Player Registered",
+            user=player.username,
+            timestamp=player.created_at,
+            status="Active" if player.is_active else "Inactive"
+        ))
+
+    # Get recent messages
+    recent_messages = db.query(models.Message).filter(
+        models.Message.receiver_id == current_user.id
+    ).order_by(models.Message.created_at.desc()).limit(5).all()
+
+    for msg in recent_messages:
+        activities.append(schemas.ActivityItem(
+            activity_type="message_received",
+            description="Message Received",
+            user=msg.sender.username,
+            timestamp=msg.created_at,
+            status="Unread" if not msg.is_read else "Read"
+        ))
+
+    # Sort all activities by timestamp and limit
+    activities.sort(key=lambda x: x.timestamp, reverse=True)
+    activities = activities[:limit]
+
+    return {"activities": activities}
