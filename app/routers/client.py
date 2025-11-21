@@ -36,20 +36,13 @@ def register_player(
     """
     Register a new player account as a client.
     The client can create player accounts for their customers.
-    Email is auto-generated from username.
+    Only requires: username, full_name, password (optional).
+    No email required for player accounts.
     Password defaults to username+@135 if not provided.
     """
     # Check if username exists
     existing_user = db.query(models.User).filter(models.User.username == player.username).first()
     if existing_user:
-        raise HTTPException(status_code=400, detail="Username already taken")
-
-    # Auto-generate email from username (username@player.local)
-    email = f"{player.username}@player.local"
-
-    # Check if generated email already exists (shouldn't happen if username is unique)
-    existing_email = db.query(models.User).filter(models.User.email == email).first()
-    if existing_email:
         raise HTTPException(status_code=400, detail="Username already taken")
 
     # Generate password as username+@135 if not provided
@@ -63,9 +56,9 @@ def register_player(
     while db.query(models.User).filter(models.User.user_id == user_id).first():
         user_id = generate_user_id()
 
-    # Create new player
+    # Create new player (no email required)
     new_player = models.User(
-        email=email,
+        email=None,  # No email for client-created players
         username=player.username,
         hashed_password=hashed_password,
         full_name=player.full_name,
@@ -217,7 +210,7 @@ def bulk_register_players(
     """
     Bulk register multiple players at once.
     Useful for importing existing player databases.
-    Email is auto-generated from username.
+    No email required - only username, full_name, and optional password.
     Password defaults to username+@135 if not provided.
     """
     created_players = []
@@ -233,17 +226,6 @@ def bulk_register_players(
                 })
                 continue
 
-            # Auto-generate email from username
-            email = f"{player_data.username}@player.local"
-
-            # Check if generated email exists (shouldn't happen if username is unique)
-            if db.query(models.User).filter(models.User.email == email).first():
-                failed_players.append({
-                    "username": player_data.username,
-                    "reason": "Username already exists"
-                })
-                continue
-
             # Generate password as username+@135 if not provided
             password = player_data.password if player_data.password else f"{player_data.username}@135"
             hashed_password = auth.get_password_hash(password)
@@ -253,9 +235,9 @@ def bulk_register_players(
             while db.query(models.User).filter(models.User.user_id == user_id).first():
                 user_id = generate_user_id()
 
-            # Create player
+            # Create player (no email required)
             new_player = models.User(
-                email=email,
+                email=None,  # No email for client-created players
                 username=player_data.username,
                 hashed_password=hashed_password,
                 full_name=player_data.full_name,
@@ -271,7 +253,6 @@ def bulk_register_players(
             db.add(new_player)
             created_players.append({
                 "username": new_player.username,
-                "email": email,
                 "temp_password": password if not player_data.password else None
             })
 
