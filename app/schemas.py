@@ -19,9 +19,14 @@ class PlayerCreateByClient(BaseModel):
     full_name: str
     password: Optional[str] = Field(None, max_length=72, description="Password (optional, max 72 characters). If blank, auto-generated as username+@135")
 
-class UserResponse(UserBase):
+class UserResponse(BaseModel):
+    """Response model for user data - uses str for email to allow auto-generated .local emails"""
     id: int
     user_id: str
+    email: str  # Changed from EmailStr to allow .local domains for auto-generated player emails
+    username: str
+    full_name: Optional[str] = None
+    user_type: UserType
     is_active: bool
     created_at: datetime
     company_name: Optional[str] = None
