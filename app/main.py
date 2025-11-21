@@ -15,8 +15,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
+# Run database migrations on startup
+def run_migrations():
+    """Run Alembic migrations to ensure database schema is up to date"""
+    try:
+        from alembic.config import Config
+        from alembic import command
+        alembic_cfg = Config("alembic.ini")
+        command.upgrade(alembic_cfg, "head")
+        logger.info("Database migrations completed successfully")
+    except Exception as e:
+        logger.warning(f"Could not run migrations (may be fine if tables exist): {e}")
+        # Fallback to create_all if migrations fail
+        Base.metadata.create_all(bind=engine)
+
+run_migrations()
 
 app = FastAPI(
     title="Casino Royal SaaS",
