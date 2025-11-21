@@ -21,11 +21,21 @@ def run_migrations():
     try:
         from alembic.config import Config
         from alembic import command
-        alembic_cfg = Config("alembic.ini")
-        command.upgrade(alembic_cfg, "head")
-        logger.info("Database migrations completed successfully")
+        from pathlib import Path
+
+        # Get absolute path to alembic.ini relative to this file
+        base_dir = Path(__file__).resolve().parent.parent
+        alembic_ini_path = base_dir / "alembic.ini"
+
+        if alembic_ini_path.exists():
+            alembic_cfg = Config(str(alembic_ini_path))
+            command.upgrade(alembic_cfg, "head")
+            logger.info("Database migrations completed successfully")
+        else:
+            logger.warning(f"alembic.ini not found at {alembic_ini_path}, using create_all")
+            Base.metadata.create_all(bind=engine)
     except Exception as e:
-        logger.warning(f"Could not run migrations (may be fine if tables exist): {e}")
+        logger.warning(f"Could not run migrations: {e}")
         # Fallback to create_all if migrations fail
         Base.metadata.create_all(bind=engine)
 
