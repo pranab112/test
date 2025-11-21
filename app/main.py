@@ -106,6 +106,8 @@ from app.routers import client
 app.include_router(client.router)
 from app.routers import monitoring
 app.include_router(monitoring.router)
+from app.routers import offers
+app.include_router(offers.router)
 
 # Mount static files for uploads
 if not os.path.exists("uploads"):

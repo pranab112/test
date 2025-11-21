@@ -1682,6 +1682,112 @@
             margin-top: 1rem;
         }
 
+        /* Rewards Styles */
+        .rewards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .reward-card {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .reward-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-gold), var(--secondary-gold));
+        }
+
+        .reward-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary-gold);
+            box-shadow: 0 8px 24px rgba(255, 215, 0, 0.15);
+        }
+
+        .reward-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .reward-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--primary-gold);
+        }
+
+        .reward-bonus {
+            background: linear-gradient(135deg, var(--primary-gold), var(--secondary-gold));
+            color: var(--dark-bg);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .reward-description {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+
+        .reward-requirement {
+            background: rgba(255, 215, 0, 0.1);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .reward-requirement i {
+            color: var(--primary-gold);
+            margin-right: 0.5rem;
+        }
+
+        .reward-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .reward-claim-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .claim-pending {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+        }
+
+        .claim-approved {
+            background: rgba(40, 167, 69, 0.2);
+            color: #28a745;
+        }
+
+        .claim-rejected {
+            background: rgba(220, 53, 69, 0.2);
+            color: #dc3545;
+        }
+
         .credentials-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -2315,6 +2421,11 @@
                     <span>Promotions</span>
                     <span class="badge" id="promotionsBadge" style="display: none; background: var(--primary); color: white; padding: 2px 6px; border-radius: 10px; margin-left: auto;">0</span>
                 </a>
+                <a href="#" class="nav-item" data-section="rewards">
+                    <i class="fas fa-trophy"></i>
+                    <span>Rewards</span>
+                    <span class="badge" id="rewardsBadge" style="display: none; background: var(--success); color: white; padding: 2px 6px; border-radius: 10px; margin-left: auto;">0</span>
+                </a>
                 <a href="#" class="nav-item" data-section="reviews">
                     <i class="fas fa-star"></i>
                     <span>Reviews</span>
@@ -2619,6 +2730,51 @@
                     <!-- Promotions Grid -->
                     <div id="promotionsList" class="promotions-grid">
                         <!-- Promotions will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rewards Section (Platform Offers) -->
+            <div class="content-area" id="rewards-section">
+                <div class="section">
+                    <div class="section-header">
+                        <h3 class="section-title">Platform Rewards & Offers</h3>
+                        <div style="display: flex; gap: 1rem;">
+                            <button class="btn-secondary" onclick="loadMyRewardClaims()">
+                                <i class="fas fa-history"></i> My Claims
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="info-card" style="background: linear-gradient(135deg, rgba(255,215,0,0.1), rgba(255,215,0,0.05)); border: 1px solid var(--primary-gold); margin-bottom: 2rem; padding: 1.5rem; border-radius: 12px;">
+                        <h4 style="color: var(--primary-gold); margin-bottom: 0.5rem;">
+                            <i class="fas fa-info-circle"></i> How Rewards Work
+                        </h4>
+                        <p style="color: var(--text-secondary); margin: 0;">
+                            Complete tasks like adding your email address to earn bonus credits!
+                            Choose which client you want to claim the reward with, and they will credit your account.
+                        </p>
+                    </div>
+
+                    <!-- Rewards Tabs -->
+                    <div class="tabs" style="margin: 1.5rem 0;">
+                        <button class="tab-btn active" onclick="switchRewardTab('available')">Available Offers</button>
+                        <button class="tab-btn" onclick="switchRewardTab('claimed')">My Claims</button>
+                    </div>
+
+                    <!-- Available Offers -->
+                    <div id="availableOffersList" class="rewards-grid">
+                        <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                            <i class="fas fa-spinner fa-spin fa-2x"></i>
+                            <p style="margin-top: 1rem;">Loading offers...</p>
+                        </div>
+                    </div>
+
+                    <!-- My Claims (Hidden by default) -->
+                    <div id="myRewardClaimsList" class="rewards-grid" style="display: none;">
+                        <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                            <p>No claims yet. Claim an offer to get started!</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -3158,6 +3314,8 @@
                     loadGivenReviews(); // Load given reviews by default
                 } else if (section === 'promotions') {
                     loadPromotions();
+                } else if (section === 'rewards') {
+                    loadAvailableOffers();
                 } else if (section === 'reports') {
                     loadReportsForSection();
                 }
@@ -4016,6 +4174,282 @@
                 }
             } catch (error) {
                 console.error('Error loading online status:', error);
+            }
+        }
+
+        // ============= REWARDS/OFFERS FUNCTIONS =============
+        let availableOffers = [];
+        let myRewardClaims = [];
+        let currentRewardTab = 'available';
+
+        async function loadAvailableOffers() {
+            try {
+                const response = await fetch(`${API_URL}/offers/available`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    availableOffers = await response.json();
+                    updateRewardsBadge();
+                    displayAvailableOffers();
+                }
+            } catch (error) {
+                console.error('Error loading offers:', error);
+                document.getElementById('availableOffersList').innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                        <i class="fas fa-exclamation-circle fa-2x" style="margin-bottom: 1rem;"></i>
+                        <p>Failed to load offers. Please try again.</p>
+                    </div>
+                `;
+            }
+        }
+
+        function updateRewardsBadge() {
+            const badge = document.getElementById('rewardsBadge');
+            if (availableOffers.length > 0) {
+                badge.textContent = availableOffers.length;
+                badge.style.display = 'block';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        function displayAvailableOffers() {
+            const container = document.getElementById('availableOffersList');
+
+            if (availableOffers.length === 0) {
+                container.innerHTML = `
+                    <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-secondary);">
+                        <i class="fas fa-trophy" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                        <p>No offers available at the moment. Check back later!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = availableOffers.map(offer => {
+                const offerTypeIcon = getOfferTypeIcon(offer.offer_type);
+                const expiryText = offer.end_date ? `Expires: ${new Date(offer.end_date).toLocaleDateString()}` : 'No expiry';
+
+                return `
+                    <div class="reward-card">
+                        <div class="reward-header">
+                            <div class="reward-title">
+                                <i class="${offerTypeIcon}"></i> ${offer.title}
+                            </div>
+                            <div class="reward-bonus">$${offer.bonus_amount}</div>
+                        </div>
+                        <p class="reward-description">${offer.description}</p>
+                        ${offer.requirement_description ? `
+                            <div class="reward-requirement">
+                                <i class="fas fa-check-circle"></i> ${offer.requirement_description}
+                            </div>
+                        ` : ''}
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">
+                            <i class="fas fa-clock"></i> ${expiryText}
+                        </div>
+                        <div class="reward-actions">
+                            <button class="btn-primary" onclick="showClaimOfferModal(${offer.id}, '${offer.title}', ${offer.bonus_amount})">
+                                <i class="fas fa-hand-holding-usd"></i> Claim Offer
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getOfferTypeIcon(type) {
+            const icons = {
+                'email_verification': 'fas fa-envelope',
+                'profile_completion': 'fas fa-user-check',
+                'first_deposit': 'fas fa-piggy-bank',
+                'referral': 'fas fa-user-plus',
+                'loyalty': 'fas fa-crown',
+                'special_event': 'fas fa-star'
+            };
+            return icons[type] || 'fas fa-gift';
+        }
+
+        async function loadMyRewardClaims() {
+            try {
+                const response = await fetch(`${API_URL}/offers/my-claims`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    myRewardClaims = await response.json();
+                    displayMyRewardClaims();
+                }
+            } catch (error) {
+                console.error('Error loading claims:', error);
+            }
+        }
+
+        function displayMyRewardClaims() {
+            const container = document.getElementById('myRewardClaimsList');
+
+            if (myRewardClaims.length === 0) {
+                container.innerHTML = `
+                    <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-secondary);">
+                        <i class="fas fa-history" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                        <p>No claims yet. Claim an offer to get started!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = myRewardClaims.map(claim => {
+                const statusClass = claim.status === 'pending' ? 'claim-pending' :
+                                   claim.status === 'approved' || claim.status === 'completed' ? 'claim-approved' : 'claim-rejected';
+                const statusText = claim.status.charAt(0).toUpperCase() + claim.status.slice(1);
+
+                return `
+                    <div class="reward-card">
+                        <div class="reward-header">
+                            <div class="reward-title">${claim.offer_title || 'Offer'}</div>
+                            <div class="reward-bonus">$${claim.bonus_amount}</div>
+                        </div>
+                        <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">
+                            <i class="fas fa-building"></i> Client: ${claim.client_name || 'Unknown'}
+                        </p>
+                        <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">
+                            <i class="fas fa-calendar"></i> Claimed: ${new Date(claim.claimed_at).toLocaleDateString()}
+                        </p>
+                        <div class="reward-claim-status ${statusClass}">
+                            <i class="fas ${claim.status === 'pending' ? 'fa-clock' : claim.status === 'approved' || claim.status === 'completed' ? 'fa-check' : 'fa-times'}"></i>
+                            ${statusText}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function switchRewardTab(tab) {
+            currentRewardTab = tab;
+            const tabs = document.querySelectorAll('#rewards-section .tab-btn');
+            tabs.forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+
+            if (tab === 'available') {
+                document.getElementById('availableOffersList').style.display = 'grid';
+                document.getElementById('myRewardClaimsList').style.display = 'none';
+                loadAvailableOffers();
+            } else {
+                document.getElementById('availableOffersList').style.display = 'none';
+                document.getElementById('myRewardClaimsList').style.display = 'grid';
+                loadMyRewardClaims();
+            }
+        }
+
+        async function showClaimOfferModal(offerId, offerTitle, bonusAmount) {
+            // Load client friends to select from
+            try {
+                const response = await fetch(`${API_URL}/friends/client-friends`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    showNotification('Failed to load clients', 'error');
+                    return;
+                }
+
+                const clients = await response.json();
+
+                if (clients.length === 0) {
+                    showNotification('You need to be connected with a client to claim offers. Add a client friend first!', 'error');
+                    return;
+                }
+
+                // Create modal HTML
+                const modalHTML = `
+                    <div class="modal-overlay" id="claimOfferModal" onclick="if(event.target===this)closeClaimOfferModal()">
+                        <div class="modal" style="max-width: 500px;">
+                            <div class="modal-header">
+                                <h3 class="modal-title">Claim Offer</h3>
+                                <button class="close-btn" onclick="closeClaimOfferModal()">&times;</button>
+                            </div>
+                            <div class="modal-body" style="padding: 1.5rem;">
+                                <div style="text-align: center; margin-bottom: 1.5rem;">
+                                    <h4 style="color: var(--primary-gold); margin-bottom: 0.5rem;">${offerTitle}</h4>
+                                    <div class="reward-bonus" style="display: inline-block;">$${bonusAmount}</div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Select Client to Claim With</label>
+                                    <select id="claimClientSelect" class="form-input">
+                                        <option value="">Choose a client...</option>
+                                        ${clients.map(c => `<option value="${c.id}">${c.company_name || c.username}</option>`).join('')}
+                                    </select>
+                                    <small style="color: var(--text-secondary);">The client will process your claim and credit your account.</small>
+                                </div>
+
+                                <div class="form-actions" style="margin-top: 1.5rem;">
+                                    <button class="btn-secondary" onclick="closeClaimOfferModal()">Cancel</button>
+                                    <button class="btn-primary" onclick="submitOfferClaim(${offerId})">
+                                        <i class="fas fa-check"></i> Claim Now
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Remove any existing modal
+                const existingModal = document.getElementById('claimOfferModal');
+                if (existingModal) existingModal.remove();
+
+                // Add modal to page
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification('Failed to load claim options', 'error');
+            }
+        }
+
+        function closeClaimOfferModal() {
+            const modal = document.getElementById('claimOfferModal');
+            if (modal) modal.remove();
+        }
+
+        async function submitOfferClaim(offerId) {
+            const clientId = document.getElementById('claimClientSelect').value;
+
+            if (!clientId) {
+                showNotification('Please select a client', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/offers/claim`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        offer_id: offerId,
+                        client_id: parseInt(clientId)
+                    })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    closeClaimOfferModal();
+                    showNotification('Offer claimed successfully! The client will process your claim.', 'success');
+                    loadAvailableOffers();
+                } else {
+                    const error = await response.json();
+                    showNotification(error.detail || 'Failed to claim offer', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification('Failed to claim offer', 'error');
             }
         }
 
