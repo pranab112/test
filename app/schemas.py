@@ -344,6 +344,9 @@ class EmailStatusResponse(BaseModel):
     is_email_verified: bool = False
     verification_pending: bool = False
 
+class OTPVerificationRequest(BaseModel):
+    otp: str = Field(..., min_length=6, max_length=6, pattern="^[0-9]{6}$")
+
 
 # Game Credentials Schemas
 class GameCredentialCreate(BaseModel):

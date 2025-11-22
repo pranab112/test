@@ -111,6 +111,10 @@ class User(Base):
     is_email_verified = Column(Boolean, default=False)
     email_verification_token = Column(String, nullable=True)
     email_verification_sent_at = Column(DateTime(timezone=True), nullable=True)
+    
+    # OTP-based email verification fields
+    email_otp = Column(String(6), nullable=True)
+    email_otp_expires_at = Column(DateTime(timezone=True), nullable=True)
 
     # Track which client created this player (for client-created players)
     created_by_client_id = Column(Integer, ForeignKey("users.id"), nullable=True)

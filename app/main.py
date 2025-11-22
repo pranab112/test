@@ -135,8 +135,8 @@ from app.routers import games
 app.include_router(games.router)
 from app.routers import online_status
 app.include_router(online_status.router)
-from app.routers import email_verification
-app.include_router(email_verification.router)
+from app.routers import email_verification_otp
+app.include_router(email_verification_otp.router)
 from app.routers import game_credentials
 app.include_router(game_credentials.router)
 from app.routers import reports
