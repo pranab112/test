@@ -4,7 +4,7 @@ from sqlalchemy import func, and_
 from typing import List, Optional
 from app import models, schemas, auth
 from app.database import get_db
-from app.models import UserType, OfferStatus, OfferClaimStatus
+from app.models import UserType, OfferStatus, OfferClaimStatus, OfferType
 from datetime import datetime
 
 router = APIRouter(prefix="/offers", tags=["offers"])
@@ -268,6 +268,14 @@ def claim_offer(
     # Check expiry
     if offer.end_date and offer.end_date < datetime.utcnow():
         raise HTTPException(status_code=400, detail="Offer has expired")
+
+    # VALIDATION: For EMAIL_VERIFICATION offers, check if email is actually verified
+    if offer.offer_type == OfferType.EMAIL_VERIFICATION:
+        if not player.is_email_verified:
+            raise HTTPException(
+                status_code=400,
+                detail="You must verify your email address before claiming this offer. Go to Settings > Email Verification to add and verify your email."
+            )
 
     # Verify client exists
     client = db.query(models.User).filter(
