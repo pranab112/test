@@ -2,32 +2,85 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone, timedelta
 import secrets
-import smtplib
+import os
+import boto3
+from botocore.exceptions import ClientError
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from app import models, schemas, auth
 from app.database import get_db
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/email", tags=["email-verification"])
 
-# Simple email verification (in production, use proper SMTP service)
+# Get base URL from environment (defaults to localhost for development)
+BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:8000")
+
+# AWS SES Configuration
+AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+SMTP_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", "noreply@casinoroyale.com")
+SMTP_FROM_NAME = os.getenv("SMTP_FROM_NAME", "Casino Royal")
+
+
 def send_verification_email(email: str, token: str, username: str):
     """
-    In production, integrate with services like SendGrid, AWS SES, etc.
-    For now, this is a mock implementation that just logs the email.
+    Send email verification using AWS SES.
+    Falls back to console logging if AWS credentials are not configured.
     """
-    verification_link = f"http://127.0.0.1:8000/email/verify?token={token}"
+    verification_link = f"{BASE_URL}/email/verify?token={token}"
 
-    print(f"""
-    ===========================================
-    EMAIL VERIFICATION
-    ===========================================
-    To: {email}
-    Subject: Verify Your Email - Casino Royale
+    # Email content
+    subject = "Verify Your Email - Casino Royal"
 
+    # HTML email body
+    html_body = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+            .header {{ background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #ffd700; padding: 20px; text-align: center; border-radius: 10px 10px 0 0; }}
+            .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
+            .button {{ display: inline-block; background: linear-gradient(135deg, #ffd700 0%, #ffed4a 100%); color: #1a1a2e; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 20px 0; }}
+            .footer {{ text-align: center; margin-top: 20px; color: #666; font-size: 12px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🎰 Casino Royal</h1>
+            </div>
+            <div class="content">
+                <h2>Hello {username}!</h2>
+                <p>Thank you for registering with Casino Royal. Please verify your email address by clicking the button below:</p>
+                <p style="text-align: center;">
+                    <a href="{verification_link}" class="button">Verify Email Address</a>
+                </p>
+                <p>Or copy and paste this link into your browser:</p>
+                <p style="word-break: break-all; background: #eee; padding: 10px; border-radius: 5px; font-size: 12px;">{verification_link}</p>
+                <p><strong>This verification link will expire in 24 hours.</strong></p>
+                <p>If you didn't request this verification, please ignore this email.</p>
+            </div>
+            <div class="footer">
+                <p>Best regards,<br>Casino Royal Team</p>
+                <p>© 2024 Casino Royal. All rights reserved.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+    # Plain text fallback
+    text_body = f"""
     Hello {username},
 
-    Please click the link below to verify your email address:
+    Thank you for registering with Casino Royal. Please verify your email address by clicking the link below:
+
     {verification_link}
 
     This verification link will expire in 24 hours.
@@ -35,10 +88,84 @@ def send_verification_email(email: str, token: str, username: str):
     If you didn't request this verification, please ignore this email.
 
     Best regards,
-    Casino Royale Team
+    Casino Royal Team
+    """
+
+    # Check if AWS credentials are configured
+    if not AWS_ACCESS_KEY_ID or not AWS_SECRET_ACCESS_KEY:
+        # Fallback to console logging for development
+        logger.warning("AWS credentials not configured. Logging verification email to console.")
+        print(f"""
     ===========================================
-    """)
-    return True
+    EMAIL VERIFICATION (DEV MODE - AWS NOT CONFIGURED)
+    ===========================================
+    To: {email}
+    Subject: {subject}
+    Verification Link: {verification_link}
+    ===========================================
+        """)
+        return True
+
+    try:
+        # Create SES client
+        ses_client = boto3.client(
+            'ses',
+            region_name=AWS_REGION,
+            aws_access_key_id=AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=AWS_SECRET_ACCESS_KEY
+        )
+
+        # Send email via AWS SES
+        response = ses_client.send_email(
+            Source=f"{SMTP_FROM_NAME} <{SMTP_FROM_EMAIL}>",
+            Destination={
+                'ToAddresses': [email]
+            },
+            Message={
+                'Subject': {
+                    'Data': subject,
+                    'Charset': 'UTF-8'
+                },
+                'Body': {
+                    'Text': {
+                        'Data': text_body,
+                        'Charset': 'UTF-8'
+                    },
+                    'Html': {
+                        'Data': html_body,
+                        'Charset': 'UTF-8'
+                    }
+                }
+            }
+        )
+
+        logger.info(f"Verification email sent to {email}. MessageId: {response['MessageId']}")
+        return True
+
+    except ClientError as e:
+        error_code = e.response['Error']['Code']
+        error_message = e.response['Error']['Message']
+        logger.error(f"AWS SES Error: {error_code} - {error_message}")
+
+        # Log to console as fallback
+        print(f"""
+    ===========================================
+    EMAIL VERIFICATION (AWS SES ERROR - LOGGED TO CONSOLE)
+    ===========================================
+    Error: {error_code} - {error_message}
+    To: {email}
+    Subject: {subject}
+    Verification Link: {verification_link}
+    ===========================================
+        """)
+
+        # Still return True to not block user registration
+        # The verification link is logged and can be retrieved from logs
+        return True
+
+    except Exception as e:
+        logger.error(f"Unexpected error sending email: {str(e)}")
+        raise
 
 @router.post("/send-verification", response_model=schemas.EmailVerificationResponse)
 async def send_email_verification(
