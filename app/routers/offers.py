@@ -4,7 +4,7 @@ from sqlalchemy import func, and_
 from typing import List, Optional
 from app import models, schemas, auth
 from app.database import get_db
-from app.models import UserType, OfferStatus, OfferClaimStatus, OfferType
+from app.models import UserType, OfferStatus, OfferClaimStatus, OfferType, MessageType
 from datetime import datetime
 
 router = APIRouter(prefix="/offers", tags=["offers"])
@@ -331,6 +331,33 @@ def claim_offer(
     )
 
     db.add(new_claim)
+
+    # Send message to client about the bonus claim
+    # Build message based on offer type
+    if offer.offer_type == OfferType.EMAIL_VERIFICATION:
+        message_content = (
+            f"🎁 Bonus Claim Request\n\n"
+            f"{player.full_name or player.username} has verified their email address "
+            f"and wants to claim the \"{offer.title}\" bonus (${offer.bonus_amount}) with you.\n\n"
+            f"Please review and approve their claim in the Pending Claims section."
+        )
+    else:
+        message_content = (
+            f"🎁 Bonus Claim Request\n\n"
+            f"{player.full_name or player.username} wants to claim the \"{offer.title}\" "
+            f"bonus (${offer.bonus_amount}) with you.\n\n"
+            f"Please review and approve their claim in the Pending Claims section."
+        )
+
+    # Create message from player to client
+    claim_message = models.Message(
+        sender_id=player.id,
+        receiver_id=client.id,
+        message_type=MessageType.TEXT,
+        content=message_content
+    )
+    db.add(claim_message)
+
     db.commit()
     db.refresh(new_claim)
 
@@ -346,7 +373,8 @@ def claim_offer(
         "processed_at": new_claim.processed_at,
         "offer_title": offer.title,
         "client_name": client.company_name or client.username,
-        "player_name": player.username
+        "player_name": player.username,
+        "message_sent": True
     }
 
 # ============= CLIENT ENDPOINTS =============

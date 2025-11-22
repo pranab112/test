@@ -3,12 +3,10 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timezone, timedelta
 import secrets
 import smtplib
-import json
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from app import models, schemas, auth
 from app.database import get_db
-from app.models import UserType, OfferType, OfferStatus, OfferClaimStatus
 
 router = APIRouter(prefix="/email", tags=["email-verification"])
 
@@ -119,84 +117,11 @@ async def verify_email_token(
     user.email_verification_token = None
     user.email_verification_sent_at = None
 
-    # AUTO-CLAIM: Find active email verification offers and create pending claims
-    auto_claimed = []
-
-    # Only for players
-    if user.user_type == UserType.PLAYER:
-        # Find all active EMAIL_VERIFICATION offers
-        email_offers = db.query(models.PlatformOffer).filter(
-            models.PlatformOffer.offer_type == OfferType.EMAIL_VERIFICATION,
-            models.PlatformOffer.status == OfferStatus.ACTIVE
-        ).all()
-
-        # Get player's connected clients (friends who are clients)
-        for friend in user.friends:
-            if friend.user_type != UserType.CLIENT:
-                continue
-
-            for offer in email_offers:
-                # Check if already claimed with this client
-                existing_claim = db.query(models.OfferClaim).filter(
-                    models.OfferClaim.offer_id == offer.id,
-                    models.OfferClaim.player_id == user.id,
-                    models.OfferClaim.client_id == friend.id
-                ).first()
-
-                if existing_claim:
-                    continue
-
-                # Check max claims per player
-                player_total_claims = db.query(models.OfferClaim).filter(
-                    models.OfferClaim.offer_id == offer.id,
-                    models.OfferClaim.player_id == user.id
-                ).count()
-
-                if player_total_claims >= offer.max_claims_per_player:
-                    continue
-
-                # Check total claims limit
-                if offer.max_claims:
-                    total_claims = db.query(models.OfferClaim).filter(
-                        models.OfferClaim.offer_id == offer.id
-                    ).count()
-                    if total_claims >= offer.max_claims:
-                        continue
-
-                # Auto-create pending claim
-                new_claim = models.OfferClaim(
-                    offer_id=offer.id,
-                    player_id=user.id,
-                    client_id=friend.id,
-                    bonus_amount=offer.bonus_amount,
-                    verification_data=json.dumps({
-                        "email": user.secondary_email,
-                        "auto_claimed": True,
-                        "verified_at": datetime.now(timezone.utc).isoformat()
-                    }),
-                    status=OfferClaimStatus.PENDING
-                )
-                db.add(new_claim)
-                auto_claimed.append({
-                    "offer_title": offer.title,
-                    "bonus_amount": offer.bonus_amount,
-                    "client_name": friend.company_name or friend.username
-                })
-
     db.commit()
 
-    # Build response message
-    if auto_claimed:
-        bonus_info = ", ".join([f"${c['bonus_amount']} from {c['client_name']}" for c in auto_claimed])
-        message = f"Email verified successfully! Bonus claims created: {bonus_info}. Awaiting client approval."
-    else:
-        message = "Email verified successfully! You can now close this window."
-
     return {
-        "message": message,
-        "verified": True,
-        "auto_claims_created": len(auto_claimed),
-        "claims": auto_claimed
+        "message": "Email verified successfully! You can now claim email verification bonuses.",
+        "verified": True
     }
 
 @router.get("/status", response_model=schemas.EmailStatusResponse)
