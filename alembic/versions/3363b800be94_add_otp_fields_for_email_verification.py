@@ -20,9 +20,25 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # Add OTP fields to users table
-    op.add_column('users', sa.Column('email_otp', sa.String(length=6), nullable=True))
-    op.add_column('users', sa.Column('email_otp_expires_at', sa.DateTime(timezone=True), nullable=True))
+    # Add OTP fields to users table (idempotent - skip if already exists)
+    from sqlalchemy import inspect
+    from sqlalchemy.exc import NoSuchTableError
+
+    conn = op.get_bind()
+    inspector = inspect(conn)
+
+    try:
+        columns = [col['name'] for col in inspector.get_columns('users')]
+
+        if 'email_otp' not in columns:
+            op.add_column('users', sa.Column('email_otp', sa.String(length=6), nullable=True))
+
+        if 'email_otp_expires_at' not in columns:
+            op.add_column('users', sa.Column('email_otp_expires_at', sa.DateTime(timezone=True), nullable=True))
+    except NoSuchTableError:
+        # Table doesn't exist yet, skip this migration
+        print("INFO: users table does not exist yet, skipping OTP fields addition")
+        pass
 
 
 def downgrade() -> None:
