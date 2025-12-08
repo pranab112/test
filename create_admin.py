@@ -2,7 +2,7 @@
 import requests
 import json
 
-API_URL = "https://test-xbyp.onrender.com"
+API_URL = "https://casino-royal-production.up.railway.app"
 
 # Admin account data
 admin_account = {
@@ -21,15 +21,15 @@ try:
 
     if response.status_code == 200:
         user_data = response.json()
-        print(f"✅ Created admin: {admin_account['username']}")
+        print(f"SUCCESS: Created admin: {admin_account['username']}")
         print(f"   User ID: {user_data['user_id']}")
         print(f"   Email: {user_data['email']}")
         print(f"   Password: {admin_account['password']}")
         print()
-        print("Admin can now login to: https://test-xbyp.onrender.com/admin")
+        print("Admin can now login to: https://casino-royal-production.up.railway.app/admin")
     else:
         error_data = response.json()
-        print(f"❌ Failed to create admin: {error_data}")
+        print(f"FAILED: Failed to create admin: {error_data}")
 
 except Exception as e:
-    print(f"❌ Error creating admin: {str(e)}")
+    print(f"ERROR: Error creating admin: {str(e)}")

@@ -4,8 +4,7 @@ from datetime import datetime, timezone, timedelta
 import secrets
 import random
 import os
-import boto3
-from botocore.exceptions import ClientError
+import resend
 from app import models, schemas, auth
 from app.database import get_db
 import logging
@@ -17,11 +16,9 @@ router = APIRouter(prefix="/email", tags=["email-verification"])
 # Get base URL from environment (defaults to localhost for development)
 BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:8000")
 
-# AWS SES Configuration
-AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
-AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-SMTP_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", "noreply@casinoroyale.com")
+# Resend Configuration (new email service)
+RESEND_API_KEY = os.getenv("RESEND_API_KEY")
+SMTP_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", "onboarding@resend.dev")
 SMTP_FROM_NAME = os.getenv("SMTP_FROM_NAME", "Casino Royal")
 
 
@@ -32,28 +29,14 @@ def generate_otp() -> str:
 
 def send_otp_email(email: str, otp: str, username: str):
     """
-    Send OTP verification email using AWS SES.
-    Falls back to console logging if AWS credentials are not configured.
+    Send OTP verification email using Resend.
+    Falls back to console logging if Resend API key is not configured.
     """
 
     # Email content
     subject = "Your Casino Royal Verification Code"
 
-    # Plain text email body - simple and reliable
-    text_body = f"""Hi {username},
-
-Your Casino Royal verification code is:
-
-{otp}
-
-This code will expire in 10 minutes.
-
-If you didn't request this code, please ignore this email.
-
-Best regards,
-Casino Royal Team"""
-
-    # HTML version (optional, but kept simple)
+    # HTML email body for Resend
     html_body = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -87,10 +70,10 @@ Casino Royal Team"""
 </body>
 </html>"""
 
-    # Check if AWS credentials are configured
-    if not AWS_ACCESS_KEY_ID or not AWS_SECRET_ACCESS_KEY:
+    # Check if Resend API key is configured
+    if not RESEND_API_KEY:
         # Fallback to console logging for development
-        logger.warning("AWS credentials not configured. Logging OTP to console.")
+        logger.warning("Resend API key not configured. Logging OTP to console.")
         print(f"""
 ===========================================
 EMAIL VERIFICATION OTP (DEV MODE)
@@ -104,52 +87,31 @@ Expires in: 10 minutes
         return True
 
     try:
-        # Create SES client
-        ses_client = boto3.client(
-            'ses',
-            region_name=AWS_REGION,
-            aws_access_key_id=AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=AWS_SECRET_ACCESS_KEY
-        )
+        # Set Resend API key
+        resend.api_key = RESEND_API_KEY
 
-        # Send email via AWS SES
-        response = ses_client.send_email(
-            Source=f"{SMTP_FROM_NAME} <{SMTP_FROM_EMAIL}>",
-            Destination={
-                'ToAddresses': [email]
-            },
-            Message={
-                'Subject': {
-                    'Data': subject,
-                    'Charset': 'UTF-8'
-                },
-                'Body': {
-                    'Text': {
-                        'Data': text_body,
-                        'Charset': 'UTF-8'
-                    },
-                    'Html': {
-                        'Data': html_body,
-                        'Charset': 'UTF-8'
-                    }
-                }
-            }
-        )
+        # Send email via Resend
+        params = {
+            "from": f"{SMTP_FROM_NAME} <{SMTP_FROM_EMAIL}>",
+            "to": [email],
+            "subject": subject,
+            "html": html_body,
+        }
 
-        logger.info(f"OTP email sent to {email}. MessageId: {response['MessageId']}")
+        response = resend.Emails.send(params)
+
+        logger.info(f"OTP email sent to {email} via Resend. ID: {response.get('id', 'N/A')}")
         return True
 
-    except ClientError as e:
-        error_code = e.response['Error']['Code']
-        error_message = e.response['Error']['Message']
-        logger.error(f"AWS SES Error: {error_code} - {error_message}")
+    except Exception as e:
+        logger.error(f"Resend Error: {str(e)}")
 
         # Log to console as fallback
         print(f"""
 ===========================================
-EMAIL VERIFICATION OTP (AWS SES ERROR - LOGGED TO CONSOLE)
+EMAIL VERIFICATION OTP (RESEND ERROR - LOGGED TO CONSOLE)
 ===========================================
-Error: {error_code} - {error_message}
+Error: {str(e)}
 To: {email}
 Subject: {subject}
 OTP Code: {otp}
@@ -158,21 +120,6 @@ OTP Code: {otp}
 
         # Still return True to not block user registration
         # The OTP is logged and can be retrieved from logs
-        return True
-
-    except Exception as e:
-        logger.error(f"Unexpected error sending email: {str(e)}")
-
-        # Log OTP to console as last resort
-        print(f"""
-===========================================
-EMAIL VERIFICATION OTP (ERROR - LOGGED TO CONSOLE)
-===========================================
-Error: {str(e)}
-To: {email}
-OTP Code: {otp}
-===========================================
-        """)
         return True
 
 
