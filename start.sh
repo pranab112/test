@@ -37,6 +37,14 @@ if [[ $DATABASE_URL == postgres://* ]]; then
 fi
 
 echo "=========================================="
+echo "Creating database tables..."
+echo "=========================================="
+
+# Create tables using SQLAlchemy models first
+# This ensures all base tables exist before migrations run
+python -c "from app.database import engine, Base; from app.models import *; Base.metadata.create_all(bind=engine); print('✓ Database tables created')"
+
+echo "=========================================="
 echo "Running database migrations..."
 echo "=========================================="
 
