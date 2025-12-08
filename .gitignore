@@ -47,6 +47,9 @@ jspm_packages/
 .env.production
 .env.development
 .env.test
+.secrets.txt
+*.pem
+*.key
 
 # Logs
 logs
@@ -170,3 +173,6 @@ $RECYCLE.BIN/
 
 # Alembic
 alembic.ini.bak
+
+# Railway
+.railway/
