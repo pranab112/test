@@ -16,7 +16,12 @@ from app import models, schemas
 logger = logging.getLogger(__name__)
 
 # Password hashing with bcrypt (backward compatible with SHA256)
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# truncate_error=False means bcrypt will auto-truncate instead of raising an error
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+    bcrypt__truncate_error=False  # Auto-truncate passwords > 72 bytes instead of error
+)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -78,22 +83,30 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def get_password_hash(password: str) -> str:
     """Hash password using bcrypt (new passwords)
 
-    Note: bcrypt has a 72-byte limit. Validation is enforced in schemas.
+    Note: bcrypt has a 72-byte limit. With truncate_error=False, passwords
+    longer than 72 bytes are automatically truncated.
     """
     # Debug logging
     logger.info(f"get_password_hash called with password type: {type(password)}, length: {len(password) if isinstance(password, str) else 'N/A'}")
-    
+
     password_bytes = password.encode('utf-8')
     byte_length = len(password_bytes)
     logger.info(f"Password byte length: {byte_length}")
-    
+
+    # Frontend should validate, but we'll auto-truncate if needed
     if byte_length > 72:
-        raise ValueError("Password too long: must be at most 72 bytes when UTF-8 encoded (bcrypt limit)")
+        logger.warning(f"Password exceeds 72 bytes ({byte_length}), will be auto-truncated by bcrypt")
 
     try:
         result = pwd_context.hash(password)
         logger.info("Password hashed successfully")
         return result
+    except ValueError as e:
+        # If we still get ValueError about length, provide helpful message
+        if "72" in str(e) or "truncate" in str(e).lower():
+            logger.error(f"bcrypt truncation error despite config: {e}")
+            raise ValueError("Password is too long. Please use a password with at most 72 characters.")
+        raise
     except Exception as e:
         logger.error(f"Error during pwd_context.hash(): {type(e).__name__}: {e}")
         raise
@@ -104,8 +117,8 @@ def authenticate_user(db: Session, username: str, password: str):
         return False
     if not verify_password(password, user.hashed_password):
         return False
-    # Check if client needs approval
-    if user.user_type == models.UserType.CLIENT and not user.is_approved:
+    # Check if user needs approval (clients and self-registered players)
+    if not user.is_approved:
         return None  # Return None to indicate pending approval
     return user
 

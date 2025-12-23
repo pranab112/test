@@ -1,4 +1,4 @@
-# Casino Royal - Full Stack Casino Platform
+# Golden Ace - Full Stack Casino Platform
 
 [![Test Suite](https://github.com/pranab112/test/actions/workflows/test.yml/badge.svg)](https://github.com/pranab112/test/actions/workflows/test.yml)
 [![Deploy to Render](https://github.com/pranab112/test/actions/workflows/deploy.yml/badge.svg)](https://github.com/pranab112/test/actions/workflows/deploy.yml)
@@ -7,7 +7,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.120.3-009688.svg)](https://fastapi.tiangolo.com)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-A professional casino gaming platform with dual backend systems (Node.js + FastAPI), featuring SaaS capabilities, user authentication, game management, and fortune wheel functionality.
+A professional multi-tenant casino gaming platform built with React + TypeScript frontend and FastAPI backend, featuring SaaS capabilities, role-based authentication, game management, and comprehensive casino operations.
 
 ## 🎰 Features
 
@@ -352,7 +352,7 @@ This project is for educational and demonstration purposes. Please ensure compli
 
 ---
 
-**🎰 Casino Royal - Where Fortune Meets Technology! 🎰**
+**Golden Ace - Where Fortune Meets Technology!**
 
 ---
 

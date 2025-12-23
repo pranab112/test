@@ -1,0 +1,137 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-bg-darker text-white font-orbitron antialiased;
+  }
+
+  * {
+    @apply border-border-gold;
+  }
+}
+
+@layer components {
+  /* Card styles */
+  .card {
+    @apply bg-card-dark border border-border-gold rounded-lg p-6 shadow-gold;
+  }
+
+  /* Button styles */
+  .btn-primary {
+    @apply bg-gradient-to-r from-primary-gold to-secondary-gold text-black font-bold py-2 px-6 rounded-lg transition-all duration-300 hover:shadow-gold hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100;
+  }
+
+  .btn-secondary {
+    @apply bg-transparent border-2 border-primary-gold text-primary-gold font-bold py-2 px-6 rounded-lg transition-all duration-300 hover:bg-primary-gold hover:text-black disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-danger {
+    @apply bg-neon-red text-white font-bold py-2 px-6 rounded-lg transition-all duration-300 hover:shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Input styles */
+  .input {
+    @apply w-full bg-bg-dark border border-border-gold rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-gold focus:border-transparent transition-all;
+  }
+
+  .input-error {
+    @apply border-neon-red focus:ring-neon-red;
+  }
+
+  /* Label styles */
+  .label {
+    @apply block text-sm font-medium text-gray-300 mb-2;
+  }
+
+  /* Form group */
+  .form-group {
+    @apply mb-4;
+  }
+
+  /* Error message */
+  .error-message {
+    @apply text-neon-red text-sm mt-1;
+  }
+
+  /* Loading spinner */
+  .spinner {
+    @apply animate-spin rounded-full border-4 border-gray-700 border-t-primary-gold;
+  }
+}
+
+@layer utilities {
+  /* Neon glow effects */
+  .glow-gold {
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.8),
+                 0 0 20px rgba(255, 215, 0, 0.6),
+                 0 0 30px rgba(255, 215, 0, 0.4);
+  }
+
+  .glow-green {
+    text-shadow: 0 0 10px rgba(57, 255, 20, 0.8),
+                 0 0 20px rgba(57, 255, 20, 0.6);
+  }
+
+  .glow-red {
+    text-shadow: 0 0 10px rgba(255, 7, 58, 0.8),
+                 0 0 20px rgba(255, 7, 58, 0.6);
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-bg-dark;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-primary-gold rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-secondary-gold;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite linear;
+  background: linear-gradient(
+    to right,
+    rgba(255, 215, 0, 0) 0%,
+    rgba(255, 215, 0, 0.3) 50%,
+    rgba(255, 215, 0, 0) 100%
+  );
+  background-size: 1000px 100%;
+}

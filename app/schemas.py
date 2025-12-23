@@ -13,6 +13,7 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
     company_name: Optional[str] = None  # For clients
+    client_identifier: Optional[str] = None  # For players - username or company of their client
 
 class PlayerCreateByClient(BaseModel):
     username: str

@@ -1,8 +1,9 @@
 from fastapi import FastAPI, WebSocket, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from app.database import engine, Base
-from app.routers import auth, friends, users, chat
+from app.database import engine
+from app.models import Base  # Import from models package
+from app.api.v1.router import api_router  # Import v1 router
 from app.websocket import websocket_endpoint
 from app.config import settings
 import os
@@ -60,8 +61,9 @@ def run_migrations():
 run_migrations()
 
 app = FastAPI(
-    title="Casino Royal SaaS",
+    title="Casino Royal SaaS API",
     version="1.0.0",
+    description="Multi-tenant casino platform API",
     docs_url="/docs" if settings.is_development else None,  # Disable docs in production
     redoc_url="/redoc" if settings.is_development else None  # Disable redoc in production
 )
@@ -118,69 +120,31 @@ setup_rate_limiting(app)
 from app.exceptions import setup_exception_handlers
 setup_exception_handlers(app)
 
-# Include routers
-app.include_router(auth.router)
-app.include_router(friends.router)
-app.include_router(users.router)
-app.include_router(chat.router)
-from app.routers import reviews
-app.include_router(reviews.router)
-from app.routers import profiles
-app.include_router(profiles.router)
-from app.routers import promotions
-app.include_router(promotions.router)
-from app.routers import payment_methods
-app.include_router(payment_methods.router)
-from app.routers import games
-app.include_router(games.router)
-from app.routers import online_status
-app.include_router(online_status.router)
-from app.routers import email_verification_otp
-app.include_router(email_verification_otp.router)
-from app.routers import game_credentials
-app.include_router(game_credentials.router)
-from app.routers import reports
-app.include_router(reports.router)
-from app.routers import admin
-app.include_router(admin.router)
-from app.routers import client
-app.include_router(client.router)
-from app.routers import monitoring
-app.include_router(monitoring.router)
-from app.routers import offers
-app.include_router(offers.router)
+# Include API v1 router with /api/v1 prefix
+app.include_router(api_router, prefix="/api/v1")
 
-# Mount static files for uploads
+# Mount static files for uploads only
 if not os.path.exists("uploads"):
     os.makedirs("uploads")
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
-# Mount static files for dashboard HTML files
-app.mount("/static", StaticFiles(directory="."), name="static")
-
 # WebSocket endpoint
 app.websocket("/ws")(websocket_endpoint)
 
-from fastapi.responses import FileResponse, RedirectResponse
-
+# Root endpoint - API info
 @app.get("/")
 def read_root():
-    return RedirectResponse(url="/client")
-
-@app.get("/client")
-def serve_client_dashboard():
-    return FileResponse("frontend/client-dashboard.html")
-
-@app.get("/player")
-def serve_player_dashboard():
-    return FileResponse("frontend/player-dashboard.html")
-
-@app.get("/admin")
-def serve_admin_dashboard():
-    return FileResponse("frontend/admin-dashboard.html")
+    """API root endpoint"""
+    return {
+        "service": "Casino Royal API",
+        "version": "1.0.0",
+        "status": "operational",
+        "docs": "/docs" if settings.is_development else None
+    }
 
 @app.get("/health")
 def health_check():
+    """Health check endpoint"""
     return {"status": "healthy"}
 
 @app.get("/.well-known/{path:path}", include_in_schema=False)
