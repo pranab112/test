@@ -47,3 +47,6 @@ api.interceptors.response.use(
     return Promise.reject(errorMessage);
   }
 );
+
+// Export as apiClient for consistency
+export const apiClient = api;

@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { IconType } from 'react-icons';
 import { GiCardAceSpades, GiPokerHand } from 'react-icons/gi';
 import { FaUser, FaLock, FaEnvelope, FaBuilding, FaIdCard } from 'react-icons/fa';
 import { MdAdminPanelSettings } from 'react-icons/md';
@@ -47,9 +48,10 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 // Only allow Client and Player registration (Admin accounts created by system)
 const publicUserTypes = [UserType.CLIENT, UserType.PLAYER];
 
-const userTypeIcons = {
+const userTypeIcons: Record<UserType, IconType> = {
   [UserType.CLIENT]: FaBuilding,
   [UserType.PLAYER]: IoMdPerson,
+  [UserType.ADMIN]: FaBuilding, // Not used but required for type safety
 };
 
 export default function Register() {
@@ -73,13 +75,27 @@ export default function Register() {
     setIsLoading(true);
     try {
       await authApi.register(data);
-      toast.success('Registration successful! Please login.');
+
+      // Show different success messages based on user type
+      if (data.user_type === UserType.CLIENT) {
+        toast.success(
+          'Client registration successful! Your account is pending admin approval. You will be notified when approved.',
+          { duration: 5000 }
+        );
+      } else if (data.user_type === UserType.PLAYER) {
+        toast.success(
+          'Player registration successful! Your account is pending client approval. The client will review your request.',
+          { duration: 5000 }
+        );
+      } else {
+        toast.success('Registration successful! Please wait for approval.');
+      }
+
       navigate(ROUTES.LOGIN);
     } catch (error: any) {
-      const errorMessage =
-        error?.error?.message || error?.detail || 'Registration failed';
-      toast.error(errorMessage);
-    } finally {
+      console.error('Registration error:', error);
+      const errorMessage = error?.response?.data?.detail || error?.message || 'Registration failed. Please try again.';
+      toast.error(errorMessage, { duration: 5000 });
       setIsLoading(false);
     }
   };
