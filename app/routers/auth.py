@@ -31,7 +31,11 @@ def register(request: Request, user: schemas.UserCreate, db: Session = Depends(g
         raise HTTPException(status_code=400, detail="Username already taken")
 
     # Create new user
-    hashed_password = auth.get_password_hash(user.password)
+    try:
+        hashed_password = auth.get_password_hash(user.password)
+    except ValueError as e:
+        # Explicitly reject passwords that cannot be hashed (e.g., too long in bytes)
+        raise HTTPException(status_code=400, detail=str(e))
     user_id = generate_user_id()
 
     # Ensure unique user_id

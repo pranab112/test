@@ -33,17 +33,37 @@ class OptionalHTTPBearer(HTTPBearer):
 oauth2_scheme_optional = OptionalHTTPBearer(auto_error=False)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify password - supports BOTH old SHA256 and new bcrypt"""
+    """Verify password - supports BOTH old SHA256 and new bcrypt
+
+    For bcrypt hashes, try several safe truncation strategies to accommodate historical
+    truncation behavior. All passlib errors are caught and return False rather than
+    raising a server error.
+    """
 
     # Try bcrypt first (new format - starts with $2b$)
     try:
         if hashed_password.startswith("$2b$"):
-            # Truncate password to 72 bytes for bcrypt verification
+            # Attempt a few verification candidates in order of likelihood.
+            candidates = [plain_password]
+
             password_bytes = plain_password.encode('utf-8')
             if len(password_bytes) > 72:
-                plain_password = password_bytes[:72].decode('utf-8', errors='ignore')
+                # Candidate 1: decode truncated bytes ignoring partial sequences (utf-8 safe)
+                candidates.append(password_bytes[:72].decode('utf-8', errors='ignore'))
+                # Candidate 2: decode truncated bytes with latin-1 (preserve raw bytes mapping)
+                candidates.append(password_bytes[:72].decode('latin-1'))
+                logger.warning("Password bytes exceed 72; trying safe truncation strategies for verification")
 
-            return pwd_context.verify(plain_password, hashed_password)
+            # Try each candidate; catch ValueError from bcrypt/handlers to avoid crashing
+            for cand in dict.fromkeys(candidates):  # preserves order and removes duplicates
+                try:
+                    if pwd_context.verify(cand, hashed_password):
+                        return True
+                except ValueError:
+                    # bcrypt may raise ValueError for invalid byte lengths; try next candidate
+                    logger.debug("bcrypt ValueError verifying candidate; trying next")
+                except Exception as e:
+                    logger.debug(f"Error verifying candidate password: {e}")
     except Exception as e:
         logger.warning(f"Error verifying bcrypt password: {e}")
 
@@ -58,15 +78,13 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def get_password_hash(password: str) -> str:
     """Hash password using bcrypt (new passwords)
 
-    Note: bcrypt has a 72-byte limit. Passwords are automatically truncated
-    to prevent errors while maintaining security.
+    Note: bcrypt has a 72-byte limit. We enforce that the UTF-8 encoded
+    password is at most 72 bytes and raise a ValueError otherwise.
     """
-    # Truncate password to 72 bytes (bcrypt limit)
-    # This prevents ValueError when password is too long
     password_bytes = password.encode('utf-8')
     if len(password_bytes) > 72:
-        logger.warning(f"Password exceeds 72 bytes ({len(password_bytes)} bytes), truncating for bcrypt")
-        password = password_bytes[:72].decode('utf-8', errors='ignore')
+        # Reject rather than silently truncate to avoid mismatches and edge-cases
+        raise ValueError("Password too long: must be at most 72 bytes when UTF-8 encoded (bcrypt limit)")
 
     return pwd_context.hash(password)
 

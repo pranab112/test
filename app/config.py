@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 from typing import Optional, List
 import os
 import logging
@@ -27,6 +28,9 @@ class Settings(BaseSettings):
 
     # Encryption key for credentials
     CREDENTIAL_ENCRYPTION_KEY: Optional[str] = None
+
+    # Allow unknown/extra environment variables (e.g., placeholders in .env) to be ignored
+    model_config = ConfigDict(extra="ignore", env_file=".env", case_sensitive=False)
 
     @property
     def cors_origins_list(self) -> List[str]:
@@ -76,9 +80,5 @@ class Settings(BaseSettings):
     def allowed_headers(self) -> List[str]:
         """Allowed headers for CORS"""
         return ["*"]  # Can be restricted further if needed
-
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
 
 settings = Settings()
