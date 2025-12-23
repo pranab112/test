@@ -34,8 +34,13 @@ def register(request: Request, user: schemas.UserCreate, db: Session = Depends(g
     try:
         hashed_password = auth.get_password_hash(user.password)
     except ValueError as e:
-        # Explicitly reject passwords that cannot be hashed (e.g., too long in bytes)
-        raise HTTPException(status_code=400, detail=str(e))
+        # Catch both our custom error and passlib's error for passwords that cannot be hashed
+        detail = str(e) if "Password too long" in str(e) else "Password is invalid or too long"
+        raise HTTPException(status_code=400, detail=detail)
+    except Exception as e:
+        # Catch any other passlib errors
+        logger.error(f"Password hashing error: {e}")
+        raise HTTPException(status_code=400, detail="Password is invalid or too long")
     user_id = generate_user_id()
 
     # Ensure unique user_id

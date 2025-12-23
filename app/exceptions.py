@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError, DataError, OperationalError
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Any, Dict, Optional
 import logging
 import traceback
@@ -369,20 +369,19 @@ class ErrorResponse(BaseModel):
     """Standard error response"""
     error: Dict[str, Any]
 
-    class Config:
-        schema_extra = {
-            "example": {
-                "error": {
-                    "code": "VALIDATION_ERROR",
-                    "message": "Request validation failed",
-                    "status": 422,
-                    "details": [
-                        {
-                            "field": "email",
-                            "message": "Invalid email format",
-                            "type": "value_error"
-                        }
-                    ]
-                }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "error": {
+                "code": "VALIDATION_ERROR",
+                "message": "Request validation failed",
+                "status": 422,
+                "details": [
+                    {
+                        "field": "email",
+                        "message": "Invalid email format",
+                        "type": "value_error"
+                    }
+                ]
             }
         }
+    })

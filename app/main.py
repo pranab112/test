@@ -169,16 +169,22 @@ def read_root():
 
 @app.get("/client")
 def serve_client_dashboard():
-    return FileResponse("client-dashboard.html")
+    return FileResponse("frontend/client-dashboard.html")
 
 @app.get("/player")
 def serve_player_dashboard():
-    return FileResponse("player-dashboard.html")
+    return FileResponse("frontend/player-dashboard.html")
 
 @app.get("/admin")
 def serve_admin_dashboard():
-    return FileResponse("admin-dashboard.html")
+    return FileResponse("frontend/admin-dashboard.html")
 
 @app.get("/health")
 def health_check():
     return {"status": "healthy"}
+
+@app.get("/.well-known/{path:path}", include_in_schema=False)
+def well_known_handler(path: str):
+    """Handle .well-known requests (browser/extension metadata requests)"""
+    from fastapi.responses import JSONResponse
+    return JSONResponse({"error": "Not found"}, status_code=404)

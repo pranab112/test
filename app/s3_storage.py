@@ -36,7 +36,11 @@ class S3Storage:
         else:
             self.s3_client = None
             self.bucket_name = None
-            logger.warning("S3 storage is disabled - using local filesystem (NOT recommended for production)")
+            env = os.getenv('ENVIRONMENT', 'development')
+            if env == 'development':
+                logger.info("S3 storage disabled - using local filesystem (development mode)")
+            else:
+                logger.warning("S3 storage is disabled - using local filesystem (NOT recommended for production)")
 
     def _check_configuration(self) -> bool:
         """Check if all required AWS S3 configuration is present"""
@@ -49,7 +53,11 @@ class S3Storage:
         missing = [var for var in required_vars if not os.getenv(var)]
 
         if missing:
-            logger.warning(f"S3 storage disabled - missing environment variables: {', '.join(missing)}")
+            env = os.getenv('ENVIRONMENT', 'development')
+            if env == 'development':
+                logger.debug(f"S3 storage not configured - using local filesystem: {', '.join(missing)} not set")
+            else:
+                logger.warning(f"S3 storage disabled - missing environment variables: {', '.join(missing)}")
             return False
 
         return True

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Annotated
 from datetime import datetime
 from enum import Enum
 from app.models import UserType, FriendRequestStatus, MessageType
@@ -11,27 +11,29 @@ class UserBase(BaseModel):
     user_type: UserType
 
 class UserCreate(UserBase):
-    password: str = Field(..., max_length=72, description="Password (max 72 characters due to bcrypt limit)")
+    password: Annotated[str, Field(description="Password (max 72 UTF-8 bytes due to bcrypt limit)")]
     company_name: Optional[str] = None  # For clients
 
-    @field_validator('password')
+    @field_validator('password', mode='before')
+    @classmethod
     def password_byte_length(cls, v: str) -> str:
         # Enforce bcrypt 72-byte limit based on UTF-8 encoding
         if isinstance(v, str) and len(v.encode('utf-8')) > 72:
-            raise ValueError("Password too long: must be at most 72 bytes when UTF-8 encoded (bcrypt limit)")
+            raise ValueError("Password is too long. Passwords must be at most 72 bytes when UTF-8 encoded.")
         return v
 
 class PlayerCreateByClient(BaseModel):
     username: str
     full_name: str
-    password: Optional[str] = Field(None, max_length=72, description="Password (optional, max 72 characters). If blank, auto-generated as username+@135")
+    password: Annotated[Optional[str], Field(description="Password (optional, max 72 UTF-8 bytes). If blank, auto-generated as username+@135")] = None
 
-    @field_validator('password')
+    @field_validator('password', mode='before')
+    @classmethod
     def player_password_byte_length(cls, v: Optional[str]) -> Optional[str]:
         if v is None:
             return v
         if isinstance(v, str) and len(v.encode('utf-8')) > 72:
-            raise ValueError("Password too long: must be at most 72 bytes when UTF-8 encoded (bcrypt limit)")
+            raise ValueError("Password is too long. Passwords must be at most 72 bytes when UTF-8 encoded.")
         return v
 
 class UserResponse(BaseModel):
@@ -62,12 +64,13 @@ class PlayerRegistrationResponse(UserResponse):
 
 class UserLogin(BaseModel):
     username: str
-    password: str = Field(..., max_length=72)
+    password: Annotated[str, Field(description="Password (max 72 UTF-8 bytes due to bcrypt limit)")]
 
-    @field_validator('password')
+    @field_validator('password', mode='before')
+    @classmethod
     def login_password_byte_length(cls, v: str) -> str:
         if isinstance(v, str) and len(v.encode('utf-8')) > 72:
-            raise ValueError("Password too long: must be at most 72 bytes when UTF-8 encoded (bcrypt limit)")
+            raise ValueError("Password is too long. Passwords must be at most 72 bytes when UTF-8 encoded.")
         return v
 
 class Token(BaseModel):

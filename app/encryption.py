@@ -25,7 +25,11 @@ class CredentialEncryption:
             encryption_key = os.getenv("CREDENTIAL_ENCRYPTION_KEY")
 
             if not encryption_key:
-                logger.warning("CREDENTIAL_ENCRYPTION_KEY not set. Encryption will be disabled.")
+                env = os.getenv('ENVIRONMENT', 'development')
+                if env == 'development':
+                    logger.info("CREDENTIAL_ENCRYPTION_KEY not set. Encryption disabled for development mode.")
+                else:
+                    logger.warning("CREDENTIAL_ENCRYPTION_KEY not set. Encryption will be disabled.")
                 return
 
             # Validate the key format

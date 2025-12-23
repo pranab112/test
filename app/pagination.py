@@ -3,7 +3,7 @@ Pagination utilities for API endpoints
 Provides both offset-based and cursor-based pagination
 """
 from typing import Generic, TypeVar, List, Optional, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.orm import Query
 from fastapi import Query as FastAPIQuery
 import math
@@ -26,13 +26,12 @@ class PaginationParams(BaseModel):
         """Get limit for database query"""
         return self.page_size
 
-    class Config:
-        schema_extra = {
-            "example": {
-                "page": 1,
-                "page_size": 50
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "page": 1,
+            "page_size": 50
         }
+    })
 
 
 class PagedResponse(BaseModel, Generic[T]):
@@ -45,18 +44,17 @@ class PagedResponse(BaseModel, Generic[T]):
     has_next: bool = Field(description="Whether there is a next page")
     has_previous: bool = Field(description="Whether there is a previous page")
 
-    class Config:
-        schema_extra = {
-            "example": {
-                "items": [],
-                "total": 100,
-                "page": 1,
-                "page_size": 50,
-                "total_pages": 2,
-                "has_next": True,
-                "has_previous": False
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "items": [],
+            "total": 100,
+            "page": 1,
+            "page_size": 50,
+            "total_pages": 2,
+            "has_next": True,
+            "has_previous": False
         }
+    })
 
     @classmethod
     def create(
