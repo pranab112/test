@@ -78,22 +78,25 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def get_password_hash(password: str) -> str:
     """Hash password using bcrypt (new passwords)
 
-    Note: bcrypt has a 72-byte limit. We enforce that the UTF-8 encoded
-    password is at most 72 bytes and raise a ValueError otherwise.
+    Note: bcrypt has a 72-byte limit. Validation is enforced in schemas.
     """
+    # Debug logging
+    logger.info(f"get_password_hash called with password type: {type(password)}, length: {len(password) if isinstance(password, str) else 'N/A'}")
+    
     password_bytes = password.encode('utf-8')
-    if len(password_bytes) > 72:
-        # Reject rather than silently truncate to avoid mismatches and edge-cases
+    byte_length = len(password_bytes)
+    logger.info(f"Password byte length: {byte_length}")
+    
+    if byte_length > 72:
         raise ValueError("Password too long: must be at most 72 bytes when UTF-8 encoded (bcrypt limit)")
 
     try:
-        return pwd_context.hash(password)
+        result = pwd_context.hash(password)
+        logger.info("Password hashed successfully")
+        return result
     except Exception as e:
-        # Catch passlib errors and re-raise as ValueError with better message
-        error_msg = str(e)
-        if "72" in error_msg or "bytes" in error_msg.lower():
-            raise ValueError("Password is too long. Please use a shorter password (max 72 bytes).")
-        raise ValueError(f"Password hashing failed: {error_msg}")
+        logger.error(f"Error during pwd_context.hash(): {type(e).__name__}: {e}")
+        raise
 
 def authenticate_user(db: Session, username: str, password: str):
     user = db.query(models.User).filter(models.User.username == username).first()

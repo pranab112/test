@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from typing import Optional, List, Dict, Annotated
+from typing import Optional, List, Dict
 from datetime import datetime
 from enum import Enum
 from app.models import UserType, FriendRequestStatus, MessageType
@@ -11,30 +11,13 @@ class UserBase(BaseModel):
     user_type: UserType
 
 class UserCreate(UserBase):
-    password: Annotated[str, Field(description="Password (max 72 UTF-8 bytes due to bcrypt limit)")]
+    password: str
     company_name: Optional[str] = None  # For clients
-
-    @field_validator('password', mode='before')
-    @classmethod
-    def password_byte_length(cls, v: str) -> str:
-        # Enforce bcrypt 72-byte limit based on UTF-8 encoding
-        if isinstance(v, str) and len(v.encode('utf-8')) > 72:
-            raise ValueError("Password is too long. Passwords must be at most 72 bytes when UTF-8 encoded.")
-        return v
 
 class PlayerCreateByClient(BaseModel):
     username: str
     full_name: str
-    password: Annotated[Optional[str], Field(description="Password (optional, max 72 UTF-8 bytes). If blank, auto-generated as username+@135")] = None
-
-    @field_validator('password', mode='before')
-    @classmethod
-    def player_password_byte_length(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return v
-        if isinstance(v, str) and len(v.encode('utf-8')) > 72:
-            raise ValueError("Password is too long. Passwords must be at most 72 bytes when UTF-8 encoded.")
-        return v
+    password: Optional[str] = None
 
 class UserResponse(BaseModel):
     """Response model for user data - email is optional for client-created players"""
@@ -64,14 +47,7 @@ class PlayerRegistrationResponse(UserResponse):
 
 class UserLogin(BaseModel):
     username: str
-    password: Annotated[str, Field(description="Password (max 72 UTF-8 bytes due to bcrypt limit)")]
-
-    @field_validator('password', mode='before')
-    @classmethod
-    def login_password_byte_length(cls, v: str) -> str:
-        if isinstance(v, str) and len(v.encode('utf-8')) > 72:
-            raise ValueError("Password is too long. Passwords must be at most 72 bytes when UTF-8 encoded.")
-        return v
+    password: str
 
 class Token(BaseModel):
     access_token: str
