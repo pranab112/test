@@ -79,7 +79,8 @@
       "Bash(railway variables:*)",
       "Bash(railway service:*)",
       "Bash(railway domain:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

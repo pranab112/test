@@ -2,13 +2,12 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { FaUser, FaLock, FaShieldAlt } from 'react-icons/fa';
 import { authApi } from '@/api/endpoints';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
-import { ROUTES } from '@/config/routes.config';
 
 const loginSchema = z.object({
   username: z.string().min(1, 'Username is required'),
@@ -18,8 +17,8 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function AdminLogin() {
-  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const { setUser } = useAuth();
 
   const {
     register,
@@ -47,8 +46,11 @@ export default function AdminLogin() {
       const userData = await authApi.getCurrentUser();
       localStorage.setItem('user', JSON.stringify(userData));
 
+      // Update AuthContext with user data
+      setUser(userData);
+
       toast.success('Admin login successful!');
-      navigate(ROUTES.ADMIN.DASHBOARD);
+      // PublicRoute will automatically redirect to dashboard
     } catch (error: any) {
       console.error('Login error:', error);
       const errorMessage = error?.response?.data?.detail || error?.message || 'Login failed. Please check your credentials.';
