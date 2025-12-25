@@ -25,7 +25,10 @@ class ClientGame(Base):
     client_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     game_id = Column(Integer, ForeignKey("games.id"), nullable=False)
     is_active = Column(Boolean, default=True)
+    game_link = Column(String, nullable=True)  # Custom game link/URL from client
+    custom_image_url = Column(String, nullable=True)  # Custom game image from client
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
     client = relationship("User", backref="available_games")

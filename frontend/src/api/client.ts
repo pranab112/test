@@ -28,11 +28,29 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response.data, // Return data directly
   (error: AxiosError) => {
-    // Handle 401 Unauthorized
-    if (error.response?.status === 401) {
+    const requestUrl = error.config?.url || '';
+
+    // Handle 401 Unauthorized - but NOT for login endpoints
+    // Login failures should show error message, not redirect
+    const isLoginEndpoint = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/token');
+
+    if (error.response?.status === 401 && !isLoginEndpoint) {
       localStorage.removeItem('access_token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+
+      // Determine where to redirect based on current path or the API endpoint
+      const currentPath = window.location.pathname;
+      let redirectPath = '/login';
+
+      if (currentPath.startsWith('/admin') || requestUrl.includes('/admin')) {
+        redirectPath = '/admin/login';
+      } else if (currentPath.startsWith('/client') || requestUrl.includes('/client')) {
+        redirectPath = '/client/login';
+      } else if (currentPath.startsWith('/player') || requestUrl.includes('/player')) {
+        redirectPath = '/player/login';
+      }
+
+      window.location.href = redirectPath;
     }
 
     // Handle other errors

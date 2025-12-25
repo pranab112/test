@@ -116,6 +116,58 @@ async def get_my_games(
         "available_games": [cg.game for cg in client_games]
     }
 
+@router.get("/my-games-details", response_model=schemas.ClientGamesWithDetailsResponse)
+async def get_my_games_with_details(
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Get client's selected games with custom links and images"""
+    if current_user.user_type != models.UserType.CLIENT:
+        raise HTTPException(status_code=403, detail="Only clients can access this")
+
+    client_games = db.query(models.ClientGame).join(
+        models.Game
+    ).filter(
+        models.ClientGame.client_id == current_user.id
+    ).all()
+
+    return {
+        "games": client_games
+    }
+
+@router.patch("/my-games/{client_game_id}", response_model=schemas.ClientGameWithDetailsResponse)
+async def update_client_game(
+    client_game_id: int,
+    update_data: schemas.ClientGameUpdateSingle,
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Update a specific client game with link, image, or active status"""
+    if current_user.user_type != models.UserType.CLIENT:
+        raise HTTPException(status_code=403, detail="Only clients can update games")
+
+    client_game = db.query(models.ClientGame).filter(
+        and_(
+            models.ClientGame.id == client_game_id,
+            models.ClientGame.client_id == current_user.id
+        )
+    ).first()
+
+    if not client_game:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    if update_data.game_link is not None:
+        client_game.game_link = update_data.game_link
+    if update_data.custom_image_url is not None:
+        client_game.custom_image_url = update_data.custom_image_url
+    if update_data.is_active is not None:
+        client_game.is_active = update_data.is_active
+
+    db.commit()
+    db.refresh(client_game)
+
+    return client_game
+
 @router.post("/update-games", response_model=schemas.ClientGamesResponse)
 async def update_my_games(
     games: schemas.ClientGameUpdate,

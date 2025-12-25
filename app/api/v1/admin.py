@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
+import secrets
+import string
 from app import models, schemas, auth
 from app.database import get_db
 from app.models import UserType
@@ -430,6 +432,50 @@ def delete_review(
     db.commit()
 
     return {"message": "Review deleted successfully"}
+
+def generate_random_password(length: int = 12) -> str:
+    """Generate a secure random password"""
+    alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+@router.post("/users/{user_id}/reset-password", response_model=schemas.PasswordResetResponse)
+def reset_user_password(
+    user_id: int,
+    request: schemas.AdminResetPasswordRequest,
+    admin: models.User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Reset a user's password (admin only). Can specify a new password or generate a random one."""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Prevent resetting admin passwords
+    if user.user_type == UserType.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot reset admin passwords"
+        )
+
+    # Generate or use provided password
+    if request.generate_random:
+        new_password = generate_random_password()
+    elif request.new_password:
+        new_password = request.new_password
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Either provide a new_password or set generate_random to true"
+        )
+
+    # Hash and save the new password
+    user.hashed_password = auth.get_password_hash(new_password)
+    db.commit()
+
+    return schemas.PasswordResetResponse(
+        message=f"Password reset successfully for user {user.username}",
+        temp_password=new_password if request.generate_random else None
+    )
 
 @router.post("/broadcast-message")
 def broadcast_message(

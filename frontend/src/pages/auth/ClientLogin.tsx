@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { FaUser, FaLock, FaBuilding } from 'react-icons/fa';
 import { authApi } from '@/api/endpoints';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
+import { ROUTES } from '@/config/routes.config';
 
 const loginSchema = z.object({
   username: z.string().min(1, 'Username is required'),
@@ -20,6 +21,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function ClientLogin() {
   const [isLoading, setIsLoading] = useState(false);
   const { setUser } = useAuth();
+  const navigate = useNavigate();
 
   const {
     register,
@@ -51,7 +53,9 @@ export default function ClientLogin() {
       setUser(userData);
 
       toast.success('Client login successful!');
-      // PublicRoute will automatically redirect to dashboard
+
+      // Navigate to client dashboard
+      navigate(ROUTES.CLIENT.DASHBOARD, { replace: true });
     } catch (error: any) {
       console.error('Login error:', error);
       const errorMessage = error?.response?.data?.detail || error?.message || 'Login failed. Please check your credentials.';

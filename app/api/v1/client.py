@@ -195,9 +195,37 @@ def get_player_statistics(
         func.date(models.User.created_at) == today
     ).count()
 
+    # Active players (is_active = True)
+    active_direct = db.query(models.User).filter(
+        models.User.created_by_client_id == client.id,
+        models.User.user_type == UserType.PLAYER,
+        models.User.is_active == True
+    ).count()
+
+    active_credential = db.query(models.User).join(
+        models.GameCredentials,
+        models.GameCredentials.player_id == models.User.id
+    ).filter(
+        models.GameCredentials.created_by_client_id == client.id,
+        models.User.user_type == UserType.PLAYER,
+        models.User.is_active == True,
+        models.User.created_by_client_id != client.id
+    ).distinct().count()
+
+    active_players = active_direct + active_credential
+
+    # For now, these are placeholder values since we don't have a credits/level system yet
+    total_credits = 0
+    avg_credits = 0.0
+    avg_level = 1.0
+
     return {
         "total_players": total_players,
+        "active_players": active_players,
         "online_players": online_players,
+        "total_credits": total_credits,
+        "avg_credits": avg_credits,
+        "avg_level": avg_level,
         "new_today": new_today
     }
 
@@ -312,12 +340,8 @@ async def get_recent_activity(
     # Get recently registered players by this client
     recent_players = db.query(models.User).filter(
         models.User.user_type == UserType.PLAYER,
+        models.User.created_by_client_id == current_user.id,
         models.User.created_at >= datetime.now() - timedelta(days=7)
-    ).join(
-        models.ClientPlayer,
-        models.ClientPlayer.player_id == models.User.id
-    ).filter(
-        models.ClientPlayer.client_id == current_user.id
     ).order_by(models.User.created_at.desc()).limit(5).all()
 
     for player in recent_players:

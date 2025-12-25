@@ -8,16 +8,20 @@ interface StatCardProps {
     value: string;
     isPositive: boolean;
   };
-  color?: 'gold' | 'blue' | 'green' | 'red' | 'purple';
+  color?: 'gold' | 'blue' | 'green' | 'red' | 'purple' | 'warning' | 'success' | 'info' | 'error';
   onClick?: () => void;
 }
 
 export function StatCard({ title, value, icon, trend, color = 'gold', onClick }: StatCardProps) {
-  const colorClasses = {
+  const colorClasses: Record<string, string> = {
     gold: 'border-gold-600 bg-gold-900/10 text-gold-500',
+    warning: 'border-gold-600 bg-gold-900/10 text-gold-500',
     blue: 'border-blue-600 bg-blue-900/10 text-blue-500',
+    info: 'border-blue-600 bg-blue-900/10 text-blue-500',
     green: 'border-green-600 bg-green-900/10 text-green-500',
+    success: 'border-green-600 bg-green-900/10 text-green-500',
     red: 'border-red-600 bg-red-900/10 text-red-500',
+    error: 'border-red-600 bg-red-900/10 text-red-500',
     purple: 'border-purple-600 bg-purple-900/10 text-purple-500',
   };
 

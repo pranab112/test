@@ -84,7 +84,6 @@ export function OffersSection() {
 
       // Mock data for now
       setOffers([]);
-      toast.success('Platform offers loaded');
     } catch (error) {
       toast.error('Failed to load platform offers');
       console.error(error);

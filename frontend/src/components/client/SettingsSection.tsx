@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import { Avatar } from '@/components/common/Avatar';
+import { authApi } from '@/api/endpoints';
 import toast from 'react-hot-toast';
 import {
   MdPerson,
@@ -73,20 +74,19 @@ export function SettingsSection() {
       return;
     }
 
-    if (securityData.newPassword.length < 8) {
-      toast.error('Password must be at least 8 characters long');
+    if (securityData.newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters long');
       return;
     }
 
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // await clientApi.changePassword(securityData);
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await authApi.changePassword(securityData.currentPassword, securityData.newPassword);
       toast.success('Password changed successfully');
       setSecurityData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-    } catch (error) {
-      toast.error('Failed to change password');
+    } catch (error: any) {
+      const errorMessage = error?.error?.message || error?.message || 'Failed to change password';
+      toast.error(errorMessage);
       console.error(error);
     } finally {
       setLoading(false);
@@ -312,8 +312,7 @@ export function SettingsSection() {
                     />
                     <div className="bg-blue-900/20 border border-blue-700 rounded-lg p-4">
                       <p className="text-sm text-blue-400">
-                        Password must be at least 8 characters long and include uppercase, lowercase,
-                        numbers, and special characters.
+                        Password must be at least 6 characters long and no more than 72 characters.
                       </p>
                     </div>
                     <Button onClick={handleChangePassword} loading={loading}>

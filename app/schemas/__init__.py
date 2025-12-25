@@ -41,6 +41,9 @@ from app.schemas.game import (
     ClientGameUpdate,
     ClientGameResponse,
     ClientGamesResponse,
+    ClientGameWithDetailsResponse,
+    ClientGamesWithDetailsResponse,
+    ClientGameUpdateSingle,
     GameCredentialCreate,
     GameCredentialUpdate,
     GameCredentialResponse,
@@ -76,6 +79,11 @@ from app.schemas.email import (
     OTPVerificationRequest
 )
 from app.schemas.activity import ActivityItem, RecentActivityResponse
+from app.schemas.password import (
+    ChangePasswordRequest,
+    AdminResetPasswordRequest,
+    PasswordResetResponse
+)
 
 __all__ = [
     # Common
@@ -125,6 +133,9 @@ __all__ = [
     "ClientGameUpdate",
     "ClientGameResponse",
     "ClientGamesResponse",
+    "ClientGameWithDetailsResponse",
+    "ClientGamesWithDetailsResponse",
+    "ClientGameUpdateSingle",
     "GameCredentialCreate",
     "GameCredentialUpdate",
     "GameCredentialResponse",
@@ -157,4 +168,8 @@ __all__ = [
     # Activity
     "ActivityItem",
     "RecentActivityResponse",
+    # Password
+    "ChangePasswordRequest",
+    "AdminResetPasswordRequest",
+    "PasswordResetResponse",
 ]

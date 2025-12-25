@@ -73,6 +73,38 @@ export interface RecentActivityResponse {
   activities: ActivityItem[];
 }
 
+// Game types
+export interface Game {
+  id: number;
+  name: string;
+  display_name: string;
+  icon_url: string | null;
+  category: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface ClientGameWithDetails {
+  id: number;
+  game_id: number;
+  game: Game;
+  is_active: boolean;
+  game_link: string | null;
+  custom_image_url: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface ClientGamesWithDetailsResponse {
+  games: ClientGameWithDetails[];
+}
+
+export interface ClientGameUpdateRequest {
+  game_link?: string;
+  custom_image_url?: string;
+  is_active?: boolean;
+}
+
 export const clientApi = {
   // Player Registration
   registerPlayer: async (player: PlayerCreateRequest): Promise<PlayerRegistrationResponse> => {
@@ -99,6 +131,27 @@ export const clientApi = {
   // Recent Activity
   getRecentActivity: async (): Promise<RecentActivityResponse> => {
     const response = await apiClient.get('/client/recent-activity');
+    return response as any;
+  },
+
+  // Games Management
+  getAllGames: async (): Promise<Game[]> => {
+    const response = await apiClient.get('/games/');
+    return response as any;
+  },
+
+  getMyGamesWithDetails: async (): Promise<ClientGamesWithDetailsResponse> => {
+    const response = await apiClient.get('/games/my-games-details');
+    return response as any;
+  },
+
+  updateGameSelection: async (gameIds: number[]): Promise<{ available_games: Game[] }> => {
+    const response = await apiClient.post('/games/update-games', { game_ids: gameIds });
+    return response as any;
+  },
+
+  updateClientGame: async (clientGameId: number, data: ClientGameUpdateRequest): Promise<ClientGameWithDetails> => {
+    const response = await apiClient.patch(`/games/my-games/${clientGameId}`, data);
     return response as any;
   },
 };

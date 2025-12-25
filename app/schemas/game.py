@@ -17,6 +17,19 @@ class GameResponse(BaseModel):
 class ClientGameUpdate(BaseModel):
     game_ids: List[int]
 
+class ClientGameWithDetailsResponse(BaseModel):
+    id: int
+    game_id: int
+    game: GameResponse
+    is_active: bool
+    game_link: Optional[str] = None
+    custom_image_url: Optional[str] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
 class ClientGameResponse(BaseModel):
     id: int
     game: GameResponse
@@ -28,6 +41,14 @@ class ClientGameResponse(BaseModel):
 
 class ClientGamesResponse(BaseModel):
     available_games: List[GameResponse]
+
+class ClientGamesWithDetailsResponse(BaseModel):
+    games: List[ClientGameWithDetailsResponse]
+
+class ClientGameUpdateSingle(BaseModel):
+    game_link: Optional[str] = None
+    custom_image_url: Optional[str] = None
+    is_active: Optional[bool] = None
 
 class GameCredentialCreate(BaseModel):
     player_id: int

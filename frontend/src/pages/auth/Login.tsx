@@ -9,6 +9,7 @@ import { authApi } from '@/api/endpoints';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { ROUTES } from '@/config/routes.config';
+import { useAuth } from '@/contexts/AuthContext';
 
 const loginSchema = z.object({
   username: z.string().min(1, 'Username is required'),
@@ -19,6 +20,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function Login() {
   const navigate = useNavigate();
+  const { setUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   const {
@@ -47,11 +49,15 @@ export default function Login() {
       const userData = await authApi.getCurrentUser();
       localStorage.setItem('user', JSON.stringify(userData));
 
+      // Update auth context so ProtectedRoute knows we're authenticated
+      setUser(userData);
+
       toast.success('Welcome back, player!');
-      navigate(ROUTES.PLAYER.DASHBOARD);
+      setIsLoading(false);
+      navigate(ROUTES.PLAYER.DASHBOARD, { replace: true });
     } catch (error: any) {
       console.error('Login error:', error);
-      const errorMessage = error?.response?.data?.detail || error?.message || 'Login failed. Please check your credentials.';
+      const errorMessage = error?.detail || error?.response?.data?.detail || error?.message || 'Login failed. Please check your credentials.';
       toast.error(errorMessage);
       setIsLoading(false);
     }

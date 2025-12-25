@@ -170,3 +170,33 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db
 @router.get("/me", response_model=schemas.UserResponse)
 async def get_current_user(current_user: models.User = Depends(auth.get_current_active_user)):
     return current_user
+
+@router.post("/change-password")
+async def change_password(
+    request: schemas.ChangePasswordRequest,
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Change the current user's password. Requires current password verification."""
+    # Verify current password
+    if not auth.verify_password(request.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect"
+        )
+
+    # Check if new password is same as current
+    if auth.verify_password(request.new_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be different from current password"
+        )
+
+    # Hash and save new password
+    try:
+        current_user.hashed_password = auth.get_password_hash(request.new_password)
+        db.commit()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return {"message": "Password changed successfully"}

@@ -272,4 +272,13 @@ export const adminApi = {
     });
     return response as any;
   },
+
+  // Password Reset
+  resetUserPassword: async (
+    userId: number,
+    options: { new_password?: string; generate_random?: boolean }
+  ): Promise<{ message: string; temp_password?: string }> => {
+    const response = await apiClient.post(`/admin/users/${userId}/reset-password`, options);
+    return response as any;
+  },
 };

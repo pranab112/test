@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { DashboardSection } from '@/components/client/DashboardSection';
 import { PlayersSection } from '@/components/client/PlayersSection';
@@ -11,8 +11,16 @@ import { ReviewsSection } from '@/components/client/ReviewsSection';
 import { ReportsSection } from '@/components/client/ReportsSection';
 import { SettingsSection } from '@/components/client/SettingsSection';
 
+const STORAGE_KEY = 'client_active_section';
+
 export default function ClientDashboard() {
-  const [activeSection, setActiveSection] = useState('dashboard');
+  const [activeSection, setActiveSection] = useState(() => {
+    return localStorage.getItem(STORAGE_KEY) || 'dashboard';
+  });
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, activeSection);
+  }, [activeSection]);
 
   const renderContent = () => {
     switch (activeSection) {

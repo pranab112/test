@@ -94,8 +94,30 @@ export default function Register() {
       navigate(ROUTES.LOGIN);
     } catch (error: any) {
       console.error('Registration error:', error);
-      const errorMessage = error?.response?.data?.detail || error?.message || 'Registration failed. Please try again.';
-      toast.error(errorMessage, { duration: 5000 });
+
+      // Extract error message from various response formats
+      let errorMessage = 'Registration failed. Please try again.';
+
+      if (error?.error?.message) {
+        errorMessage = error.error.message;
+      } else if (error?.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
+      // Check for pending approval message and show a more helpful toast
+      if (errorMessage.includes('waiting for approval')) {
+        toast.error(errorMessage, {
+          duration: 6000,
+          icon: '⏳',
+        });
+      } else if (errorMessage.includes('already exists')) {
+        toast.error(errorMessage, { duration: 5000 });
+      } else {
+        toast.error(errorMessage, { duration: 5000 });
+      }
+
       setIsLoading(false);
     }
   };

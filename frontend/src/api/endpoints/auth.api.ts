@@ -47,4 +47,15 @@ export const authApi = {
     localStorage.removeItem('access_token');
     localStorage.removeItem('user');
   },
+
+  /**
+   * Change current user's password
+   */
+  changePassword: async (currentPassword: string, newPassword: string): Promise<{ message: string }> => {
+    const response = await api.post<{ message: string }>('/auth/change-password', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    });
+    return response as unknown as { message: string };
+  },
 };
