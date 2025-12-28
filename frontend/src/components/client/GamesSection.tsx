@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Modal } from '@/components/common/Modal';
 import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
+import { Badge } from '@/components/common/Badge';
 import toast from 'react-hot-toast';
 import {
   MdSearch,
@@ -12,120 +13,127 @@ import {
   MdClose,
   MdSave,
   MdFilterList,
+  MdAdd,
+  MdRemove,
+  MdVideogameAsset,
 } from 'react-icons/md';
 import { FaGamepad } from 'react-icons/fa';
-import {
-  clientApi,
-  type Game,
-  type ClientGameWithDetails,
-} from '@/api/endpoints';
+import { gamesApi, type Game, type ClientGame } from '@/api/endpoints';
 
-type TabType = 'my-games' | 'all-games';
+type TabType = 'my-games' | 'library';
 
 export function GamesSection() {
   const [activeTab, setActiveTab] = useState<TabType>('my-games');
   const [allGames, setAllGames] = useState<Game[]>([]);
-  const [myGames, setMyGames] = useState<ClientGameWithDetails[]>([]);
+  const [clientGames, setClientGames] = useState<ClientGame[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [selectedGameIds, setSelectedGameIds] = useState<Set<number>>(new Set());
-  const [hasChanges, setHasChanges] = useState(false);
 
   // Edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [editingGame, setEditingGame] = useState<ClientGameWithDetails | null>(null);
+  const [editingGame, setEditingGame] = useState<ClientGame | null>(null);
   const [editFormData, setEditFormData] = useState({
     game_link: '',
     custom_image_url: '',
+    is_active: true,
   });
 
   useEffect(() => {
     loadGamesData();
+
+    // Refresh games periodically to get latest updates from admin
+    const interval = setInterval(() => {
+      loadGamesData();
+    }, 30000); // Refresh every 30 seconds
+
+    return () => {
+      clearInterval(interval);
+    };
   }, []);
 
   const loadGamesData = async () => {
     setLoading(true);
     try {
-      const [allGamesData, myGamesData] = await Promise.all([
-        clientApi.getAllGames(),
-        clientApi.getMyGamesWithDetails(),
-      ]);
+      // Get all available games (use general endpoint, not admin endpoint)
+      const allGamesData = await fetch('http://localhost:8000/api/v1/games/', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json',
+        },
+      }).then(res => res.json()).catch(() => []);
       setAllGames(allGamesData);
-      setMyGames(myGamesData.games);
 
-      // Initialize selected game IDs from my games
-      const activeGameIds = new Set(
-        myGamesData.games.filter((g) => g.is_active).map((g) => g.game_id)
-      );
-      setSelectedGameIds(activeGameIds);
+      // Get client's selected games
+      const clientGamesData = await gamesApi.getClientGames();
+      setClientGames(clientGamesData);
+      const selected = new Set(clientGamesData.map(cg => cg.game_id));
+      setSelectedGameIds(selected);
+
+      // Log for debugging
+      if (allGamesData.length === 0) {
+        console.log('No games available in library yet. Admin needs to add games.');
+      }
     } catch (error: any) {
-      toast.error('Failed to load games');
-      console.error(error);
+      console.error('Failed to load games:', error);
+      // Don't show error toast for empty states
+      setAllGames([]);
+      setClientGames([]);
+      setSelectedGameIds(new Set());
     } finally {
       setLoading(false);
     }
   };
 
-  const handleToggleGame = (gameId: number) => {
-    setSelectedGameIds((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(gameId)) {
-        newSet.delete(gameId);
-      } else {
-        newSet.add(gameId);
-      }
-      return newSet;
-    });
-    setHasChanges(true);
+  const handleAddGame = (gameId: number) => {
+    const newSelected = new Set(selectedGameIds);
+    newSelected.add(gameId);
+    setSelectedGameIds(newSelected);
+  };
+
+  const handleRemoveGame = (gameId: number) => {
+    const newSelected = new Set(selectedGameIds);
+    newSelected.delete(gameId);
+    setSelectedGameIds(newSelected);
   };
 
   const handleSaveSelection = async () => {
     setSaving(true);
     try {
-      await clientApi.updateGameSelection(Array.from(selectedGameIds));
-      // Reload my games to get updated data
-      const myGamesData = await clientApi.getMyGamesWithDetails();
-      setMyGames(myGamesData.games);
-      setHasChanges(false);
-      toast.success('Game selection saved successfully');
-    } catch (error: any) {
-      toast.error('Failed to save game selection');
+      await gamesApi.selectGames(Array.from(selectedGameIds));
+      toast.success('Game selection updated successfully');
+      loadGamesData();
+      setActiveTab('my-games');
+    } catch (error) {
+      toast.error('Failed to update game selection');
       console.error(error);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleEditGame = (clientGame: ClientGameWithDetails) => {
-    setEditingGame(clientGame);
+  const handleEditGame = (game: ClientGame) => {
+    setEditingGame(game);
     setEditFormData({
-      game_link: clientGame.game_link || '',
-      custom_image_url: clientGame.custom_image_url || '',
+      game_link: game.game_link || '',
+      custom_image_url: game.custom_image_url || '',
+      is_active: game.is_active,
     });
     setEditModalOpen(true);
   };
 
-  const handleSaveGameEdit = async () => {
+  const handleUpdateGame = async () => {
     if (!editingGame) return;
 
     setSaving(true);
     try {
-      const updatedGame = await clientApi.updateClientGame(editingGame.id, {
-        game_link: editFormData.game_link || undefined,
-        custom_image_url: editFormData.custom_image_url || undefined,
-      });
-
-      // Update local state
-      setMyGames((prev) =>
-        prev.map((g) => (g.id === updatedGame.id ? updatedGame : g))
-      );
-
-      setEditModalOpen(false);
-      setEditingGame(null);
+      await gamesApi.updateClientGame(editingGame.id, editFormData);
       toast.success('Game updated successfully');
-    } catch (error: any) {
+      setEditModalOpen(false);
+      loadGamesData();
+    } catch (error) {
       toast.error('Failed to update game');
       console.error(error);
     } finally {
@@ -133,80 +141,82 @@ export function GamesSection() {
     }
   };
 
-  const handleToggleGameActive = async (clientGame: ClientGameWithDetails) => {
-    setSaving(true);
-    try {
-      const updatedGame = await clientApi.updateClientGame(clientGame.id, {
-        is_active: !clientGame.is_active,
-      });
-
-      setMyGames((prev) =>
-        prev.map((g) => (g.id === updatedGame.id ? updatedGame : g))
-      );
-
-      // Update selected game IDs
-      setSelectedGameIds((prev) => {
-        const newSet = new Set(prev);
-        if (updatedGame.is_active) {
-          newSet.add(updatedGame.game_id);
-        } else {
-          newSet.delete(updatedGame.game_id);
-        }
-        return newSet;
-      });
-
-      toast.success(
-        updatedGame.is_active ? 'Game activated' : 'Game deactivated'
-      );
-    } catch (error: any) {
-      toast.error('Failed to update game status');
-      console.error(error);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Get unique categories from all games
-  const categories = ['all', ...new Set(allGames.map((g) => g.category).filter(Boolean))];
-
   // Filter games based on search and category
-  const filteredAllGames = allGames.filter((game) => {
-    const matchesSearch =
-      game.display_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      game.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory =
-      categoryFilter === 'all' || game.category === categoryFilter;
+  const filteredLibraryGames = allGames.filter(game => {
+    const matchesSearch = game.display_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          game.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = categoryFilter === 'all' || game.category === categoryFilter;
+    return matchesSearch && matchesCategory && game.is_active;
+  });
+
+  const filteredClientGames = clientGames.filter(cg => {
+    if (!cg.game) return false;
+    const matchesSearch = cg.game.display_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          cg.game.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = categoryFilter === 'all' || cg.game.category === categoryFilter;
     return matchesSearch && matchesCategory;
   });
 
-  const filteredMyGames = myGames.filter((clientGame) => {
-    const game = clientGame.game;
-    const matchesSearch =
-      game.display_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      game.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory =
-      categoryFilter === 'all' || game.category === categoryFilter;
-    return matchesSearch && matchesCategory;
-  });
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gold-500">Loading games...</div>
-      </div>
-    );
-  }
+  const categories = [...new Set(allGames.map(g => g.category).filter(Boolean))];
+  const hasChanges = selectedGameIds.size !== clientGames.filter(cg => cg.is_active).length ||
+    [...selectedGameIds].some(id => !clientGames.find(cg => cg.game_id === id && cg.is_active));
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gold-500 mb-2">Games Management</h1>
-          <p className="text-gray-400">
-            Select games to offer your players and customize them
-          </p>
+      <div>
+        <h1 className="text-3xl font-bold text-gold-500">Games Library</h1>
+        <p className="text-gray-400">Manage and customize your game offerings</p>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex flex-wrap gap-2 border-b border-gold-700">
+        <button
+          onClick={() => setActiveTab('my-games')}
+          className={`px-4 py-2 font-medium transition-colors ${
+            activeTab === 'my-games'
+              ? 'text-gold-500 border-b-2 border-gold-500'
+              : 'text-gray-400 hover:text-gold-500'
+          }`}
+        >
+          My Games ({clientGames.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('library')}
+          className={`px-4 py-2 font-medium transition-colors ${
+            activeTab === 'library'
+              ? 'text-gold-500 border-b-2 border-gold-500'
+              : 'text-gray-400 hover:text-gold-500'
+          }`}
+        >
+          Game Library ({allGames.length})
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex-1 relative">
+          <MdSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+          <input
+            type="text"
+            placeholder="Search games..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-dark-200 border border-gold-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gold-500"
+          />
         </div>
-        {hasChanges && activeTab === 'all-games' && (
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="px-4 py-2 bg-dark-200 border border-gold-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-gold-500"
+        >
+          <option value="all">All Categories</option>
+          {categories.map(cat => (
+            <option key={cat} value={cat}>
+              {cat?.charAt(0).toUpperCase() + cat?.slice(1).replace('-', ' ')}
+            </option>
+          ))}
+        </select>
+        {activeTab === 'library' && hasChanges && (
           <Button onClick={handleSaveSelection} loading={saving}>
             <MdSave className="mr-2" />
             Save Selection
@@ -214,321 +224,187 @@ export function GamesSection() {
         )}
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-4 border-b border-gold-700">
-        <button
-          onClick={() => setActiveTab('my-games')}
-          className={`px-6 py-3 font-medium transition-colors border-b-2 -mb-px ${
-            activeTab === 'my-games'
-              ? 'text-gold-500 border-gold-500'
-              : 'text-gray-400 border-transparent hover:text-white'
-          }`}
-        >
-          My Games ({myGames.filter((g) => g.is_active).length})
-        </button>
-        <button
-          onClick={() => setActiveTab('all-games')}
-          className={`px-6 py-3 font-medium transition-colors border-b-2 -mb-px ${
-            activeTab === 'all-games'
-              ? 'text-gold-500 border-gold-500'
-              : 'text-gray-400 border-transparent hover:text-white'
-          }`}
-        >
-          All Games ({allGames.length})
-        </button>
-      </div>
-
-      {/* Search and Filters */}
-      <div className="flex gap-4 flex-wrap">
-        <div className="relative flex-1 min-w-[250px]">
-          <MdSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-          <input
-            type="text"
-            placeholder="Search games..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-dark-300 text-white pl-10 pr-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500"
-          />
+      {/* Content */}
+      {loading ? (
+        <div className="text-center py-12 text-gold-500">Loading games...</div>
+      ) : allGames.length === 0 ? (
+        <div className="col-span-full text-center py-12">
+          <MdVideogameAsset className="text-6xl text-gray-600 mx-auto mb-4" />
+          <p className="text-gray-400 mb-2">No games available in the library yet</p>
+          <p className="text-sm text-gray-500">Please contact the admin to add games to the system</p>
         </div>
-        <div className="relative min-w-[180px]">
-          <MdFilterList className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            title="Filter by category"
-            aria-label="Filter by category"
-            className="w-full bg-dark-300 text-white pl-10 pr-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500 appearance-none cursor-pointer"
-          >
-            {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat === 'all' ? 'All Categories' : cat.charAt(0).toUpperCase() + cat.slice(1)}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* My Games Tab */}
-      {activeTab === 'my-games' && (
-        <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-          {filteredMyGames.length === 0 ? (
-            <div className="text-center py-12">
-              <FaGamepad className="text-6xl text-gray-500 mx-auto mb-4" />
-              <p className="text-gray-400 mb-4">
-                {myGames.length === 0
-                  ? "You haven't selected any games yet"
-                  : 'No games match your search'}
-              </p>
-              {myGames.length === 0 && (
-                <Button onClick={() => setActiveTab('all-games')}>
-                  Browse All Games
-                </Button>
-              )}
+      ) : activeTab === 'my-games' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredClientGames.length === 0 ? (
+            <div className="col-span-full text-center py-12">
+              <MdVideogameAsset className="text-6xl text-gray-600 mx-auto mb-4" />
+              <p className="text-gray-400 mb-4">No games selected yet</p>
+              <Button onClick={() => setActiveTab('library')}>
+                Browse Game Library
+              </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredMyGames.map((clientGame) => (
-                <div
-                  key={clientGame.id}
-                  className={`bg-dark-300 rounded-lg overflow-hidden hover:bg-dark-400 transition-all ${
-                    !clientGame.is_active ? 'opacity-50' : ''
-                  }`}
-                >
-                  {/* Game Image */}
-                  <div className="relative h-40 bg-dark-400">
-                    {clientGame.custom_image_url || clientGame.game.icon_url ? (
-                      <img
-                        src={clientGame.custom_image_url || clientGame.game.icon_url || ''}
-                        alt={clientGame.game.display_name}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <FaGamepad className="text-4xl text-gray-500" />
-                      </div>
-                    )}
-                    {clientGame.custom_image_url && (
-                      <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs px-2 py-1 rounded">
-                        Custom Image
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Game Info */}
-                  <div className="p-4">
-                    <h3 className="text-white font-medium mb-1">
-                      {clientGame.game.display_name}
-                    </h3>
-                    <p className="text-sm text-gray-400 mb-2">
-                      {clientGame.game.category || 'Uncategorized'}
-                    </p>
-
-                    {/* Custom Link Display */}
-                    {clientGame.game_link && (
-                      <div className="flex items-center gap-2 text-xs text-blue-400 mb-3">
-                        <MdLink size={14} />
-                        <span className="truncate">{clientGame.game_link}</span>
-                      </div>
-                    )}
-
-                    {/* Actions */}
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEditGame(clientGame)}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1"
-                      >
-                        <MdEdit size={16} />
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleToggleGameActive(clientGame)}
-                        disabled={saving}
-                        className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1 ${
-                          clientGame.is_active
-                            ? 'bg-red-600 hover:bg-red-700 text-white'
-                            : 'bg-green-600 hover:bg-green-700 text-white'
-                        }`}
-                      >
-                        {clientGame.is_active ? (
-                          <>
-                            <MdClose size={16} />
-                            Disable
-                          </>
-                        ) : (
-                          <>
-                            <MdCheck size={16} />
-                            Enable
-                          </>
-                        )}
-                      </button>
+            filteredClientGames.map((clientGame) => (
+              <div
+                key={clientGame.id}
+                className="bg-dark-200 border-2 border-gold-700 rounded-lg overflow-hidden hover:shadow-gold transition-all"
+              >
+                <div className="aspect-video bg-dark-300 relative">
+                  {clientGame.custom_image_url || clientGame.game?.icon_url ? (
+                    <img
+                      src={clientGame.custom_image_url || clientGame.game?.icon_url || ''}
+                      alt={clientGame.game?.display_name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <FaGamepad className="text-4xl text-gold-500 opacity-50" />
                     </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* All Games Tab */}
-      {activeTab === 'all-games' && (
-        <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-gray-400">
-              Select the games you want to offer to your players
-            </p>
-            <p className="text-gold-500 font-medium">
-              {selectedGameIds.size} games selected
-            </p>
-          </div>
-
-          {filteredAllGames.length === 0 ? (
-            <div className="text-center py-12">
-              <FaGamepad className="text-6xl text-gray-500 mx-auto mb-4" />
-              <p className="text-gray-400">No games match your search</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredAllGames.map((game) => {
-                const isSelected = selectedGameIds.has(game.id);
-                return (
-                  <button
-                    key={game.id}
-                    onClick={() => handleToggleGame(game.id)}
-                    className={`bg-dark-300 rounded-lg overflow-hidden hover:bg-dark-400 transition-all text-left relative ${
-                      isSelected ? 'ring-2 ring-gold-500' : ''
-                    }`}
+                  )}
+                  <Badge
+                    variant={clientGame.is_active ? 'success' : 'error'}
+                    className="absolute top-2 right-2"
                   >
-                    {/* Selection Indicator */}
-                    {isSelected && (
-                      <div className="absolute top-2 right-2 z-10 bg-gold-500 text-dark-700 rounded-full p-1">
-                        <MdCheck size={16} />
-                      </div>
-                    )}
-
-                    {/* Game Image */}
-                    <div className="relative h-32 bg-dark-400">
-                      {game.icon_url ? (
-                        <img
-                          src={game.icon_url}
-                          alt={game.display_name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
-                          }}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <FaGamepad className="text-4xl text-gray-500" />
-                        </div>
-                      )}
+                    {clientGame.is_active ? 'Active' : 'Inactive'}
+                  </Badge>
+                </div>
+                <div className="p-4">
+                  <h3 className="font-bold text-white mb-1">
+                    {clientGame.game?.display_name}
+                  </h3>
+                  <p className="text-xs text-gray-400 mb-3">
+                    {clientGame.game?.category}
+                  </p>
+                  {clientGame.game_link && (
+                    <div className="flex items-center gap-1 text-xs text-gold-500 mb-3">
+                      <MdLink size={14} />
+                      <span className="truncate">{clientGame.game_link}</span>
                     </div>
-
-                    {/* Game Info */}
-                    <div className="p-3">
-                      <h3 className="text-white font-medium text-sm mb-1">
-                        {game.display_name}
-                      </h3>
-                      <p className="text-xs text-gray-400">
-                        {game.category || 'Uncategorized'}
-                      </p>
-                    </div>
+                  )}
+                  <button
+                    onClick={() => handleEditGame(clientGame)}
+                    className="w-full bg-dark-300 text-gold-500 py-2 rounded-lg hover:bg-dark-400 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <MdEdit size={16} />
+                    Customize
                   </button>
-                );
-              })}
-            </div>
+                </div>
+              </div>
+            ))
           )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredLibraryGames.map((game) => {
+            const isSelected = selectedGameIds.has(game.id);
+            return (
+              <div
+                key={game.id}
+                className={`bg-dark-200 border-2 rounded-lg overflow-hidden transition-all cursor-pointer ${
+                  isSelected ? 'border-gold-500 shadow-gold' : 'border-gold-700 hover:border-gold-600'
+                }`}
+                onClick={() => isSelected ? handleRemoveGame(game.id) : handleAddGame(game.id)}
+              >
+                <div className="aspect-video bg-dark-300 relative">
+                  {game.icon_url ? (
+                    <img
+                      src={game.icon_url}
+                      alt={game.display_name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <FaGamepad className="text-4xl text-gold-500 opacity-50" />
+                    </div>
+                  )}
+                  {isSelected && (
+                    <div className="absolute inset-0 bg-gold-500 bg-opacity-20 flex items-center justify-center">
+                      <div className="bg-gold-500 text-dark-700 rounded-full p-2">
+                        <MdCheck size={32} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="p-4">
+                  <h3 className="font-bold text-white mb-1">{game.display_name}</h3>
+                  <p className="text-xs text-gray-400">{game.category}</p>
+                  <button className={`mt-3 w-full py-2 rounded-lg transition-colors flex items-center justify-center gap-2 ${
+                    isSelected
+                      ? 'bg-red-600 text-white hover:bg-red-700'
+                      : 'bg-gold-gradient text-dark-700 hover:shadow-gold'
+                  }`}>
+                    {isSelected ? (
+                      <>
+                        <MdRemove size={16} />
+                        Remove
+                      </>
+                    ) : (
+                      <>
+                        <MdAdd size={16} />
+                        Add to My Games
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Edit Game Modal */}
+      {/* Edit Modal */}
       <Modal
         isOpen={editModalOpen}
-        onClose={() => {
-          setEditModalOpen(false);
-          setEditingGame(null);
-        }}
-        title={`Edit ${editingGame?.game.display_name || 'Game'}`}
+        onClose={() => setEditModalOpen(false)}
+        title={`Customize: ${editingGame?.game?.display_name}`}
+        size="lg"
       >
         <div className="space-y-4">
-          <p className="text-gray-400">
-            Customize the game link and image for your players.
-          </p>
+          <Input
+            label="Game Link/URL"
+            value={editFormData.game_link}
+            onChange={(e) => setEditFormData({ ...editFormData, game_link: e.target.value })}
+            placeholder="https://your-game-link.com"
+          />
 
-          <div className="relative">
-            <div className="absolute left-3 top-[38px] text-gray-400">
-              <MdLink size={18} />
-            </div>
-            <Input
-              label="Game Link (URL)"
-              type="url"
-              value={editFormData.game_link}
-              onChange={(e) =>
-                setEditFormData({ ...editFormData, game_link: e.target.value })
-              }
-              placeholder="https://example.com/game"
-              className="pl-10"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Custom URL where players can access this game
-            </p>
-          </div>
+          <Input
+            label="Custom Image URL (Optional)"
+            value={editFormData.custom_image_url}
+            onChange={(e) => setEditFormData({ ...editFormData, custom_image_url: e.target.value })}
+            placeholder="https://your-image-url.com/image.jpg"
+          />
 
-          <div className="relative">
-            <div className="absolute left-3 top-[38px] text-gray-400">
-              <MdImage size={18} />
-            </div>
-            <Input
-              label="Custom Image URL"
-              type="url"
-              value={editFormData.custom_image_url}
-              onChange={(e) =>
-                setEditFormData({
-                  ...editFormData,
-                  custom_image_url: e.target.value,
-                })
-              }
-              placeholder="https://example.com/image.png"
-              className="pl-10"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Custom game image URL (leave empty to use default)
-            </p>
-          </div>
-
-          {/* Image Preview */}
           {editFormData.custom_image_url && (
-            <div className="mt-4">
-              <p className="text-sm text-gray-400 mb-2">Image Preview:</p>
-              <div className="bg-dark-400 rounded-lg overflow-hidden h-32 w-full">
-                <img
-                  src={editFormData.custom_image_url}
-                  alt="Preview"
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = '';
-                    (e.target as HTMLImageElement).alt = 'Invalid image URL';
-                  }}
-                />
-              </div>
+            <div className="bg-dark-300 rounded-lg p-2">
+              <img
+                src={editFormData.custom_image_url}
+                alt="Preview"
+                className="w-full h-48 object-cover rounded"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = editingGame?.game?.icon_url || '';
+                }}
+              />
             </div>
           )}
 
-          <div className="flex gap-3 pt-4">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setEditModalOpen(false);
-                setEditingGame(null);
-              }}
-              fullWidth
-            >
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="is_active"
+              checked={editFormData.is_active}
+              onChange={(e) => setEditFormData({ ...editFormData, is_active: e.target.checked })}
+              className="w-4 h-4 text-gold-500 bg-dark-200 border-gold-700 rounded focus:ring-gold-500"
+            />
+            <label htmlFor="is_active" className="text-gray-300">
+              Game is active for players
+            </label>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="secondary" onClick={() => setEditModalOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveGameEdit} loading={saving} fullWidth>
+            <Button onClick={handleUpdateGame} loading={saving}>
               Save Changes
             </Button>
           </div>

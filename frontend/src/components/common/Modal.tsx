@@ -11,10 +11,10 @@ interface ModalProps {
 }
 
 const sizeStyles = {
-  sm: 'max-w-md',
-  md: 'max-w-lg',
-  lg: 'max-w-2xl',
-  xl: 'max-w-4xl',
+  sm: 'max-w-sm sm:max-w-md',
+  md: 'max-w-md sm:max-w-lg',
+  lg: 'max-w-lg sm:max-w-2xl',
+  xl: 'max-w-xl sm:max-w-4xl',
 };
 
 export function Modal({
@@ -75,7 +75,7 @@ export function Modal({
           </div>
 
           {/* Content */}
-          <div className="p-6 max-h-[calc(100vh-300px)] overflow-y-auto">
+          <div className="p-4 sm:p-6 max-h-[calc(100vh-200px)] sm:max-h-[calc(100vh-300px)] overflow-y-auto">
             {children}
           </div>
 

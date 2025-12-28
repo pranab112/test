@@ -5,15 +5,19 @@ import {
   MdPeople, MdCardGiftcard, MdGroup
 } from 'react-icons/md';
 import { FaChartLine, FaUserPlus } from 'react-icons/fa';
-import { clientApi, type PlayerStats } from '@/api/endpoints';
+import { clientApi, type PlayerStats, type ActivityItem } from '@/api/endpoints';
+import { formatDistanceToNow } from 'date-fns';
 
 export function DashboardSection() {
   const [stats, setStats] = useState<PlayerStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
 
   useEffect(() => {
     loadDashboardData();
+    // Refresh data every 30 seconds
+    const interval = setInterval(loadDashboardData, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const loadDashboardData = async () => {

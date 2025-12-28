@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import secrets
@@ -509,3 +509,121 @@ def broadcast_message(
         "message": f"Broadcast sent to {len(users)} users",
         "recipients": len(users)
     }
+
+# ===== ADMIN GAMES ENDPOINTS =====
+
+@router.get("/games")
+def get_all_games(
+    skip: int = 0,
+    limit: int = 100,
+    admin: models.User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Get all games"""
+    games = db.query(models.Game).order_by(models.Game.created_at.desc()).offset(skip).limit(limit).all()
+    return games
+
+@router.post("/games")
+async def create_game(
+    request: Request,
+    admin: models.User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Create a new game"""
+    # Parse form data
+    form_data = await request.form()
+    name = form_data.get("name")
+    display_name = form_data.get("display_name")
+    icon_url = form_data.get("icon_url")
+    category = form_data.get("category")
+    is_active = form_data.get("is_active", "true").lower() == "true"
+
+    if not name or not display_name:
+        raise HTTPException(
+            status_code=400,
+            detail="Name and display_name are required"
+        )
+
+    # Check if game name already exists
+    existing_game = db.query(models.Game).filter(models.Game.name == name).first()
+    if existing_game:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Game with name '{name}' already exists"
+        )
+
+    db_game = models.Game(
+        name=name,
+        display_name=display_name,
+        icon_url=icon_url,
+        category=category,
+        is_active=is_active
+    )
+
+    db.add(db_game)
+    db.commit()
+    db.refresh(db_game)
+
+    return db_game
+
+@router.patch("/games/{game_id}")
+async def update_game(
+    game_id: int,
+    request: Request,
+    admin: models.User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Update an existing game"""
+    db_game = db.query(models.Game).filter(models.Game.id == game_id).first()
+    if not db_game:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    # Parse form data
+    form_data = await request.form()
+    name = form_data.get("name")
+    display_name = form_data.get("display_name")
+    icon_url = form_data.get("icon_url")
+    category = form_data.get("category")
+    is_active_str = form_data.get("is_active")
+
+    if name is not None:
+        db_game.name = name
+    if display_name is not None:
+        db_game.display_name = display_name
+    if icon_url is not None:
+        db_game.icon_url = icon_url
+    if category is not None:
+        db_game.category = category
+    if is_active_str is not None:
+        db_game.is_active = is_active_str.lower() == "true"
+
+    db.commit()
+    db.refresh(db_game)
+
+    return db_game
+
+@router.delete("/games/{game_id}")
+def delete_game(
+    game_id: int,
+    admin: models.User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Delete a game"""
+    db_game = db.query(models.Game).filter(models.Game.id == game_id).first()
+    if not db_game:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    # Check if game is being used by any clients
+    client_games = db.query(models.ClientGame).filter(models.ClientGame.game_id == game_id).count()
+    if client_games > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot delete game. It is currently selected by {client_games} client(s). Deactivate it instead."
+        )
+
+    game_name = db_game.display_name
+    db.delete(db_game)
+    db.commit()
+
+    return {"message": f"Game '{game_name}' deleted successfully"}
+

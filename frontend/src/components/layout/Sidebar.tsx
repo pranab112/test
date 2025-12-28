@@ -3,7 +3,7 @@ import { GiCardAceSpades } from 'react-icons/gi';
 import {
   MdDashboard, MdPeople, MdSettings, MdMessage,
   MdCheckCircle, MdFlag, MdStar, MdCardGiftcard,
-  MdBroadcastOnPersonal, MdGroup
+  MdBroadcastOnPersonal, MdGroup, MdVideogameAsset
 } from 'react-icons/md';
 import { FiLogOut, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { FaUsers, FaGamepad, FaChartLine, FaGift } from 'react-icons/fa';
@@ -21,11 +21,12 @@ interface NavItem {
 interface SidebarProps {
   activeSection: string;
   onSectionChange: (section: string) => void;
+  isMobile?: boolean;
 }
 
-export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
+export function Sidebar({ activeSection, onSectionChange, isMobile = false }: SidebarProps) {
   const { user, logout } = useAuth();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(!isMobile ? false : false);
 
   // Navigation items based on user type
   const getNavItems = (): NavItem[] => {
@@ -33,6 +34,7 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
       return [
         { id: 'overview', label: 'Overview', icon: MdDashboard },
         { id: 'users', label: 'Users', icon: FaUsers },
+        { id: 'games', label: 'Game Library', icon: MdVideogameAsset },
         { id: 'approvals', label: 'Approvals', icon: MdCheckCircle },
         { id: 'messages', label: 'Messages', icon: MdMessage },
         { id: 'promotions', label: 'Promotions', icon: MdCardGiftcard },
@@ -73,7 +75,7 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
   const navItems = getNavItems();
 
   return (
-    <aside className={`${isCollapsed ? 'w-20' : 'w-64'} bg-dark-200 border-r-2 border-gold-600 flex flex-col transition-all duration-300 h-screen sticky top-0`}>
+    <aside className={`${isCollapsed && !isMobile ? 'w-20' : 'w-64'} bg-dark-200 border-r-2 border-gold-600 flex flex-col transition-all duration-300 h-screen ${isMobile ? '' : 'sticky top-0'}`}>
       {/* Header */}
       <div className="p-4 border-b border-gold-700 bg-gradient-to-r from-dark-300 to-dark-200">
         <div className="flex items-center justify-between">
@@ -90,12 +92,14 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
             <GiCardAceSpades className="text-3xl text-gold-500 mx-auto" />
           )}
         </div>
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="mt-2 w-full text-gold-500 hover:text-gold-400 flex items-center justify-center"
-        >
-          {isCollapsed ? <FiChevronRight size={20} /> : <FiChevronLeft size={20} />}
-        </button>
+        {!isMobile && (
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="mt-2 w-full text-gold-500 hover:text-gold-400 flex items-center justify-center"
+          >
+            {isCollapsed ? <FiChevronRight size={20} /> : <FiChevronLeft size={20} />}
+          </button>
+        )}
       </div>
 
       {/* User Info */}

@@ -310,6 +310,23 @@ class GameResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class GameCreate(BaseModel):
+    name: str
+    display_name: str
+    icon_url: Optional[str] = None
+    category: Optional[str] = None
+    is_active: bool = True
+
+class GameUpdate(BaseModel):
+    name: Optional[str] = None
+    display_name: Optional[str] = None
+    icon_url: Optional[str] = None
+    category: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class BulkGameCreate(BaseModel):
+    games: List[GameCreate]
+
 
 class ClientGameUpdate(BaseModel):
     game_ids: List[int]

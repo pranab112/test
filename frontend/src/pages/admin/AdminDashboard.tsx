@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { OverviewSection } from '@/components/admin/OverviewSection';
 import { UsersSection } from '@/components/admin/UsersSection';
+import { GamesSection } from '@/components/admin/GamesSection';
 import { ApprovalsSection } from '@/components/admin/ApprovalsSection';
 import { MessagesSection } from '@/components/admin/MessagesSection';
 import { PromotionsSection } from '@/components/admin/PromotionsSection';
@@ -27,6 +28,8 @@ export default function AdminDashboard() {
         return <OverviewSection />;
       case 'users':
         return <UsersSection />;
+      case 'games':
+        return <GamesSection />;
       case 'approvals':
         return <ApprovalsSection />;
       case 'messages':
