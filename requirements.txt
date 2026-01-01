@@ -50,3 +50,5 @@ psutil
 boto3
 botocore
 resend
+pyotp
+qrcode[pil]

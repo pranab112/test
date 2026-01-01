@@ -3,7 +3,7 @@ import { DataTable } from '@/components/common/DataTable';
 import { Badge } from '@/components/common/Badge';
 import { Modal } from '@/components/common/Modal';
 import toast from 'react-hot-toast';
-import { adminApi, type Report } from '@/api/endpoints';
+import { adminApi, type AdminReport as Report } from '@/api/endpoints';
 
 export function ReportsSection() {
   const [reports, setReports] = useState<Report[]>([]);

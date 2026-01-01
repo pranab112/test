@@ -1,241 +1,442 @@
-import { io, Socket } from 'socket.io-client';
+/**
+ * WebSocket Service for Real-time Messaging
+ *
+ * Uses native WebSocket to connect to FastAPI backend.
+ * Features:
+ * - Auto-reconnection with exponential backoff
+ * - Message queuing when offline
+ * - Heartbeat/ping-pong for connection health
+ * - Type-safe message handling
+ * - Event-based architecture
+ */
 
-export interface WebSocketMessage {
-  id: string;
-  type: 'text' | 'image' | 'voice' | 'video' | 'file';
-  content?: string;
-  fileUrl?: string;
-  fileName?: string;
-  fileSize?: number;
-  senderId: number;
-  senderName: string;
-  senderAvatar?: string;
-  recipientId?: number;
-  roomId?: string;
+// Message types matching backend WSMessageType
+export enum WSMessageType {
+  // Connection
+  PING = 'ping',
+  PONG = 'pong',
+  CONNECTED = 'connected',
+  ERROR = 'error',
+
+  // Messages
+  MESSAGE_SEND = 'message:send',
+  MESSAGE_NEW = 'message:new',
+  MESSAGE_DELIVERED = 'message:delivered',
+  MESSAGE_READ = 'message:read',
+  MESSAGE_DELETED = 'message:deleted',
+
+  // Typing
+  TYPING_START = 'typing:start',
+  TYPING_STOP = 'typing:stop',
+
+  // Online Status
+  USER_ONLINE = 'user:online',
+  USER_OFFLINE = 'user:offline',
+  USER_STATUS_REQUEST = 'user:status',
+  USER_STATUS_RESPONSE = 'user:status:response',
+
+  // Rooms
+  ROOM_JOIN = 'room:join',
+  ROOM_LEAVE = 'room:leave',
+  ROOM_JOINED = 'room:joined',
+  ROOM_LEFT = 'room:left',
+
+  // Notifications
+  NOTIFICATION = 'notification',
+  FRIEND_REQUEST = 'friend_request',
+  FRIEND_ACCEPTED = 'friend_accepted',
+}
+
+export interface WSMessage {
+  type: string;
+  data: Record<string, unknown>;
   timestamp: string;
-  status: 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
-  metadata?: Record<string, any>;
+}
+
+export interface ChatMessage {
+  id: number | string;
+  sender_id: number;
+  sender_name: string;
+  sender_avatar?: string;
+  sender_type?: string;
+  receiver_id: number;
+  receiver_name?: string;
+  message_type: 'text' | 'image' | 'voice' | 'promotion';
+  content?: string;
+  file_url?: string;
+  file_name?: string;
+  duration?: number;
+  is_read: boolean;
+  created_at: string;
+  room_id: string;
+  status?: 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
 }
 
 export interface TypingIndicator {
-  userId: number;
-  userName: string;
-  roomId: string;
-  isTyping: boolean;
+  user_id: number;
+  username: string;
+  room_id: string;
+  is_typing: boolean;
 }
 
 export interface OnlineStatus {
-  userId: number;
-  isOnline: boolean;
-  lastSeen?: string;
+  user_id: number;
+  username?: string;
+  is_online: boolean;
+  last_seen?: string;
+  profile_picture?: string;
+  user_type?: string;
 }
 
+export interface UserStatusResponse {
+  statuses: OnlineStatus[];
+}
+
+type EventCallback = (data: unknown) => void;
+
 class WebSocketService {
-  private socket: Socket | null = null;
+  private socket: WebSocket | null = null;
+  private token: string | null = null;
+  private userId: number | null = null;
+
+  // Reconnection settings
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
+  private maxReconnectAttempts = 10;
   private reconnectDelay = 1000; // Start with 1 second
-  private listeners: Map<string, Set<Function>> = new Map();
-  private messageQueue: WebSocketMessage[] = [];
+  private maxReconnectDelay = 30000; // Max 30 seconds
+  private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  // Heartbeat settings
+  private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+  private heartbeatTimeout: ReturnType<typeof setTimeout> | null = null;
+  private heartbeatIntervalMs = 30000; // Send ping every 30 seconds
+  private heartbeatTimeoutMs = 10000; // Wait 10 seconds for pong
+
+  // Event listeners
+  private listeners: Map<string, Set<EventCallback>> = new Map();
+
+  // Message queue for offline messages
+  private messageQueue: WSMessage[] = [];
+
+  // Connection state
+  private isConnecting = false;
+  private manualDisconnect = false;
+
+  /**
+   * Get WebSocket URL based on environment
+   */
+  private getWsUrl(): string {
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    // Convert http(s) to ws(s)
+    const wsUrl = baseUrl.replace(/^http/, 'ws').replace(/\/api\/v1\/?$/, '');
+    return `${wsUrl}/ws`;
+  }
 
   /**
    * Initialize WebSocket connection
    */
   connect(token: string, userId: number): void {
-    if (this.socket?.connected) {
+    if (this.socket?.readyState === WebSocket.OPEN) {
       console.log('WebSocket already connected');
       return;
     }
 
-    const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8000';
+    if (this.isConnecting) {
+      console.log('WebSocket connection in progress');
+      return;
+    }
 
-    this.socket = io(wsUrl, {
-      auth: {
-        token,
-        userId,
-      },
-      transports: ['websocket'],
-      reconnection: true,
-      reconnectionAttempts: this.maxReconnectAttempts,
-      reconnectionDelay: this.reconnectDelay,
-    });
+    this.token = token;
+    this.userId = userId;
+    this.manualDisconnect = false;
+    this.isConnecting = true;
 
-    this.setupEventListeners();
+    const wsUrl = `${this.getWsUrl()}?token=${encodeURIComponent(token)}`;
+    console.log('Connecting to WebSocket:', wsUrl.replace(token, '***'));
+
+    try {
+      this.socket = new WebSocket(wsUrl);
+      this.setupEventHandlers();
+    } catch (error) {
+      console.error('Failed to create WebSocket:', error);
+      this.isConnecting = false;
+      this.scheduleReconnect();
+    }
   }
 
   /**
-   * Setup WebSocket event listeners
+   * Setup WebSocket event handlers
    */
-  private setupEventListeners(): void {
+  private setupEventHandlers(): void {
     if (!this.socket) return;
 
-    // Connection events
-    this.socket.on('connect', () => {
+    this.socket.onopen = () => {
       console.log('WebSocket connected');
+      this.isConnecting = false;
       this.reconnectAttempts = 0;
       this.reconnectDelay = 1000;
+
+      // Start heartbeat
+      this.startHeartbeat();
+
+      // Flush message queue
       this.flushMessageQueue();
+
+      // Emit connected event
       this.emit('connected', { connected: true });
-    });
+    };
 
-    this.socket.on('disconnect', (reason) => {
-      console.log('WebSocket disconnected:', reason);
-      this.emit('disconnected', { reason });
-    });
+    this.socket.onclose = (event) => {
+      console.log('WebSocket disconnected:', event.code, event.reason);
+      this.isConnecting = false;
+      this.stopHeartbeat();
 
-    this.socket.on('connect_error', (error) => {
-      console.error('WebSocket connection error:', error);
+      this.emit('disconnected', {
+        code: event.code,
+        reason: event.reason,
+        wasClean: event.wasClean,
+      });
+
+      // Attempt reconnection if not manually disconnected
+      if (!this.manualDisconnect) {
+        this.scheduleReconnect();
+      }
+    };
+
+    this.socket.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      this.emit('error', { error: 'WebSocket connection error' });
+    };
+
+    this.socket.onmessage = (event) => {
+      try {
+        const message: WSMessage = JSON.parse(event.data);
+        this.handleMessage(message);
+      } catch (error) {
+        console.error('Failed to parse WebSocket message:', error);
+      }
+    };
+  }
+
+  /**
+   * Handle incoming WebSocket message
+   */
+  private handleMessage(message: WSMessage): void {
+    const { type, data } = message;
+
+    // Handle pong for heartbeat
+    if (type === WSMessageType.PONG) {
+      this.clearHeartbeatTimeout();
+      return;
+    }
+
+    // Emit event based on message type
+    this.emit(type, data);
+
+    // Also emit to general 'message' listeners
+    this.emit('message', message);
+  }
+
+  /**
+   * Start heartbeat mechanism
+   */
+  private startHeartbeat(): void {
+    this.stopHeartbeat();
+
+    this.heartbeatInterval = setInterval(() => {
+      if (this.socket?.readyState === WebSocket.OPEN) {
+        this.send({ type: WSMessageType.PING, data: {} });
+
+        // Set timeout for pong response
+        this.heartbeatTimeout = setTimeout(() => {
+          console.warn('Heartbeat timeout - reconnecting');
+          this.socket?.close();
+        }, this.heartbeatTimeoutMs);
+      }
+    }, this.heartbeatIntervalMs);
+  }
+
+  /**
+   * Stop heartbeat mechanism
+   */
+  private stopHeartbeat(): void {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+    this.clearHeartbeatTimeout();
+  }
+
+  /**
+   * Clear heartbeat timeout
+   */
+  private clearHeartbeatTimeout(): void {
+    if (this.heartbeatTimeout) {
+      clearTimeout(this.heartbeatTimeout);
+      this.heartbeatTimeout = null;
+    }
+  }
+
+  /**
+   * Schedule reconnection attempt
+   */
+  private scheduleReconnect(): void {
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+    }
+
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error('Max reconnection attempts reached');
+      this.emit('reconnect_failed', { attempts: this.reconnectAttempts });
+      return;
+    }
+
+    const delay = Math.min(
+      this.reconnectDelay * Math.pow(2, this.reconnectAttempts),
+      this.maxReconnectDelay
+    );
+
+    console.log(`Scheduling reconnect in ${delay}ms (attempt ${this.reconnectAttempts + 1})`);
+
+    this.reconnectTimeout = setTimeout(() => {
       this.reconnectAttempts++;
-      this.reconnectDelay = Math.min(this.reconnectDelay * 2, 30000); // Max 30 seconds
-    });
+      if (this.token && this.userId) {
+        this.connect(this.token, this.userId);
+      }
+    }, delay);
+  }
 
-    // Message events
-    this.socket.on('message:new', (message: WebSocketMessage) => {
-      this.emit('message:new', message);
-    });
+  /**
+   * Send a message through WebSocket
+   */
+  send(message: { type: string; data: Record<string, unknown> }): boolean {
+    const wsMessage: WSMessage = {
+      type: message.type,
+      data: message.data,
+      timestamp: new Date().toISOString(),
+    };
 
-    this.socket.on('message:updated', (message: WebSocketMessage) => {
-      this.emit('message:updated', message);
-    });
+    if (this.socket?.readyState === WebSocket.OPEN) {
+      this.socket.send(JSON.stringify(wsMessage));
+      return true;
+    } else {
+      // Queue message for later
+      this.messageQueue.push(wsMessage);
+      console.log('Message queued (offline):', message.type);
+      return false;
+    }
+  }
 
-    this.socket.on('message:deleted', (messageId: string) => {
-      this.emit('message:deleted', { messageId });
-    });
+  /**
+   * Flush message queue when reconnected
+   */
+  private flushMessageQueue(): void {
+    while (this.messageQueue.length > 0) {
+      const message = this.messageQueue.shift();
+      if (message && this.socket?.readyState === WebSocket.OPEN) {
+        this.socket.send(JSON.stringify(message));
+      }
+    }
+  }
 
-    this.socket.on('message:delivered', (data: { messageId: string; userId: number }) => {
-      this.emit('message:delivered', data);
-    });
-
-    this.socket.on('message:read', (data: { messageId: string; userId: number }) => {
-      this.emit('message:read', data);
-    });
-
-    // Typing indicators
-    this.socket.on('typing:start', (data: TypingIndicator) => {
-      this.emit('typing:start', data);
-    });
-
-    this.socket.on('typing:stop', (data: TypingIndicator) => {
-      this.emit('typing:stop', data);
-    });
-
-    // Online status
-    this.socket.on('user:online', (data: OnlineStatus) => {
-      this.emit('user:online', data);
-    });
-
-    this.socket.on('user:offline', (data: OnlineStatus) => {
-      this.emit('user:offline', data);
-    });
-
-    // Room events
-    this.socket.on('room:joined', (data: { roomId: string; userId: number }) => {
-      this.emit('room:joined', data);
-    });
-
-    this.socket.on('room:left', (data: { roomId: string; userId: number }) => {
-      this.emit('room:left', data);
-    });
-
-    // Broadcast events (for admin)
-    this.socket.on('broadcast:new', (data: any) => {
-      this.emit('broadcast:new', data);
+  /**
+   * Send a chat message
+   */
+  sendMessage(receiverId: number, content: string, messageType: string = 'text'): void {
+    this.send({
+      type: WSMessageType.MESSAGE_SEND,
+      data: {
+        receiver_id: receiverId,
+        content,
+        message_type: messageType,
+      },
     });
   }
 
   /**
-   * Send a message
+   * Send file message (image/voice)
    */
-  sendMessage(message: Omit<WebSocketMessage, 'id' | 'timestamp' | 'status'>): void {
-    const fullMessage: WebSocketMessage = {
-      ...message,
-      id: this.generateMessageId(),
-      timestamp: new Date().toISOString(),
-      status: 'sending',
-    };
-
-    if (this.socket?.connected) {
-      this.socket.emit('message:send', fullMessage);
-    } else {
-      // Queue message if not connected
-      fullMessage.status = 'failed';
-      this.messageQueue.push(fullMessage);
-      this.emit('message:queued', fullMessage);
-    }
+  sendFileMessage(
+    receiverId: number,
+    fileUrl: string,
+    fileName: string,
+    messageType: 'image' | 'voice',
+    duration?: number
+  ): void {
+    this.send({
+      type: WSMessageType.MESSAGE_SEND,
+      data: {
+        receiver_id: receiverId,
+        file_url: fileUrl,
+        file_name: fileName,
+        message_type: messageType,
+        duration,
+      },
+    });
   }
 
   /**
    * Send typing indicator
    */
-  sendTyping(roomId: string, isTyping: boolean): void {
-    if (this.socket?.connected) {
-      this.socket.emit('typing', { roomId, isTyping });
-    }
-  }
-
-  /**
-   * Join a chat room
-   */
-  joinRoom(roomId: string): void {
-    if (this.socket?.connected) {
-      this.socket.emit('room:join', { roomId });
-    }
-  }
-
-  /**
-   * Leave a chat room
-   */
-  leaveRoom(roomId: string): void {
-    if (this.socket?.connected) {
-      this.socket.emit('room:leave', { roomId });
-    }
-  }
-
-  /**
-   * Mark messages as delivered
-   */
-  markAsDelivered(messageIds: string[]): void {
-    if (this.socket?.connected) {
-      this.socket.emit('message:delivered', { messageIds });
-    }
+  sendTyping(receiverId: number, isTyping: boolean): void {
+    this.send({
+      type: isTyping ? WSMessageType.TYPING_START : WSMessageType.TYPING_STOP,
+      data: {
+        receiver_id: receiverId,
+        is_typing: isTyping,
+      },
+    });
   }
 
   /**
    * Mark messages as read
    */
-  markAsRead(messageIds: string[]): void {
-    if (this.socket?.connected) {
-      this.socket.emit('message:read', { messageIds });
-    }
+  markAsRead(messageIds: number[], senderId: number): void {
+    this.send({
+      type: WSMessageType.MESSAGE_READ,
+      data: {
+        message_ids: messageIds,
+        sender_id: senderId,
+      },
+    });
   }
 
   /**
    * Request online status for users
    */
   requestOnlineStatus(userIds: number[]): void {
-    if (this.socket?.connected) {
-      this.socket.emit('user:status', { userIds });
-    }
+    this.send({
+      type: WSMessageType.USER_STATUS_REQUEST,
+      data: {
+        user_ids: userIds,
+      },
+    });
   }
 
   /**
-   * Admin broadcast message
+   * Join a chat room
    */
-  sendBroadcast(message: string, target: 'all' | 'clients' | 'players', metadata?: any): void {
-    if (this.socket?.connected) {
-      this.socket.emit('broadcast:send', {
-        message,
-        target,
-        metadata,
-        timestamp: new Date().toISOString(),
-      });
-    }
+  joinRoom(roomId: string): void {
+    this.send({
+      type: WSMessageType.ROOM_JOIN,
+      data: { room_id: roomId },
+    });
+  }
+
+  /**
+   * Leave a chat room
+   */
+  leaveRoom(roomId: string): void {
+    this.send({
+      type: WSMessageType.ROOM_LEAVE,
+      data: { room_id: roomId },
+    });
   }
 
   /**
    * Subscribe to an event
    */
-  on(event: string, callback: Function): void {
+  on(event: string, callback: EventCallback): void {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, new Set());
     }
@@ -245,15 +446,15 @@ class WebSocketService {
   /**
    * Unsubscribe from an event
    */
-  off(event: string, callback: Function): void {
+  off(event: string, callback: EventCallback): void {
     this.listeners.get(event)?.delete(callback);
   }
 
   /**
    * Emit an event to local listeners
    */
-  private emit(event: string, data: any): void {
-    this.listeners.get(event)?.forEach(callback => {
+  private emit(event: string, data: unknown): void {
+    this.listeners.get(event)?.forEach((callback) => {
       try {
         callback(data);
       } catch (error) {
@@ -263,41 +464,35 @@ class WebSocketService {
   }
 
   /**
-   * Flush message queue when reconnected
-   */
-  private flushMessageQueue(): void {
-    while (this.messageQueue.length > 0) {
-      const message = this.messageQueue.shift();
-      if (message) {
-        this.sendMessage(message);
-      }
-    }
-  }
-
-  /**
-   * Generate unique message ID
-   */
-  private generateMessageId(): string {
-    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  /**
    * Disconnect WebSocket
    */
   disconnect(): void {
+    this.manualDisconnect = true;
+
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+
+    this.stopHeartbeat();
+
     if (this.socket) {
-      this.socket.disconnect();
+      this.socket.close(1000, 'User disconnected');
       this.socket = null;
     }
+
     this.listeners.clear();
     this.messageQueue = [];
+    this.token = null;
+    this.userId = null;
+    this.reconnectAttempts = 0;
   }
 
   /**
    * Check if connected
    */
   isConnected(): boolean {
-    return this.socket?.connected || false;
+    return this.socket?.readyState === WebSocket.OPEN;
   }
 
   /**
@@ -305,9 +500,23 @@ class WebSocketService {
    */
   getConnectionStatus(): 'connected' | 'connecting' | 'disconnected' {
     if (!this.socket) return 'disconnected';
-    if (this.socket.connected) return 'connected';
-    return 'connecting';
+    switch (this.socket.readyState) {
+      case WebSocket.OPEN:
+        return 'connected';
+      case WebSocket.CONNECTING:
+        return 'connecting';
+      default:
+        return 'disconnected';
+    }
+  }
+
+  /**
+   * Generate room ID for direct messages
+   */
+  static getDMRoomId(userId1: number, userId2: number): string {
+    return `dm-${Math.min(userId1, userId2)}-${Math.max(userId1, userId2)}`;
   }
 }
 
+// Export singleton instance
 export const wsService = new WebSocketService();

@@ -77,5 +77,10 @@ class User(Base):
     email_otp = Column(String(6), nullable=True)
     email_otp_expires_at = Column(DateTime(timezone=True), nullable=True)
 
+    # Two-Factor Authentication (2FA)
+    two_factor_enabled = Column(Boolean, default=False)
+    two_factor_secret = Column(String, nullable=True)
+    two_factor_backup_codes = Column(String, nullable=True)  # JSON array of backup codes
+
     # Track which client created this player
     created_by_client_id = Column(Integer, ForeignKey("users.id"), nullable=True)

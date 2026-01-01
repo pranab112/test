@@ -6,7 +6,6 @@ import {
 } from 'react-icons/md';
 import { FaChartLine, FaUserPlus } from 'react-icons/fa';
 import { clientApi, type PlayerStats, type ActivityItem } from '@/api/endpoints';
-import { formatDistanceToNow } from 'date-fns';
 
 export function DashboardSection() {
   const [stats, setStats] = useState<PlayerStats | null>(null);

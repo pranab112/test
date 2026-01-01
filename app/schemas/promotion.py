@@ -61,6 +61,7 @@ class PromotionClaimResponse(BaseModel):
     claimed_value: Optional[int] = None
     new_balance: Optional[int] = None
     wagering_required: Optional[int] = None
+    status: Optional[str] = None  # pending_approval, approved, rejected, claimed
 
 class PromotionStatsResponse(BaseModel):
     promotion_id: int

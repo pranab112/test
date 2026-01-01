@@ -1,371 +1,378 @@
-import { useState } from 'react';
-import { DataTable } from '@/components/common/DataTable';
+import { useState, useEffect } from 'react';
 import { Badge } from '@/components/common/Badge';
 import { Avatar } from '@/components/common/Avatar';
 import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
+import { Modal } from '@/components/common/Modal';
 import toast from 'react-hot-toast';
-import { MdSearch, MdPersonAdd } from 'react-icons/md';
-
-interface Friend {
-  id: number;
-  username: string;
-  full_name: string;
-  level: number;
-  is_online: boolean;
-}
-
-interface FriendRequest {
-  id: number;
-  username: string;
-  full_name: string;
-  level: number;
-  created_at: string;
-}
-
-interface UserSearchResult {
-  id: number;
-  username: string;
-  full_name: string;
-  level: number;
-  is_friend: boolean;
-  request_pending: boolean;
-}
-
-// TODO: Replace with API data
-const MOCK_FRIENDS: Friend[] = [
-  { id: 1, username: 'player_john', full_name: 'John Doe', level: 18, is_online: true },
-  { id: 2, username: 'player_sarah', full_name: 'Sarah Smith', level: 12, is_online: false },
-  { id: 3, username: 'player_alex', full_name: 'Alex Johnson', level: 25, is_online: true },
-  { id: 4, username: 'player_emma', full_name: 'Emma Wilson', level: 15, is_online: false },
-];
-
-const MOCK_REQUESTS: FriendRequest[] = [
-  { id: 1, username: 'player_mike', full_name: 'Mike Wilson', level: 20, created_at: '2 hours ago' },
-  { id: 2, username: 'player_lisa', full_name: 'Lisa Brown', level: 16, created_at: '1 day ago' },
-];
-
-const MOCK_SEARCH_RESULTS: UserSearchResult[] = [
-  { id: 5, username: 'player_david', full_name: 'David Lee', level: 22, is_friend: false, request_pending: false },
-  { id: 6, username: 'player_sophia', full_name: 'Sophia Martinez', level: 19, is_friend: false, request_pending: true },
-];
+import { MdSearch, MdPersonAdd, MdMessage, MdPersonRemove, MdCheck, MdClose, MdRefresh } from 'react-icons/md';
+import { friendsApi, type FriendDetails, type FriendRequest } from '@/api/endpoints';
+import { formatDistanceToNow } from 'date-fns';
 
 export function FriendsSection() {
-  const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'search'>('friends');
+  const [loading, setLoading] = useState(true);
+  const [friends, setFriends] = useState<FriendDetails[]>([]);
+  const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
+  const [searchResults, setSearchResults] = useState<FriendDetails[]>([]);
   const [searching, setSearching] = useState(false);
+  const [processingRequests, setProcessingRequests] = useState<Set<number>>(new Set());
 
-  const handleSearch = () => {
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [friendsData, requestsData] = await Promise.all([
+        friendsApi.getFriends(),
+        friendsApi.getPendingRequests(),
+      ]);
+      setFriends(friendsData);
+      setFriendRequests(requestsData);
+    } catch (error) {
+      console.error('Failed to load friends data:', error);
+      toast.error('Failed to load friends');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = async () => {
     if (!searchQuery.trim()) {
       toast.error('Please enter a username to search');
       return;
     }
 
     setSearching(true);
-    // TODO: Replace with actual API call
-    setTimeout(() => {
-      setSearchResults(MOCK_SEARCH_RESULTS);
+    try {
+      const results = await friendsApi.searchUsers(searchQuery);
+      // Filter out existing friends
+      const friendIds = new Set(friends.map(f => f.id));
+      const filtered = results.filter(u => !friendIds.has(u.id));
+      setSearchResults(filtered);
+
+      if (filtered.length === 0) {
+        toast('No users found or they are already your friends', { icon: '🔍' });
+      }
+    } catch (error) {
+      console.error('Search failed:', error);
+      toast.error('Failed to search users');
+    } finally {
       setSearching(false);
-      toast.success(`Found ${MOCK_SEARCH_RESULTS.length} users`);
-    }, 500);
+    }
   };
 
-  const handleAcceptRequest = (request: FriendRequest) => {
-    // TODO: API call to accept friend request
-    toast.success(`Accepted friend request from ${request.username}`);
+  const handleSendRequest = async (userId: number, username: string) => {
+    try {
+      await friendsApi.sendFriendRequest(userId);
+      toast.success(`Friend request sent to ${username}`);
+      setSearchResults(prev => prev.filter(u => u.id !== userId));
+    } catch (error: any) {
+      toast.error(error.detail || 'Failed to send friend request');
+    }
   };
 
-  const handleDeclineRequest = (request: FriendRequest) => {
-    // TODO: API call to decline friend request
-    toast.error(`Declined friend request from ${request.username}`);
+  const handleAcceptRequest = async (requestId: number, username: string) => {
+    setProcessingRequests(prev => new Set(prev).add(requestId));
+    try {
+      await friendsApi.acceptRequest(requestId);
+      toast.success(`You are now friends with ${username}`);
+      await loadData();
+    } catch (error: any) {
+      toast.error(error.detail || 'Failed to accept friend request');
+    } finally {
+      setProcessingRequests(prev => {
+        const next = new Set(prev);
+        next.delete(requestId);
+        return next;
+      });
+    }
   };
 
-  const handleSendRequest = (user: UserSearchResult) => {
-    // TODO: API call to send friend request
-    toast.success(`Friend request sent to ${user.username}`);
+  const handleRejectRequest = async (requestId: number, username: string) => {
+    setProcessingRequests(prev => new Set(prev).add(requestId));
+    try {
+      await friendsApi.rejectRequest(requestId);
+      toast.success(`Declined friend request from ${username}`);
+      setFriendRequests(prev => prev.filter(req => req.id !== requestId));
+    } catch (error: any) {
+      toast.error(error.detail || 'Failed to decline friend request');
+    } finally {
+      setProcessingRequests(prev => {
+        const next = new Set(prev);
+        next.delete(requestId);
+        return next;
+      });
+    }
   };
 
-  const handleRemoveFriend = (friend: Friend) => {
-    // TODO: API call to remove friend
-    toast.error(`Removed ${friend.username} from friends`);
+  const handleRemoveFriend = async (friendId: number, username: string) => {
+    if (!confirm(`Remove ${username} from your friends?`)) return;
+
+    try {
+      await friendsApi.removeFriend(friendId);
+      toast.success(`Removed ${username} from friends`);
+      setFriends(prev => prev.filter(f => f.id !== friendId));
+    } catch (error: any) {
+      toast.error(error.detail || 'Failed to remove friend');
+    }
   };
 
-  const friendColumns = [
-    {
-      key: 'username',
-      label: 'Player',
-      render: (friend: Friend) => (
-        <div className="flex items-center gap-3">
-          <Avatar name={friend.full_name} size="sm" online={friend.is_online} />
-          <div>
-            <div className="font-medium text-white">{friend.username}</div>
-            <div className="text-xs text-gray-400">{friend.full_name}</div>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: 'level',
-      label: 'Level',
-      render: (friend: Friend) => (
-        <Badge variant="info">Level {friend.level}</Badge>
-      ),
-    },
-    {
-      key: 'is_online',
-      label: 'Status',
-      render: (friend: Friend) => (
-        <Badge variant={friend.is_online ? 'success' : 'default'} dot>
-          {friend.is_online ? 'Online' : 'Offline'}
-        </Badge>
-      ),
-    },
-    {
-      key: 'actions',
-      label: 'Actions',
-      render: (friend: Friend) => (
-        <div className="flex gap-2">
-          <button
-            onClick={() => toast.success(`Messaging ${friend.username}`)}
-            className="text-gold-500 hover:text-gold-400 text-sm font-medium"
-          >
-            Send Message
-          </button>
-          <button
-            onClick={() => handleRemoveFriend(friend)}
-            className="text-red-500 hover:text-red-400 text-sm font-medium"
-          >
-            Remove
-          </button>
-        </div>
-      ),
-    },
-  ];
+  const handleMessageFriend = (_friendId: number, username: string) => {
+    toast.success(`Opening chat with ${username}...`);
+  };
 
-  const requestColumns = [
-    {
-      key: 'username',
-      label: 'Player',
-      render: (request: FriendRequest) => (
-        <div className="flex items-center gap-3">
-          <Avatar name={request.full_name} size="sm" />
-          <div>
-            <div className="font-medium text-white">{request.username}</div>
-            <div className="text-xs text-gray-400">{request.full_name}</div>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: 'level',
-      label: 'Level',
-      render: (request: FriendRequest) => (
-        <Badge variant="info">Level {request.level}</Badge>
-      ),
-    },
-    { key: 'created_at', label: 'Received' },
-    {
-      key: 'actions',
-      label: 'Actions',
-      render: (request: FriendRequest) => (
-        <div className="flex gap-2">
-          <button
-            onClick={() => handleAcceptRequest(request)}
-            className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
-          >
-            Accept
-          </button>
-          <button
-            onClick={() => handleDeclineRequest(request)}
-            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
-          >
-            Decline
-          </button>
-        </div>
-      ),
-    },
-  ];
+  const formatTime = (dateString: string) => {
+    try {
+      return formatDistanceToNow(new Date(dateString), { addSuffix: true });
+    } catch {
+      return dateString;
+    }
+  };
 
-  const searchColumns = [
-    {
-      key: 'username',
-      label: 'Player',
-      render: (user: UserSearchResult) => (
-        <div className="flex items-center gap-3">
-          <Avatar name={user.full_name} size="sm" />
-          <div>
-            <div className="font-medium text-white">{user.username}</div>
-            <div className="text-xs text-gray-400">{user.full_name}</div>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: 'level',
-      label: 'Level',
-      render: (user: UserSearchResult) => (
-        <Badge variant="info">Level {user.level}</Badge>
-      ),
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      render: (user: UserSearchResult) => {
-        if (user.is_friend) {
-          return <Badge variant="success">Friend</Badge>;
-        } else if (user.request_pending) {
-          return <Badge variant="warning">Request Sent</Badge>;
-        }
-        return <Badge variant="default">Not Connected</Badge>;
-      },
-    },
-    {
-      key: 'actions',
-      label: 'Actions',
-      render: (user: UserSearchResult) => {
-        if (user.is_friend) {
-          return (
-            <button
-              onClick={() => toast.success(`Messaging ${user.username}`)}
-              className="text-gold-500 hover:text-gold-400 text-sm font-medium"
-            >
-              Send Message
-            </button>
-          );
-        } else if (user.request_pending) {
-          return (
-            <span className="text-gray-500 text-sm">Request Pending</span>
-          );
-        }
-        return (
-          <button
-            onClick={() => handleSendRequest(user)}
-            className="flex items-center gap-1 text-blue-500 hover:text-blue-400 text-sm font-medium"
-          >
-            <MdPersonAdd />
-            Add Friend
-          </button>
-        );
-      },
-    },
-  ];
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gold-500">Loading friends...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gold-500">Friends</h1>
-          <p className="text-gray-400 mt-1">
-            {activeTab === 'friends' && `You have ${MOCK_FRIENDS.length} friends`}
-            {activeTab === 'requests' && `${MOCK_REQUESTS.length} pending requests`}
-            {activeTab === 'search' && 'Search for players to add as friends'}
-          </p>
+          <p className="text-gray-400">Connect with other players</p>
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => setActiveTab('friends')}
-            className={`px-4 py-2 rounded-lg font-medium transition-all ${
-              activeTab === 'friends'
-                ? 'bg-gold-gradient text-dark-700'
-                : 'bg-dark-300 text-gray-400 hover:text-gold-500'
-            }`}
+            type="button"
+            onClick={loadData}
+            className="bg-dark-300 hover:bg-dark-400 text-gold-500 p-3 rounded-lg transition-colors"
+            title="Refresh"
           >
-            Friends ({MOCK_FRIENDS.length})
+            <MdRefresh size={20} />
           </button>
-          <button
-            onClick={() => setActiveTab('requests')}
-            className={`px-4 py-2 rounded-lg font-medium transition-all relative ${
-              activeTab === 'requests'
-                ? 'bg-gold-gradient text-dark-700'
-                : 'bg-dark-300 text-gray-400 hover:text-gold-500'
-            }`}
-          >
-            Requests
-            {MOCK_REQUESTS.length > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                {MOCK_REQUESTS.length}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('search')}
-            className={`px-4 py-2 rounded-lg font-medium transition-all ${
-              activeTab === 'search'
-                ? 'bg-gold-gradient text-dark-700'
-                : 'bg-dark-300 text-gray-400 hover:text-gold-500'
-            }`}
-          >
-            Search
-          </button>
+          <Button onClick={() => setShowAddModal(true)}>
+            <MdPersonAdd size={18} className="mr-2" />
+            Add Friend
+          </Button>
         </div>
       </div>
 
-      {activeTab === 'search' && (
+      {/* Pending Friend Requests */}
+      {friendRequests.length > 0 && (
         <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-          <h2 className="text-xl font-bold text-gold-500 mb-4">Search Players</h2>
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <Input
-                placeholder="Enter username to search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              />
-            </div>
-            <Button
-              onClick={handleSearch}
-              loading={searching}
-              variant="primary"
-            >
-              <MdSearch className="text-xl" />
-              Search
-            </Button>
+          <h2 className="text-xl font-bold text-gold-500 mb-4 flex items-center gap-2">
+            <Badge variant="warning">{friendRequests.length}</Badge>
+            Pending Friend Requests
+          </h2>
+          <div className="space-y-3">
+            {friendRequests.map((request) => {
+              const requester = request.requester;
+              const isProcessing = processingRequests.has(request.id);
+              return (
+                <div
+                  key={request.id}
+                  className="bg-dark-300 p-4 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                >
+                  <div className="flex items-center gap-3">
+                    <Avatar
+                      name={requester?.full_name || requester?.username || 'Unknown'}
+                      size="md"
+                      src={requester?.profile_picture}
+                    />
+                    <div>
+                      <p className="text-white font-medium">{requester?.username || 'Unknown User'}</p>
+                      <p className="text-sm text-gray-400">
+                        {requester?.full_name} • {formatTime(request.created_at)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleAcceptRequest(request.id, requester?.username || 'User')}
+                      disabled={isProcessing}
+                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 disabled:opacity-50"
+                    >
+                      <MdCheck size={18} />
+                      Accept
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRejectRequest(request.id, requester?.username || 'User')}
+                      disabled={isProcessing}
+                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 disabled:opacity-50"
+                    >
+                      <MdClose size={18} />
+                      Decline
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
 
+      {/* Friends List */}
       <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-        {activeTab === 'friends' && (
-          <>
-            <h2 className="text-xl font-bold text-gold-500 mb-4">Your Friends</h2>
-            <DataTable
-              data={MOCK_FRIENDS}
-              columns={friendColumns}
-              emptyMessage="No friends yet. Use the search tab to find players!"
-            />
-          </>
-        )}
+        <h2 className="text-xl font-bold text-gold-500 mb-4">
+          My Friends ({friends.length})
+        </h2>
 
-        {activeTab === 'requests' && (
-          <>
-            <h2 className="text-xl font-bold text-gold-500 mb-4">Friend Requests</h2>
-            <DataTable
-              data={MOCK_REQUESTS}
-              columns={requestColumns}
-              emptyMessage="No pending friend requests"
-            />
-          </>
-        )}
-
-        {activeTab === 'search' && searchResults.length > 0 && (
-          <>
-            <h2 className="text-xl font-bold text-gold-500 mb-4">Search Results</h2>
-            <DataTable
-              data={searchResults}
-              columns={searchColumns}
-              emptyMessage="No users found"
-            />
-          </>
-        )}
-
-        {activeTab === 'search' && searchResults.length === 0 && !searching && (
+        {friends.length === 0 ? (
           <div className="text-center py-12">
-            <MdSearch className="text-6xl text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400">Enter a username above to search for players</p>
+            <MdPersonAdd className="text-6xl text-gray-600 mx-auto mb-4" />
+            <p className="text-gray-400 mb-4">You haven't added any friends yet</p>
+            <Button onClick={() => setShowAddModal(true)}>
+              <MdSearch size={18} className="mr-2" />
+              Find Friends
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {friends.map((friend) => (
+              <div
+                key={friend.id}
+                className="bg-dark-300 p-4 rounded-lg hover:bg-dark-400 transition-colors"
+              >
+                <div className="flex items-start gap-3 mb-3">
+                  <Avatar
+                    name={friend.full_name || friend.username}
+                    size="lg"
+                    online={friend.is_online}
+                    src={friend.profile_picture}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-medium truncate">{friend.username}</p>
+                    <p className="text-sm text-gray-400 truncate">{friend.full_name}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      {friend.is_online ? (
+                        <Badge variant="success" size="sm" dot>
+                          Online
+                        </Badge>
+                      ) : (
+                        <Badge variant="default" size="sm">
+                          Offline
+                        </Badge>
+                      )}
+                      {friend.player_level && (
+                        <span className="text-xs text-gold-500">Level {friend.player_level}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleMessageFriend(friend.id, friend.username)}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1"
+                  >
+                    <MdMessage size={16} />
+                    Message
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveFriend(friend.id, friend.username)}
+                    className="bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                    title="Remove friend"
+                  >
+                    <MdPersonRemove size={16} />
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
+
+      {/* Add Friend Modal */}
+      <Modal
+        isOpen={showAddModal}
+        onClose={() => {
+          setShowAddModal(false);
+          setSearchQuery('');
+          setSearchResults([]);
+        }}
+        title="Find Friends"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-400">
+            Search for players by username to send them a friend request.
+          </p>
+
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <Input
+                label="Search by Username"
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                placeholder="Enter username..."
+              />
+            </div>
+            <Button onClick={handleSearch} loading={searching} className="mt-6">
+              <MdSearch size={20} />
+            </Button>
+          </div>
+
+          {/* Search Results */}
+          {searchResults.length > 0 && (
+            <div className="space-y-2 max-h-80 overflow-y-auto">
+              <h3 className="text-sm font-medium text-gray-400">Search Results</h3>
+              {searchResults.map((user) => (
+                <div
+                  key={user.id}
+                  className="bg-dark-300 p-3 rounded-lg flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-3">
+                    <Avatar
+                      name={user.full_name || user.username}
+                      size="md"
+                      src={user.profile_picture}
+                      online={user.is_online}
+                    />
+                    <div>
+                      <p className="text-white font-medium">{user.username}</p>
+                      <p className="text-sm text-gray-400">
+                        {user.full_name}
+                        {user.player_level && ` • Level ${user.player_level}`}
+                      </p>
+                    </div>
+                  </div>
+                  <Button onClick={() => handleSendRequest(user.id, user.username)}>
+                    <MdPersonAdd size={16} className="mr-1" />
+                    Add
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-4 border-t border-dark-400">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowAddModal(false);
+                setSearchQuery('');
+                setSearchResults([]);
+              }}
+              fullWidth
+            >
+              Close
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

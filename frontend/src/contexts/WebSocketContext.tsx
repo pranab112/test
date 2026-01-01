@@ -1,23 +1,51 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { wsService, WebSocketMessage, TypingIndicator, OnlineStatus } from '@/services/websocket.service';
+import {
+  wsService,
+  WSMessageType,
+  ChatMessage,
+  TypingIndicator,
+  OnlineStatus,
+  UserStatusResponse,
+} from '@/services/websocket.service';
 import { useAuth } from './AuthContext';
 import toast from 'react-hot-toast';
 
 interface WebSocketContextType {
+  // Connection state
   isConnected: boolean;
   connectionStatus: 'connected' | 'connecting' | 'disconnected';
-  sendMessage: (message: Omit<WebSocketMessage, 'id' | 'timestamp' | 'status'>) => void;
-  sendTyping: (roomId: string, isTyping: boolean) => void;
+
+  // Message operations
+  sendMessage: (receiverId: number, content: string, messageType?: string) => void;
+  sendFileMessage: (
+    receiverId: number,
+    fileUrl: string,
+    fileName: string,
+    messageType: 'image' | 'voice',
+    duration?: number
+  ) => void;
+  markAsRead: (messageIds: number[], senderId: number) => void;
+
+  // Typing operations
+  sendTyping: (receiverId: number, isTyping: boolean) => void;
+
+  // Room operations
   joinRoom: (roomId: string) => void;
   leaveRoom: (roomId: string) => void;
-  markAsDelivered: (messageIds: string[]) => void;
-  markAsRead: (messageIds: string[]) => void;
+
+  // Status operations
   requestOnlineStatus: (userIds: number[]) => void;
-  sendBroadcast: (message: string, target: 'all' | 'clients' | 'players', metadata?: any) => void;
-  messages: Map<string, WebSocketMessage[]>;
+
+  // State
+  messages: Map<string, ChatMessage[]>;
   typingIndicators: Map<string, TypingIndicator[]>;
   onlineUsers: Map<number, OnlineStatus>;
   unreadCounts: Map<string, number>;
+
+  // Helpers
+  getRoomId: (otherUserId: number) => string;
+  addMessage: (roomId: string, message: ChatMessage) => void;
+  clearUnread: (roomId: string) => void;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | null>(null);
@@ -35,63 +63,56 @@ interface WebSocketProviderProps {
 }
 
 export function WebSocketProvider({ children }: WebSocketProviderProps) {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
+  const token = localStorage.getItem('access_token');
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('disconnected');
-  const [messages, setMessages] = useState<Map<string, WebSocketMessage[]>>(new Map());
+  const [messages, setMessages] = useState<Map<string, ChatMessage[]>>(new Map());
   const [typingIndicators, setTypingIndicators] = useState<Map<string, TypingIndicator[]>>(new Map());
   const [onlineUsers, setOnlineUsers] = useState<Map<number, OnlineStatus>>(new Map());
   const [unreadCounts, setUnreadCounts] = useState<Map<string, number>>(new Map());
   const typingTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
-  // Initialize WebSocket connection
-  useEffect(() => {
-    if (user && token) {
-      setConnectionStatus('connecting');
-      wsService.connect(token, user.id);
+  // Get room ID for direct messages
+  const getRoomId = useCallback((otherUserId: number): string => {
+    if (!user) return '';
+    return `dm-${Math.min(user.id, otherUserId)}-${Math.max(user.id, otherUserId)}`;
+  }, [user]);
 
-      // Setup event listeners
-      wsService.on('connected', handleConnected);
-      wsService.on('disconnected', handleDisconnected);
-      wsService.on('message:new', handleNewMessage);
-      wsService.on('message:updated', handleMessageUpdated);
-      wsService.on('message:deleted', handleMessageDeleted);
-      wsService.on('message:delivered', handleMessageDelivered);
-      wsService.on('message:read', handleMessageRead);
-      wsService.on('typing:start', handleTypingStart);
-      wsService.on('typing:stop', handleTypingStop);
-      wsService.on('user:online', handleUserOnline);
-      wsService.on('user:offline', handleUserOffline);
-      wsService.on('broadcast:new', handleBroadcast);
-
-      return () => {
-        wsService.disconnect();
-      };
-    }
-  }, [user, token]);
-
-  const handleConnected = () => {
-    setIsConnected(true);
-    setConnectionStatus('connected');
-  };
-
-  const handleDisconnected = () => {
-    setIsConnected(false);
-    setConnectionStatus('disconnected');
-  };
-
-  const handleNewMessage = (message: WebSocketMessage) => {
-    const roomId = message.roomId || `dm-${message.senderId}`;
-
+  // Add message to state
+  const addMessage = useCallback((roomId: string, message: ChatMessage) => {
     setMessages((prev) => {
       const newMessages = new Map(prev);
       const roomMessages = newMessages.get(roomId) || [];
+
+      // Check for duplicate
+      if (roomMessages.some((m) => m.id === message.id)) {
+        return prev;
+      }
+
       newMessages.set(roomId, [...roomMessages, message]);
       return newMessages;
     });
+  }, []);
+
+  // Clear unread count for a room
+  const clearUnread = useCallback((roomId: string) => {
+    setUnreadCounts((prev) => {
+      const newCounts = new Map(prev);
+      newCounts.set(roomId, 0);
+      return newCounts;
+    });
+  }, []);
+
+  // Handle new message
+  const handleNewMessage = useCallback((data: unknown) => {
+    const messageData = data as ChatMessage;
+    const roomId = messageData.room_id;
+
+    addMessage(roomId, messageData);
 
     // Update unread count if message is from another user
-    if (message.senderId !== user?.id) {
+    if (messageData.sender_id !== user?.id) {
       setUnreadCounts((prev) => {
         const newCounts = new Map(prev);
         const currentCount = newCounts.get(roomId) || 0;
@@ -99,74 +120,62 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
         return newCounts;
       });
 
-      // Show notification for new message
+      // Show notification if tab is hidden
       if (document.hidden) {
-        new Notification(`New message from ${message.senderName}`, {
-          body: message.content || 'Sent an attachment',
-          icon: message.senderAvatar || '/logo.png',
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification(`New message from ${messageData.sender_name}`, {
+            body: messageData.content || 'Sent an attachment',
+            icon: messageData.sender_avatar || '/logo.png',
+          });
+        }
+      } else {
+        toast(`${messageData.sender_name}: ${messageData.content || 'Sent an attachment'}`, {
+          icon: '💬',
+          duration: 3000,
         });
       }
     }
-  };
+  }, [user, addMessage]);
 
-  const handleMessageUpdated = (message: WebSocketMessage) => {
-    const roomId = message.roomId || `dm-${message.senderId}`;
+  // Handle message delivered
+  const handleMessageDelivered = useCallback((data: unknown) => {
+    const { message_id, status } = data as { message_id: number; status: string };
 
-    setMessages((prev) => {
-      const newMessages = new Map(prev);
-      const roomMessages = newMessages.get(roomId) || [];
-      const updatedMessages = roomMessages.map((msg) =>
-        msg.id === message.id ? message : msg
-      );
-      newMessages.set(roomId, updatedMessages);
-      return newMessages;
-    });
-  };
-
-  const handleMessageDeleted = ({ messageId }: { messageId: string }) => {
-    setMessages((prev) => {
-      const newMessages = new Map(prev);
-      newMessages.forEach((roomMessages, roomId) => {
-        const filteredMessages = roomMessages.filter((msg) => msg.id !== messageId);
-        if (filteredMessages.length !== roomMessages.length) {
-          newMessages.set(roomId, filteredMessages);
-        }
-      });
-      return newMessages;
-    });
-  };
-
-  const handleMessageDelivered = ({ messageId, userId }: { messageId: string; userId: number }) => {
     setMessages((prev) => {
       const newMessages = new Map(prev);
       newMessages.forEach((roomMessages, roomId) => {
         const updatedMessages = roomMessages.map((msg) =>
-          msg.id === messageId ? { ...msg, status: 'delivered' as const } : msg
+          msg.id === message_id ? { ...msg, status: status as ChatMessage['status'] } : msg
         );
         newMessages.set(roomId, updatedMessages);
       });
       return newMessages;
     });
-  };
+  }, []);
 
-  const handleMessageRead = ({ messageId, userId }: { messageId: string; userId: number }) => {
+  // Handle message read
+  const handleMessageRead = useCallback((data: unknown) => {
+    const { message_ids } = data as { message_ids: number[]; reader_id: number };
+
     setMessages((prev) => {
       const newMessages = new Map(prev);
       newMessages.forEach((roomMessages, roomId) => {
         const updatedMessages = roomMessages.map((msg) =>
-          msg.id === messageId ? { ...msg, status: 'read' as const } : msg
+          message_ids.includes(msg.id as number) ? { ...msg, is_read: true, status: 'read' as const } : msg
         );
         newMessages.set(roomId, updatedMessages);
       });
       return newMessages;
     });
-  };
+  }, []);
 
-  const handleTypingStart = (indicator: TypingIndicator) => {
-    const roomId = indicator.roomId;
+  // Handle typing start
+  const handleTypingStart = useCallback((data: unknown) => {
+    const indicator = data as TypingIndicator;
+    const roomId = indicator.room_id;
+    const timeoutKey = `${roomId}-${indicator.user_id}`;
 
-    // Clear existing timeout for this user
-    const timeoutKey = `${roomId}-${indicator.userId}`;
+    // Clear existing timeout
     if (typingTimeouts.current.has(timeoutKey)) {
       clearTimeout(typingTimeouts.current.get(timeoutKey)!);
     }
@@ -174,23 +183,36 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
     setTypingIndicators((prev) => {
       const newIndicators = new Map(prev);
       const roomIndicators = newIndicators.get(roomId) || [];
-      const filtered = roomIndicators.filter((ind) => ind.userId !== indicator.userId);
+      const filtered = roomIndicators.filter((ind) => ind.user_id !== indicator.user_id);
       newIndicators.set(roomId, [...filtered, indicator]);
       return newIndicators;
     });
 
-    // Auto-remove typing indicator after 3 seconds
+    // Auto-remove after 3 seconds
     const timeout = setTimeout(() => {
-      handleTypingStop(indicator);
+      setTypingIndicators((prev) => {
+        const newIndicators = new Map(prev);
+        const roomIndicators = newIndicators.get(roomId) || [];
+        const filtered = roomIndicators.filter((ind) => ind.user_id !== indicator.user_id);
+        if (filtered.length > 0) {
+          newIndicators.set(roomId, filtered);
+        } else {
+          newIndicators.delete(roomId);
+        }
+        return newIndicators;
+      });
+      typingTimeouts.current.delete(timeoutKey);
     }, 3000);
+
     typingTimeouts.current.set(timeoutKey, timeout);
-  };
+  }, []);
 
-  const handleTypingStop = (indicator: TypingIndicator) => {
-    const roomId = indicator.roomId;
-    const timeoutKey = `${roomId}-${indicator.userId}`;
+  // Handle typing stop
+  const handleTypingStop = useCallback((data: unknown) => {
+    const indicator = data as TypingIndicator;
+    const roomId = indicator.room_id;
+    const timeoutKey = `${roomId}-${indicator.user_id}`;
 
-    // Clear timeout
     if (typingTimeouts.current.has(timeoutKey)) {
       clearTimeout(typingTimeouts.current.get(timeoutKey)!);
       typingTimeouts.current.delete(timeoutKey);
@@ -199,7 +221,7 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
     setTypingIndicators((prev) => {
       const newIndicators = new Map(prev);
       const roomIndicators = newIndicators.get(roomId) || [];
-      const filtered = roomIndicators.filter((ind) => ind.userId !== indicator.userId);
+      const filtered = roomIndicators.filter((ind) => ind.user_id !== indicator.user_id);
       if (filtered.length > 0) {
         newIndicators.set(roomId, filtered);
       } else {
@@ -207,45 +229,185 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
       }
       return newIndicators;
     });
-  };
+  }, []);
 
-  const handleUserOnline = (status: OnlineStatus) => {
+  // Handle user online
+  const handleUserOnline = useCallback((data: unknown) => {
+    const status = data as OnlineStatus;
     setOnlineUsers((prev) => {
       const newUsers = new Map(prev);
-      newUsers.set(status.userId, status);
+      newUsers.set(status.user_id, { ...status, is_online: true });
       return newUsers;
     });
-  };
 
-  const handleUserOffline = (status: OnlineStatus) => {
+    toast(`${status.username || 'User'} is now online`, {
+      icon: '🟢',
+      duration: 2000,
+    });
+  }, []);
+
+  // Handle user offline
+  const handleUserOffline = useCallback((data: unknown) => {
+    const status = data as OnlineStatus;
     setOnlineUsers((prev) => {
       const newUsers = new Map(prev);
-      newUsers.set(status.userId, { ...status, isOnline: false, lastSeen: new Date().toISOString() });
+      newUsers.set(status.user_id, {
+        ...status,
+        is_online: false,
+        last_seen: new Date().toISOString(),
+      });
       return newUsers;
     });
-  };
+  }, []);
 
-  const handleBroadcast = (data: any) => {
-    toast(data.message, {
+  // Handle user status response
+  const handleUserStatusResponse = useCallback((data: unknown) => {
+    const { statuses } = data as UserStatusResponse;
+    setOnlineUsers((prev) => {
+      const newUsers = new Map(prev);
+      statuses.forEach((status) => {
+        newUsers.set(status.user_id, status);
+      });
+      return newUsers;
+    });
+  }, []);
+
+  // Handle friend request notification
+  const handleFriendRequest = useCallback((data: unknown) => {
+    const { from_username } = data as { from_username: string };
+    toast(`${from_username} sent you a friend request!`, {
+      icon: '👋',
       duration: 5000,
-      icon: '📢',
     });
-  };
+  }, []);
 
-  // Context methods
-  const sendMessage = useCallback((message: Omit<WebSocketMessage, 'id' | 'timestamp' | 'status'>) => {
-    if (user) {
-      wsService.sendMessage({
-        ...message,
-        senderId: user.id,
-        senderName: user.username,
-        senderAvatar: user.avatar,
+  // Handle friend accepted notification
+  const handleFriendAccepted = useCallback((data: unknown) => {
+    const { friend_username } = data as { friend_username: string };
+    toast(`${friend_username} accepted your friend request!`, {
+      icon: '🎉',
+      duration: 5000,
+    });
+  }, []);
+
+  // Handle general notification
+  const handleNotification = useCallback((data: unknown) => {
+    const { message } = data as { notification_type: string; message?: string };
+    if (message) {
+      toast(message, {
+        icon: '🔔',
+        duration: 4000,
       });
     }
-  }, [user]);
+  }, []);
 
-  const sendTyping = useCallback((roomId: string, isTyping: boolean) => {
-    wsService.sendTyping(roomId, isTyping);
+  // Initialize WebSocket connection
+  useEffect(() => {
+    if (user && token) {
+      setConnectionStatus('connecting');
+      wsService.connect(token, user.id);
+
+      // Setup event listeners
+      const handleConnected = () => {
+        setIsConnected(true);
+        setConnectionStatus('connected');
+      };
+
+      const handleDisconnected = () => {
+        setIsConnected(false);
+        setConnectionStatus('disconnected');
+      };
+
+      const handleError = (data: unknown) => {
+        console.error('WebSocket error:', data);
+        toast.error('Connection error. Trying to reconnect...', { duration: 3000 });
+      };
+
+      const handleReconnectFailed = () => {
+        toast.error('Failed to connect. Please refresh the page.', { duration: 5000 });
+      };
+
+      wsService.on('connected', handleConnected);
+      wsService.on('disconnected', handleDisconnected);
+      wsService.on('error', handleError);
+      wsService.on('reconnect_failed', handleReconnectFailed);
+      wsService.on(WSMessageType.MESSAGE_NEW, handleNewMessage);
+      wsService.on(WSMessageType.MESSAGE_DELIVERED, handleMessageDelivered);
+      wsService.on(WSMessageType.MESSAGE_READ, handleMessageRead);
+      wsService.on(WSMessageType.TYPING_START, handleTypingStart);
+      wsService.on(WSMessageType.TYPING_STOP, handleTypingStop);
+      wsService.on(WSMessageType.USER_ONLINE, handleUserOnline);
+      wsService.on(WSMessageType.USER_OFFLINE, handleUserOffline);
+      wsService.on(WSMessageType.USER_STATUS_RESPONSE, handleUserStatusResponse);
+      wsService.on(WSMessageType.FRIEND_REQUEST, handleFriendRequest);
+      wsService.on(WSMessageType.FRIEND_ACCEPTED, handleFriendAccepted);
+      wsService.on(WSMessageType.NOTIFICATION, handleNotification);
+
+      // Request notification permission
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+
+      return () => {
+        wsService.off('connected', handleConnected);
+        wsService.off('disconnected', handleDisconnected);
+        wsService.off('error', handleError);
+        wsService.off('reconnect_failed', handleReconnectFailed);
+        wsService.off(WSMessageType.MESSAGE_NEW, handleNewMessage);
+        wsService.off(WSMessageType.MESSAGE_DELIVERED, handleMessageDelivered);
+        wsService.off(WSMessageType.MESSAGE_READ, handleMessageRead);
+        wsService.off(WSMessageType.TYPING_START, handleTypingStart);
+        wsService.off(WSMessageType.TYPING_STOP, handleTypingStop);
+        wsService.off(WSMessageType.USER_ONLINE, handleUserOnline);
+        wsService.off(WSMessageType.USER_OFFLINE, handleUserOffline);
+        wsService.off(WSMessageType.USER_STATUS_RESPONSE, handleUserStatusResponse);
+        wsService.off(WSMessageType.FRIEND_REQUEST, handleFriendRequest);
+        wsService.off(WSMessageType.FRIEND_ACCEPTED, handleFriendAccepted);
+        wsService.off(WSMessageType.NOTIFICATION, handleNotification);
+        wsService.disconnect();
+      };
+    }
+  }, [
+    user,
+    token,
+    handleNewMessage,
+    handleMessageDelivered,
+    handleMessageRead,
+    handleTypingStart,
+    handleTypingStop,
+    handleUserOnline,
+    handleUserOffline,
+    handleUserStatusResponse,
+    handleFriendRequest,
+    handleFriendAccepted,
+    handleNotification,
+  ]);
+
+  // Context methods
+  const sendMessage = useCallback((receiverId: number, content: string, messageType: string = 'text') => {
+    wsService.sendMessage(receiverId, content, messageType);
+  }, []);
+
+  const sendFileMessage = useCallback((
+    receiverId: number,
+    fileUrl: string,
+    fileName: string,
+    messageType: 'image' | 'voice',
+    duration?: number
+  ) => {
+    wsService.sendFileMessage(receiverId, fileUrl, fileName, messageType, duration);
+  }, []);
+
+  const sendTyping = useCallback((receiverId: number, isTyping: boolean) => {
+    wsService.sendTyping(receiverId, isTyping);
+  }, []);
+
+  const markAsRead = useCallback((messageIds: number[], senderId: number) => {
+    wsService.markAsRead(messageIds, senderId);
+  }, []);
+
+  const requestOnlineStatus = useCallback((userIds: number[]) => {
+    wsService.requestOnlineStatus(userIds);
   }, []);
 
   const joinRoom = useCallback((roomId: string) => {
@@ -256,50 +418,23 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
     wsService.leaveRoom(roomId);
   }, []);
 
-  const markAsDelivered = useCallback((messageIds: string[]) => {
-    wsService.markAsDelivered(messageIds);
-  }, []);
-
-  const markAsRead = useCallback((messageIds: string[]) => {
-    wsService.markAsRead(messageIds);
-
-    // Clear unread count for the room
-    messageIds.forEach((messageId) => {
-      messages.forEach((roomMessages, roomId) => {
-        if (roomMessages.some((msg) => msg.id === messageId)) {
-          setUnreadCounts((prev) => {
-            const newCounts = new Map(prev);
-            newCounts.set(roomId, 0);
-            return newCounts;
-          });
-        }
-      });
-    });
-  }, [messages]);
-
-  const requestOnlineStatus = useCallback((userIds: number[]) => {
-    wsService.requestOnlineStatus(userIds);
-  }, []);
-
-  const sendBroadcast = useCallback((message: string, target: 'all' | 'clients' | 'players', metadata?: any) => {
-    wsService.sendBroadcast(message, target, metadata);
-  }, []);
-
   const value: WebSocketContextType = {
     isConnected,
     connectionStatus,
     sendMessage,
+    sendFileMessage,
     sendTyping,
     joinRoom,
     leaveRoom,
-    markAsDelivered,
     markAsRead,
     requestOnlineStatus,
-    sendBroadcast,
     messages,
     typingIndicators,
     onlineUsers,
     unreadCounts,
+    getRoomId,
+    addMessage,
+    clearUnread,
   };
 
   return (

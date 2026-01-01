@@ -1,141 +1,169 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DataTable } from '@/components/common/DataTable';
 import { Badge } from '@/components/common/Badge';
 import { Modal } from '@/components/common/Modal';
 import { Button } from '@/components/common/Button';
+import { apiClient } from '@/api/client';
 import toast from 'react-hot-toast';
-import { MdCardGiftcard, MdCheckCircle } from 'react-icons/md';
+import { MdCardGiftcard, MdCheckCircle, MdHourglassEmpty } from 'react-icons/md';
 
 interface Promotion {
   id: number;
   title: string;
   description: string;
-  client: string;
+  client_name: string;
+  client_company?: string;
   client_id: number;
-  type: 'bonus' | 'cashback' | 'credits' | 'free_spins';
+  promotion_type: 'bonus' | 'cashback' | 'credits' | 'free_spins' | 'deposit_bonus';
   value: number;
-  status: 'available' | 'claimed' | 'expired';
+  can_claim: boolean;
+  already_claimed: boolean;
+  status: string;
   start_date: string;
   end_date: string;
   terms?: string;
+  wagering_requirement: number;
+  min_player_level: number;
 }
 
-// TODO: Replace with API data
-const MOCK_PROMOTIONS: Promotion[] = [
-  {
-    id: 1,
-    title: 'Welcome Bonus',
-    description: 'Get 100 bonus credits for new players',
-    client: 'ABC Gaming Company',
-    client_id: 1,
-    type: 'bonus',
-    value: 100,
-    status: 'available',
-    start_date: '2025-12-01',
-    end_date: '2025-12-31',
-    terms: 'Valid for first-time deposits only. Must be claimed within 7 days of registration.',
-  },
-  {
-    id: 2,
-    title: 'Weekend Cashback',
-    description: '20% cashback on weekend play',
-    client: 'XYZ Casino Corp',
-    client_id: 2,
-    type: 'cashback',
-    value: 20,
-    status: 'claimed',
-    start_date: '2025-12-20',
-    end_date: '2025-12-30',
-    terms: 'Cashback calculated on net losses. Maximum cashback: 500 credits.',
-  },
-  {
-    id: 3,
-    title: 'Level Up Reward',
-    description: 'Bonus credits for reaching level 15',
-    client: 'ABC Gaming Company',
-    client_id: 1,
-    type: 'credits',
-    value: 50,
-    status: 'available',
-    start_date: '2025-12-15',
-    end_date: '2025-12-28',
-    terms: 'Automatically credited upon reaching level 15.',
-  },
-  {
-    id: 4,
-    title: 'Holiday Special',
-    description: 'Special holiday bonus - 200 credits',
-    client: 'Golden Entertainment',
-    client_id: 3,
-    type: 'bonus',
-    value: 200,
-    status: 'available',
-    start_date: '2025-12-24',
-    end_date: '2025-12-31',
-    terms: 'Limited time offer. Available while supplies last.',
-  },
-  {
-    id: 5,
-    title: 'Daily Free Spins',
-    description: '10 free spins every day',
-    client: 'XYZ Casino Corp',
-    client_id: 2,
-    type: 'free_spins',
-    value: 10,
-    status: 'claimed',
-    start_date: '2025-12-01',
-    end_date: '2026-01-31',
-    terms: 'Free spins expire after 24 hours. Valid on selected games only.',
-  },
-];
+interface Claim {
+  id?: number;
+  claim_id: number;
+  promotion_title: string;
+  promotion_type: string;
+  client_name: string;
+  client_company?: string;
+  claimed_value: number;
+  status: 'pending_approval' | 'approved' | 'rejected' | 'claimed' | 'used' | 'expired';
+  claimed_at: string;
+  wagering_completed: number;
+  wagering_required: number;
+}
 
 export function PromotionsSection() {
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [claims, setClaims] = useState<Claim[]>([]);
   const [selectedPromotion, setSelectedPromotion] = useState<Promotion | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [claiming, setClaiming] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'available' | 'claimed'>('all');
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'available' | 'pending' | 'claimed'>('all');
+
+  // Fetch promotions and claims
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [promoResponse, claimsResponse] = await Promise.all([
+          apiClient.get('/promotions/available'),
+          apiClient.get('/promotions/my-claims'),
+        ]);
+        setPromotions(promoResponse as unknown as Promotion[]);
+        const claimsData = claimsResponse as unknown as Claim[];
+        setClaims(claimsData.map(c => ({ ...c, id: c.claim_id })));
+      } catch (error) {
+        console.error('Failed to fetch promotions:', error);
+        toast.error('Failed to load promotions');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const handleViewDetails = (promotion: Promotion) => {
     setSelectedPromotion(promotion);
     setShowDetailsModal(true);
   };
 
-  const handleClaimPromotion = (promotion: Promotion) => {
+  const handleClaimPromotion = async (promotion: Promotion) => {
     setClaiming(true);
-    // TODO: API call to claim promotion
-    setTimeout(() => {
+    try {
+      const response = await apiClient.post('/promotions/claim', {
+        promotion_id: promotion.id,
+      }) as { success: boolean; message: string; claim_id?: number; status?: string };
+
+      if (response.success) {
+        if (response.status === 'pending_approval') {
+          toast.success('Claim request sent! Waiting for client approval.', {
+            duration: 5000,
+            icon: '⏳',
+          });
+        } else {
+          toast.success(response.message);
+        }
+
+        // Refresh data
+        const [promoResponse, claimsResponse] = await Promise.all([
+          apiClient.get('/promotions/available'),
+          apiClient.get('/promotions/my-claims'),
+        ]);
+        setPromotions(promoResponse as unknown as Promotion[]);
+        const claimsData = claimsResponse as unknown as Claim[];
+        setClaims(claimsData.map(c => ({ ...c, id: c.claim_id })));
+        setShowDetailsModal(false);
+      } else {
+        toast.error(response.message);
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to claim promotion');
+    } finally {
       setClaiming(false);
-      toast.success(`Successfully claimed "${promotion.title}"!`);
-      setShowDetailsModal(false);
-    }, 1000);
+    }
   };
 
-  const getTypeColor = (type: Promotion['type']): 'success' | 'purple' | 'warning' | 'info' | 'default' => {
+  const getTypeColor = (type: string): 'success' | 'purple' | 'warning' | 'info' | 'default' => {
     switch (type) {
       case 'bonus': return 'success';
       case 'cashback': return 'purple';
       case 'credits': return 'warning';
       case 'free_spins': return 'info';
+      case 'deposit_bonus': return 'success';
       default: return 'default';
     }
   };
 
-  const getTypeLabel = (type: Promotion['type']) => {
+  const getTypeLabel = (type: string) => {
     switch (type) {
       case 'bonus': return 'Bonus';
       case 'cashback': return 'Cashback';
       case 'credits': return 'Credits';
       case 'free_spins': return 'Free Spins';
+      case 'deposit_bonus': return 'Deposit Bonus';
       default: return type;
     }
   };
 
-  const filteredPromotions = MOCK_PROMOTIONS.filter(promo => {
+  const getStatusBadge = (claim: Claim) => {
+    switch (claim.status) {
+      case 'pending_approval':
+        return <Badge variant="warning">Pending Approval</Badge>;
+      case 'approved':
+        return <Badge variant="success">Approved</Badge>;
+      case 'rejected':
+        return <Badge variant="error">Rejected</Badge>;
+      case 'claimed':
+        return <Badge variant="default">Claimed</Badge>;
+      case 'used':
+        return <Badge variant="info">Used</Badge>;
+      case 'expired':
+        return <Badge variant="error">Expired</Badge>;
+      default:
+        return <Badge variant="default">{claim.status}</Badge>;
+    }
+  };
+
+  const pendingClaims = claims.filter((c) => c.status === 'pending_approval');
+  const approvedClaims = claims.filter((c) => c.status === 'approved' || c.status === 'claimed');
+
+  const filteredPromotions = promotions.filter((promo) => {
     if (filter === 'all') return true;
-    return promo.status === filter;
+    if (filter === 'available') return promo.can_claim;
+    return false;
   });
 
-  const columns = [
+  const promotionColumns = [
     {
       key: 'title',
       label: 'Promotion',
@@ -151,15 +179,15 @@ export function PromotionsSection() {
       key: 'client',
       label: 'Client',
       render: (promo: Promotion) => (
-        <span className="text-gray-300">{promo.client}</span>
+        <span className="text-gray-300">{promo.client_company || promo.client_name}</span>
       ),
     },
     {
       key: 'type',
       label: 'Type',
       render: (promo: Promotion) => (
-        <Badge variant={getTypeColor(promo.type)}>
-          {getTypeLabel(promo.type)}
+        <Badge variant={getTypeColor(promo.promotion_type)}>
+          {getTypeLabel(promo.promotion_type)}
         </Badge>
       ),
     },
@@ -168,7 +196,7 @@ export function PromotionsSection() {
       label: 'Value',
       render: (promo: Promotion) => (
         <span className="font-bold text-gold-500">
-          {promo.type === 'cashback' ? `${promo.value}%` : promo.value}
+          {promo.promotion_type === 'cashback' ? `${promo.value}%` : `$${promo.value}`}
         </span>
       ),
     },
@@ -176,12 +204,13 @@ export function PromotionsSection() {
       key: 'status',
       label: 'Status',
       render: (promo: Promotion) => {
-        const variant = promo.status === 'available' ? 'success' : promo.status === 'claimed' ? 'default' : 'error';
-        return (
-          <Badge variant={variant}>
-            {promo.status.toUpperCase()}
-          </Badge>
-        );
+        if (promo.already_claimed) {
+          return <Badge variant="default">Claimed</Badge>;
+        }
+        if (promo.can_claim) {
+          return <Badge variant="success">Available</Badge>;
+        }
+        return <Badge variant="error">Unavailable</Badge>;
       },
     },
     {
@@ -199,13 +228,15 @@ export function PromotionsSection() {
       render: (promo: Promotion) => (
         <div className="flex gap-2">
           <button
+            type="button"
             onClick={() => handleViewDetails(promo)}
             className="text-blue-500 hover:text-blue-400 text-sm font-medium"
           >
             Details
           </button>
-          {promo.status === 'available' && (
+          {promo.can_claim && !promo.already_claimed && (
             <button
+              type="button"
               onClick={() => {
                 setSelectedPromotion(promo);
                 handleClaimPromotion(promo);
@@ -215,7 +246,7 @@ export function PromotionsSection() {
               Claim
             </button>
           )}
-          {promo.status === 'claimed' && (
+          {promo.already_claimed && (
             <span className="text-gray-500 text-sm flex items-center gap-1">
               <MdCheckCircle className="text-green-500" />
               Claimed
@@ -226,6 +257,79 @@ export function PromotionsSection() {
     },
   ];
 
+  const claimColumns = [
+    {
+      key: 'promotion_title',
+      label: 'Promotion',
+      width: '25%',
+      render: (claim: Claim) => (
+        <div>
+          <div className="font-medium text-white">{claim.promotion_title}</div>
+          <div className="text-xs text-gray-400 mt-1">{claim.client_company || claim.client_name}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'type',
+      label: 'Type',
+      render: (claim: Claim) => (
+        <Badge variant={getTypeColor(claim.promotion_type)}>
+          {getTypeLabel(claim.promotion_type)}
+        </Badge>
+      ),
+    },
+    {
+      key: 'value',
+      label: 'Value',
+      render: (claim: Claim) => (
+        <span className="font-bold text-gold-500">${claim.claimed_value}</span>
+      ),
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      render: (claim: Claim) => getStatusBadge(claim),
+    },
+    {
+      key: 'claimed_at',
+      label: 'Claimed',
+      render: (claim: Claim) => (
+        <span className="text-sm text-gray-400">
+          {new Date(claim.claimed_at).toLocaleDateString()}
+        </span>
+      ),
+    },
+    {
+      key: 'wagering',
+      label: 'Wagering',
+      render: (claim: Claim) => (
+        claim.wagering_required > 0 ? (
+          <div className="text-sm">
+            <div className="text-gray-400">
+              {claim.wagering_completed} / {claim.wagering_required}
+            </div>
+            <div className="w-full bg-gray-700 rounded-full h-1 mt-1">
+              <div
+                className="bg-gold-500 h-1 rounded-full"
+                style={{ width: `${Math.min(100, (claim.wagering_completed / claim.wagering_required) * 100)}%` }}
+              />
+            </div>
+          </div>
+        ) : (
+          <span className="text-gray-500">N/A</span>
+        )
+      ),
+    },
+  ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gold-500" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -235,6 +339,7 @@ export function PromotionsSection() {
         </div>
         <div className="flex gap-2">
           <button
+            type="button"
             onClick={() => setFilter('all')}
             className={`px-4 py-2 rounded-lg font-medium transition-all ${
               filter === 'all'
@@ -242,9 +347,10 @@ export function PromotionsSection() {
                 : 'bg-dark-300 text-gray-400 hover:text-gold-500'
             }`}
           >
-            All ({MOCK_PROMOTIONS.length})
+            All ({promotions.length})
           </button>
           <button
+            type="button"
             onClick={() => setFilter('available')}
             className={`px-4 py-2 rounded-lg font-medium transition-all ${
               filter === 'available'
@@ -252,60 +358,80 @@ export function PromotionsSection() {
                 : 'bg-dark-300 text-gray-400 hover:text-gold-500'
             }`}
           >
-            Available ({MOCK_PROMOTIONS.filter(p => p.status === 'available').length})
-          </button>
-          <button
-            onClick={() => setFilter('claimed')}
-            className={`px-4 py-2 rounded-lg font-medium transition-all ${
-              filter === 'claimed'
-                ? 'bg-gold-gradient text-dark-700'
-                : 'bg-dark-300 text-gray-400 hover:text-gold-500'
-            }`}
-          >
-            Claimed ({MOCK_PROMOTIONS.filter(p => p.status === 'claimed').length})
+            Available ({promotions.filter((p) => p.can_claim).length})
           </button>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-gradient-to-br from-green-900/30 to-green-800/20 border-2 border-green-700 rounded-lg p-6">
           <MdCardGiftcard className="text-4xl text-green-500 mb-2" />
           <p className="text-2xl font-bold text-white">
-            {MOCK_PROMOTIONS.filter(p => p.status === 'available').length}
+            {promotions.filter((p) => p.can_claim).length}
           </p>
           <p className="text-sm text-green-400">Available Promotions</p>
         </div>
 
+        <div className="bg-gradient-to-br from-yellow-900/30 to-yellow-800/20 border-2 border-yellow-700 rounded-lg p-6">
+          <MdHourglassEmpty className="text-4xl text-yellow-500 mb-2" />
+          <p className="text-2xl font-bold text-white">{pendingClaims.length}</p>
+          <p className="text-sm text-yellow-400">Pending Approval</p>
+        </div>
+
         <div className="bg-gradient-to-br from-gold-900/30 to-yellow-800/20 border-2 border-gold-700 rounded-lg p-6">
           <MdCheckCircle className="text-4xl text-gold-500 mb-2" />
-          <p className="text-2xl font-bold text-white">
-            {MOCK_PROMOTIONS.filter(p => p.status === 'claimed').length}
-          </p>
-          <p className="text-sm text-gold-400">Claimed This Month</p>
+          <p className="text-2xl font-bold text-white">{approvedClaims.length}</p>
+          <p className="text-sm text-gold-400">Approved Claims</p>
         </div>
 
         <div className="bg-gradient-to-br from-purple-900/30 to-purple-800/20 border-2 border-purple-700 rounded-lg p-6">
           <MdCardGiftcard className="text-4xl text-purple-500 mb-2" />
           <p className="text-2xl font-bold text-white">
-            {MOCK_PROMOTIONS.reduce((sum, p) => p.status === 'claimed' ? sum + (p.type === 'cashback' ? 0 : p.value) : sum, 0)}
+            ${approvedClaims.reduce((sum, c) => sum + c.claimed_value, 0)}
           </p>
-          <p className="text-sm text-purple-400">Total Credits Earned</p>
+          <p className="text-sm text-purple-400">Total Value Claimed</p>
         </div>
       </div>
 
-      {/* Promotions Table */}
+      {/* Pending Claims Alert */}
+      {pendingClaims.length > 0 && (
+        <div className="bg-yellow-900/30 border-2 border-yellow-500 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <MdHourglassEmpty className="text-2xl text-yellow-500 animate-pulse" />
+            <div>
+              <p className="text-yellow-400 font-bold">
+                {pendingClaims.length} claim{pendingClaims.length > 1 ? 's' : ''} pending approval
+              </p>
+              <p className="text-sm text-gray-400">
+                Waiting for clients to approve your promotion claims
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Available Promotions Table */}
       <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
+        <h2 className="text-xl font-bold text-white mb-4">Available Promotions</h2>
         <DataTable
           data={filteredPromotions}
-          columns={columns}
-          emptyMessage={
-            filter === 'all'
-              ? 'No promotions available'
-              : `No ${filter} promotions`
-          }
+          columns={promotionColumns}
+          emptyMessage="No promotions available"
         />
       </div>
+
+      {/* My Claims Table */}
+      {claims.length > 0 && (
+        <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
+          <h2 className="text-xl font-bold text-white mb-4">My Claims</h2>
+          <DataTable
+            data={claims}
+            columns={claimColumns}
+            emptyMessage="No claims yet"
+          />
+        </div>
+      )}
 
       {/* Promotion Details Modal */}
       {showDetailsModal && selectedPromotion && (
@@ -327,22 +453,24 @@ export function PromotionsSection() {
                   </h3>
                   <p className="text-gray-300">{selectedPromotion.description}</p>
                 </div>
-                <Badge variant={getTypeColor(selectedPromotion.type)} size="lg">
-                  {getTypeLabel(selectedPromotion.type)}
+                <Badge variant={getTypeColor(selectedPromotion.promotion_type)} size="lg">
+                  {getTypeLabel(selectedPromotion.promotion_type)}
                 </Badge>
               </div>
 
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
                   <p className="text-sm text-gray-400 mb-1">Client</p>
-                  <p className="font-medium text-white">{selectedPromotion.client}</p>
+                  <p className="font-medium text-white">
+                    {selectedPromotion.client_company || selectedPromotion.client_name}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-400 mb-1">Value</p>
                   <p className="font-bold text-gold-500 text-xl">
-                    {selectedPromotion.type === 'cashback'
+                    {selectedPromotion.promotion_type === 'cashback'
                       ? `${selectedPromotion.value}%`
-                      : selectedPromotion.value}
+                      : `$${selectedPromotion.value}`}
                   </p>
                 </div>
                 <div>
@@ -357,21 +485,25 @@ export function PromotionsSection() {
                     {new Date(selectedPromotion.end_date).toLocaleDateString()}
                   </p>
                 </div>
+                <div>
+                  <p className="text-sm text-gray-400 mb-1">Min Level</p>
+                  <p className="text-white">Level {selectedPromotion.min_player_level}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400 mb-1">Wagering Req.</p>
+                  <p className="text-white">{selectedPromotion.wagering_requirement}x</p>
+                </div>
               </div>
 
               <div>
                 <p className="text-sm text-gray-400 mb-1">Status</p>
-                <Badge
-                  variant={
-                    selectedPromotion.status === 'available'
-                      ? 'success'
-                      : selectedPromotion.status === 'claimed'
-                      ? 'default'
-                      : 'error'
-                  }
-                >
-                  {selectedPromotion.status.toUpperCase()}
-                </Badge>
+                {selectedPromotion.can_claim && !selectedPromotion.already_claimed ? (
+                  <Badge variant="success">Available to Claim</Badge>
+                ) : selectedPromotion.already_claimed ? (
+                  <Badge variant="default">Already Claimed</Badge>
+                ) : (
+                  <Badge variant="error">Unavailable</Badge>
+                )}
               </div>
             </div>
 
@@ -382,7 +514,17 @@ export function PromotionsSection() {
               </div>
             )}
 
-            {selectedPromotion.status === 'available' && (
+            {/* Info about approval process */}
+            {selectedPromotion.can_claim && !selectedPromotion.already_claimed && (
+              <div className="bg-blue-900/30 border border-blue-500 rounded-lg p-4">
+                <p className="text-sm text-blue-300">
+                  <strong>Note:</strong> When you claim this promotion, a request will be sent to the
+                  client for approval. You will receive a notification once they respond.
+                </p>
+              </div>
+            )}
+
+            {selectedPromotion.can_claim && !selectedPromotion.already_claimed && (
               <div className="flex gap-3">
                 <Button
                   onClick={() => handleClaimPromotion(selectedPromotion)}
@@ -390,18 +532,15 @@ export function PromotionsSection() {
                   variant="primary"
                   fullWidth
                 >
-                  Claim Promotion
+                  Request Claim
                 </Button>
-                <Button
-                  onClick={() => setShowDetailsModal(false)}
-                  variant="secondary"
-                >
+                <Button onClick={() => setShowDetailsModal(false)} variant="secondary">
                   Cancel
                 </Button>
               </div>
             )}
 
-            {selectedPromotion.status === 'claimed' && (
+            {selectedPromotion.already_claimed && (
               <div className="bg-green-900/30 border-2 border-green-500 rounded-lg p-4 text-center">
                 <MdCheckCircle className="text-4xl text-green-500 mx-auto mb-2" />
                 <p className="text-green-400 font-bold">Already Claimed</p>

@@ -6,7 +6,7 @@ import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import { BulkGameImport } from './BulkGameImport';
 import toast from 'react-hot-toast';
-import { MdAdd, MdEdit, MdDelete, MdImage, MdLink, MdCategory, MdUploadFile } from 'react-icons/md';
+import { MdAdd, MdEdit, MdDelete, MdImage, MdCategory, MdUploadFile } from 'react-icons/md';
 import { FaGamepad } from 'react-icons/fa';
 import { gamesApi, type Game, type CreateGameRequest } from '@/api/endpoints';
 

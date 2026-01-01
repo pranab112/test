@@ -10,7 +10,7 @@ import asyncio
 import logging
 from app import models, schemas, auth
 from app.database import get_db
-from app.websocket import manager
+from app.websocket import manager, WSMessage, WSMessageType
 from app.s3_storage import s3_storage, save_upload_file_locally
 
 logger = logging.getLogger(__name__)
@@ -61,14 +61,22 @@ async def send_text_message(
     db.refresh(message)
 
     # Send WebSocket notification to receiver if online
-    await manager.broadcast_to_user({
-        "type": "new_message",
-        "sender_id": current_user.id,
-        "sender_name": current_user.username,
-        "message_type": "text",
-        "content": content,
-        "timestamp": message.created_at.isoformat()
-    }, receiver_id)
+    await manager.send_to_user(receiver_id, WSMessage(
+        type=WSMessageType.MESSAGE_NEW,
+        data={
+            "id": message.id,
+            "sender_id": current_user.id,
+            "sender_name": current_user.username,
+            "sender_avatar": current_user.profile_picture,
+            "sender_type": current_user.user_type.value,
+            "receiver_id": receiver_id,
+            "message_type": "text",
+            "content": content,
+            "is_read": False,
+            "created_at": message.created_at.isoformat(),
+            "room_id": f"dm-{min(current_user.id, receiver_id)}-{max(current_user.id, receiver_id)}"
+        }
+    ))
 
     return message
 
@@ -145,15 +153,23 @@ async def send_image_message(
     db.refresh(message)
 
     # Send WebSocket notification to receiver if online
-    await manager.broadcast_to_user({
-        "type": "new_message",
-        "sender_id": current_user.id,
-        "sender_name": current_user.username,
-        "message_type": "image",
-        "file_url": message.file_url,
-        "file_name": message.file_name,
-        "timestamp": message.created_at.isoformat()
-    }, receiver_id)
+    await manager.send_to_user(receiver_id, WSMessage(
+        type=WSMessageType.MESSAGE_NEW,
+        data={
+            "id": message.id,
+            "sender_id": current_user.id,
+            "sender_name": current_user.username,
+            "sender_avatar": current_user.profile_picture,
+            "sender_type": current_user.user_type.value,
+            "receiver_id": receiver_id,
+            "message_type": "image",
+            "file_url": message.file_url,
+            "file_name": message.file_name,
+            "is_read": False,
+            "created_at": message.created_at.isoformat(),
+            "room_id": f"dm-{min(current_user.id, receiver_id)}-{max(current_user.id, receiver_id)}"
+        }
+    ))
 
     return message
 
@@ -232,16 +248,24 @@ async def send_voice_message(
     db.refresh(message)
 
     # Send WebSocket notification to receiver if online
-    await manager.broadcast_to_user({
-        "type": "new_message",
-        "sender_id": current_user.id,
-        "sender_name": current_user.username,
-        "message_type": "voice",
-        "file_url": message.file_url,
-        "file_name": message.file_name,
-        "duration": message.duration,
-        "timestamp": message.created_at.isoformat()
-    }, receiver_id)
+    await manager.send_to_user(receiver_id, WSMessage(
+        type=WSMessageType.MESSAGE_NEW,
+        data={
+            "id": message.id,
+            "sender_id": current_user.id,
+            "sender_name": current_user.username,
+            "sender_avatar": current_user.profile_picture,
+            "sender_type": current_user.user_type.value,
+            "receiver_id": receiver_id,
+            "message_type": "voice",
+            "file_url": message.file_url,
+            "file_name": message.file_name,
+            "duration": message.duration,
+            "is_read": False,
+            "created_at": message.created_at.isoformat(),
+            "room_id": f"dm-{min(current_user.id, receiver_id)}-{max(current_user.id, receiver_id)}"
+        }
+    ))
 
     return message
 

@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import { Avatar } from '@/components/common/Avatar';
-import { authApi } from '@/api/endpoints';
+import { Modal } from '@/components/common/Modal';
+import { authApi, settingsApi } from '@/api/endpoints';
+import { useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
 import {
   MdPerson,
@@ -12,20 +14,27 @@ import {
   MdVerified,
   MdUpload,
   MdDelete,
+  MdContentCopy,
+  MdRefresh,
+  MdWarning,
+  MdCheck,
 } from 'react-icons/md';
 
 type SettingsTab = 'profile' | 'security' | 'notifications' | 'appearance';
 
 export function SettingsSection() {
+  const { user, setUser } = useAuth();
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Profile form state
   const [profileData, setProfileData] = useState({
-    fullName: 'John Doe',
-    email: 'john.doe@example.com',
-    companyName: 'Gaming Co.',
-    bio: 'Professional gaming client with 5+ years experience.',
+    fullName: '',
+    email: '',
+    companyName: '',
+    bio: '',
   });
 
   // Security form state
@@ -34,6 +43,25 @@ export function SettingsSection() {
     newPassword: '',
     confirmPassword: '',
   });
+
+  // 2FA state
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [show2FASetupModal, setShow2FASetupModal] = useState(false);
+  const [show2FADisableModal, setShow2FADisableModal] = useState(false);
+  const [twoFactorSetup, setTwoFactorSetup] = useState<{
+    secret: string;
+    qr_code: string;
+    backup_codes: string[];
+  } | null>(null);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [showBackupCodes, setShowBackupCodes] = useState(false);
+
+  // Email verification state
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [showEmailVerifyModal, setShowEmailVerifyModal] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState('');
+  const [emailOTP, setEmailOTP] = useState('');
+  const [emailVerificationPending, setEmailVerificationPending] = useState(false);
 
   // Notifications settings
   const [notificationSettings, setNotificationSettings] = useState({
@@ -44,19 +72,83 @@ export function SettingsSection() {
     reportUpdates: true,
   });
 
-  // TODO: Replace with actual user data
-  const [emailVerified] = useState(false);
+  // Profile picture
   const [profilePicture, setProfilePicture] = useState<string | undefined>(undefined);
+  const [uploadingPicture, setUploadingPicture] = useState(false);
+
+  // Load initial data
+  useEffect(() => {
+    loadUserData();
+  }, [user]);
+
+  const loadUserData = async () => {
+    if (!user) return;
+
+    setInitialLoading(true);
+    try {
+      // Set profile data from user
+      setProfileData({
+        fullName: user.full_name || '',
+        email: user.email || '',
+        companyName: user.company_name || '',
+        bio: user.bio || '',
+      });
+      setProfilePicture(user.profile_picture);
+      setEmailVerified(user.is_email_verified || false);
+      setTwoFactorEnabled(user.two_factor_enabled || false);
+
+      // Load 2FA status
+      try {
+        const twoFAStatus = await settingsApi.get2FAStatus();
+        setTwoFactorEnabled(twoFAStatus.enabled);
+      } catch {
+        // 2FA status endpoint may not exist yet
+      }
+
+      // Load email verification status for players
+      if (user.user_type === 'player') {
+        try {
+          const emailStatus = await settingsApi.getEmailVerificationStatus();
+          setEmailVerified(emailStatus.is_email_verified);
+          setEmailVerificationPending(emailStatus.verification_pending);
+          if (emailStatus.secondary_email) {
+            setVerificationEmail(emailStatus.secondary_email);
+          }
+        } catch {
+          // Email status endpoint may not exist
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load user data:', error);
+    } finally {
+      setInitialLoading(false);
+    }
+  };
 
   const handleSaveProfile = async () => {
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // await clientApi.updateProfile(profileData);
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await settingsApi.updateProfile({
+        full_name: profileData.fullName,
+        company_name: profileData.companyName,
+        bio: profileData.bio,
+      });
+
+      // Update local user state
+      if (user) {
+        const updatedUser = {
+          ...user,
+          full_name: profileData.fullName,
+          company_name: profileData.companyName,
+          bio: profileData.bio,
+        };
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      }
+
       toast.success('Profile updated successfully');
-    } catch (error) {
-      toast.error('Failed to update profile');
+    } catch (error: any) {
+      toast.error(error?.detail || 'Failed to update profile');
       console.error(error);
     } finally {
       setLoading(false);
@@ -85,8 +177,189 @@ export function SettingsSection() {
       toast.success('Password changed successfully');
       setSecurityData({ currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (error: any) {
-      const errorMessage = error?.error?.message || error?.message || 'Failed to change password';
+      const errorMessage = error?.error?.message || error?.message || error?.detail || 'Failed to change password';
       toast.error(errorMessage);
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 2FA Functions
+  const handleSetup2FA = async () => {
+    setLoading(true);
+    try {
+      const setup = await settingsApi.setup2FA();
+      setTwoFactorSetup(setup);
+      setShow2FASetupModal(true);
+    } catch (error: any) {
+      toast.error(error?.detail || 'Failed to initialize 2FA setup');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerify2FA = async () => {
+    if (!verificationCode || verificationCode.length !== 6) {
+      toast.error('Please enter a valid 6-digit code');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await settingsApi.verify2FA(verificationCode);
+      setTwoFactorEnabled(true);
+      setShowBackupCodes(true);
+      toast.success('Two-factor authentication enabled successfully!');
+    } catch (error: any) {
+      toast.error(error?.detail || 'Invalid verification code');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDisable2FA = async () => {
+    if (!verificationCode) {
+      toast.error('Please enter your verification code');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await settingsApi.disable2FA(verificationCode);
+      setTwoFactorEnabled(false);
+      setShow2FADisableModal(false);
+      setVerificationCode('');
+      toast.success('Two-factor authentication disabled');
+    } catch (error: any) {
+      toast.error(error?.detail || 'Invalid verification code');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copyBackupCodes = () => {
+    if (twoFactorSetup?.backup_codes) {
+      navigator.clipboard.writeText(twoFactorSetup.backup_codes.join('\n'));
+      toast.success('Backup codes copied to clipboard');
+    }
+  };
+
+  // Email Verification Functions
+  const handleSendVerificationEmail = async () => {
+    if (!verificationEmail || !verificationEmail.includes('@')) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await settingsApi.sendEmailVerificationOTP(verificationEmail);
+      setEmailVerificationPending(true);
+      toast.success('Verification code sent! Check your email.');
+    } catch (error: any) {
+      toast.error(error?.detail || 'Failed to send verification email');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyEmailOTP = async () => {
+    if (!emailOTP || emailOTP.length !== 6) {
+      toast.error('Please enter a valid 6-digit code');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await settingsApi.verifyEmailOTP(emailOTP);
+      setEmailVerified(true);
+      setShowEmailVerifyModal(false);
+      setEmailOTP('');
+      toast.success('Email verified successfully!');
+
+      // Update user state
+      if (user) {
+        const updatedUser = { ...user, is_email_verified: true };
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      }
+    } catch (error: any) {
+      toast.error(error?.detail || 'Invalid verification code');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    setLoading(true);
+    try {
+      await settingsApi.resendEmailOTP();
+      toast.success('New verification code sent!');
+    } catch (error: any) {
+      toast.error(error?.detail || 'Failed to resend code. Please wait before trying again.');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Profile Picture Functions
+  const handleUploadProfilePicture = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    // Validate file
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('File size must be less than 2MB');
+      return;
+    }
+
+    setUploadingPicture(true);
+    try {
+      const result = await settingsApi.uploadProfilePicture(user.id, file);
+      setProfilePicture(result.profile_picture_url);
+
+      // Update user state
+      const updatedUser = { ...user, profile_picture: result.profile_picture_url };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+
+      toast.success('Profile picture updated successfully');
+    } catch (error: any) {
+      toast.error(error?.detail || 'Failed to upload profile picture');
+      console.error(error);
+    } finally {
+      setUploadingPicture(false);
+    }
+  };
+
+  const handleDeleteProfilePicture = async () => {
+    if (!user || !confirm('Remove your profile picture?')) return;
+
+    setLoading(true);
+    try {
+      await settingsApi.deleteProfilePicture(user.id);
+      setProfilePicture(undefined);
+
+      // Update user state
+      const updatedUser = { ...user, profile_picture: undefined };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+
+      toast.success('Profile picture removed');
+    } catch (error: any) {
+      toast.error(error?.detail || 'Failed to remove profile picture');
       console.error(error);
     } finally {
       setLoading(false);
@@ -96,49 +369,37 @@ export function SettingsSection() {
   const handleSaveNotifications = async () => {
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // await clientApi.updateNotificationSettings(notificationSettings);
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await settingsApi.updateNotificationSettings({
+        email_notifications: notificationSettings.emailNotifications,
+        promotion_updates: notificationSettings.promotionUpdates,
+        message_alerts: notificationSettings.messageAlerts,
+        review_alerts: notificationSettings.reviewAlerts,
+        report_updates: notificationSettings.reportUpdates,
+      });
       toast.success('Notification settings updated');
-    } catch (error) {
-      toast.error('Failed to update notification settings');
+    } catch (error: any) {
+      toast.error(error?.detail || 'Failed to update notification settings');
       console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleVerifyEmail = async () => {
+  const handleLogoutAllDevices = async () => {
+    if (!confirm('This will log you out of all devices including this one. Continue?')) return;
+
+    setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // await clientApi.sendVerificationEmail();
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      toast.success('Verification email sent! Please check your inbox.');
-    } catch (error) {
-      toast.error('Failed to send verification email');
+      await settingsApi.logoutAllSessions();
+      toast.success('Logged out of all devices');
+      // Logout current session
+      authApi.logout();
+      window.location.href = '/login';
+    } catch (error: any) {
+      toast.error(error?.detail || 'Failed to logout all devices');
       console.error(error);
-    }
-  };
-
-  const handleUploadProfilePicture = () => {
-    // TODO: Implement file upload
-    toast.success('File upload coming soon');
-  };
-
-  const handleDeleteProfilePicture = async () => {
-    if (!confirm('Remove your profile picture?')) {
-      return;
-    }
-
-    try {
-      // TODO: Replace with actual API call
-      // await clientApi.deleteProfilePicture();
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      setProfilePicture(undefined);
-      toast.success('Profile picture removed');
-    } catch (error) {
-      toast.error('Failed to remove profile picture');
-      console.error(error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -149,6 +410,14 @@ export function SettingsSection() {
     { key: 'appearance' as const, label: 'Appearance', icon: <MdPalette size={20} /> },
   ];
 
+  if (initialLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gold-500">Loading settings...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -158,12 +427,13 @@ export function SettingsSection() {
 
       <div className="grid grid-cols-12 gap-6">
         {/* Settings Navigation Sidebar */}
-        <div className="col-span-3">
+        <div className="col-span-12 lg:col-span-3">
           <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-4">
             <nav className="space-y-2">
               {tabs.map((tab) => (
                 <button
                   key={tab.key}
+                  type="button"
                   onClick={() => setActiveTab(tab.key)}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${
                     activeTab === tab.key
@@ -180,7 +450,7 @@ export function SettingsSection() {
         </div>
 
         {/* Settings Content */}
-        <div className="col-span-9">
+        <div className="col-span-12 lg:col-span-9">
           <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
             {/* Profile Tab */}
             {activeTab === 'profile' && (
@@ -191,17 +461,29 @@ export function SettingsSection() {
                 <div className="bg-dark-300 p-6 rounded-lg">
                   <h3 className="text-lg font-bold text-white mb-4">Profile Picture</h3>
                   <div className="flex items-center gap-6">
-                    <Avatar name={profileData.fullName} size="xl" src={profilePicture} />
+                    <Avatar name={profileData.fullName || user?.username || ''} size="xl" src={profilePicture} />
                     <div className="space-y-2">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleUploadProfilePicture}
+                        className="hidden"
+                        title="Upload profile picture"
+                        aria-label="Upload profile picture"
+                      />
                       <button
-                        onClick={handleUploadProfilePicture}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingPicture}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
                       >
                         <MdUpload size={18} />
-                        Upload New Picture
+                        {uploadingPicture ? 'Uploading...' : 'Upload New Picture'}
                       </button>
                       {profilePicture && (
                         <button
+                          type="button"
                           onClick={handleDeleteProfilePicture}
                           className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
                         >
@@ -228,16 +510,19 @@ export function SettingsSection() {
                     label="Email Address"
                     type="email"
                     value={profileData.email}
-                    onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+                    disabled
+                    onChange={() => {}}
                   />
-                  <Input
-                    label="Company Name"
-                    type="text"
-                    value={profileData.companyName}
-                    onChange={(e) =>
-                      setProfileData({ ...profileData, companyName: e.target.value })
-                    }
-                  />
+                  {user?.user_type === 'client' && (
+                    <Input
+                      label="Company Name"
+                      type="text"
+                      value={profileData.companyName}
+                      onChange={(e) =>
+                        setProfileData({ ...profileData, companyName: e.target.value })
+                      }
+                    />
+                  )}
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">Bio</label>
                     <textarea
@@ -245,6 +530,7 @@ export function SettingsSection() {
                       onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
                       rows={4}
                       className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-gold-500"
+                      placeholder="Tell us about yourself..."
                     />
                   </div>
                 </div>
@@ -260,13 +546,14 @@ export function SettingsSection() {
                   ) : (
                     <div>
                       <p className="text-gray-400 mb-3">
-                        Your email address is not verified. Please verify to access all features.
+                        Verify your email address to access all features and bonuses.
                       </p>
                       <button
-                        onClick={handleVerifyEmail}
+                        type="button"
+                        onClick={() => setShowEmailVerifyModal(true)}
                         className="bg-gold-600 hover:bg-gold-700 text-dark-700 px-4 py-2 rounded-lg font-medium transition-colors"
                       >
-                        Send Verification Email
+                        Verify Email
                       </button>
                     </div>
                   )}
@@ -321,14 +608,38 @@ export function SettingsSection() {
                   </div>
                 </div>
 
+                {/* Two-Factor Authentication */}
                 <div className="bg-dark-300 p-6 rounded-lg">
-                  <h3 className="text-lg font-bold text-white mb-3">Two-Factor Authentication</h3>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-lg font-bold text-white">Two-Factor Authentication</h3>
+                    {twoFactorEnabled && (
+                      <span className="flex items-center gap-1 text-green-400 text-sm">
+                        <MdCheck size={16} />
+                        Enabled
+                      </span>
+                    )}
+                  </div>
                   <p className="text-gray-400 mb-4">
-                    Add an extra layer of security to your account.
+                    Add an extra layer of security to your account using a time-based one-time password (TOTP).
                   </p>
-                  <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
-                    Enable 2FA
-                  </button>
+                  {twoFactorEnabled ? (
+                    <button
+                      type="button"
+                      onClick={() => setShow2FADisableModal(true)}
+                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                    >
+                      Disable 2FA
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSetup2FA}
+                      disabled={loading}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50"
+                    >
+                      Enable 2FA
+                    </button>
+                  )}
                 </div>
 
                 <div className="bg-dark-300 p-6 rounded-lg">
@@ -336,7 +647,12 @@ export function SettingsSection() {
                   <p className="text-gray-400 mb-4">
                     Manage devices where you're currently logged in.
                   </p>
-                  <button className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                  <button
+                    type="button"
+                    onClick={handleLogoutAllDevices}
+                    disabled={loading}
+                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50"
+                  >
                     Logout All Devices
                   </button>
                 </div>
@@ -421,11 +737,11 @@ export function SettingsSection() {
                     Choose your preferred theme. Currently using Dark theme.
                   </p>
                   <div className="grid grid-cols-2 gap-4">
-                    <button className="bg-dark-700 border-2 border-gold-600 rounded-lg p-4 text-left">
+                    <button type="button" className="bg-dark-700 border-2 border-gold-600 rounded-lg p-4 text-left">
                       <div className="font-medium text-white mb-2">Dark (Current)</div>
                       <div className="text-sm text-gray-400">Default dark theme</div>
                     </button>
-                    <button className="bg-gray-300 border-2 border-dark-400 rounded-lg p-4 text-left opacity-50 cursor-not-allowed">
+                    <button type="button" className="bg-gray-300 border-2 border-dark-400 rounded-lg p-4 text-left opacity-50 cursor-not-allowed">
                       <div className="font-medium text-dark-700 mb-2">Light (Coming Soon)</div>
                       <div className="text-sm text-gray-600">Bright theme option</div>
                     </button>
@@ -460,6 +776,231 @@ export function SettingsSection() {
           </div>
         </div>
       </div>
+
+      {/* 2FA Setup Modal */}
+      <Modal
+        isOpen={show2FASetupModal}
+        onClose={() => {
+          if (!showBackupCodes) {
+            setShow2FASetupModal(false);
+            setTwoFactorSetup(null);
+            setVerificationCode('');
+          }
+        }}
+        title={showBackupCodes ? 'Save Your Backup Codes' : 'Set Up Two-Factor Authentication'}
+        size="lg"
+      >
+        {showBackupCodes ? (
+          <div className="space-y-4">
+            <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-4 flex items-start gap-3">
+              <MdWarning className="text-yellow-500 flex-shrink-0 mt-0.5" size={20} />
+              <div className="text-sm text-yellow-400">
+                <strong>Important:</strong> Save these backup codes in a safe place. You can use them to access your account if you lose your authenticator device.
+              </div>
+            </div>
+
+            <div className="bg-dark-300 rounded-lg p-4">
+              <div className="grid grid-cols-2 gap-2">
+                {twoFactorSetup?.backup_codes.map((code, index) => (
+                  <div key={index} className="font-mono text-center py-2 bg-dark-400 rounded text-white">
+                    {code}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={copyBackupCodes}
+              className="w-full flex items-center justify-center gap-2 bg-dark-300 hover:bg-dark-400 text-white py-2 rounded-lg transition-colors"
+            >
+              <MdContentCopy size={18} />
+              Copy All Codes
+            </button>
+
+            <Button
+              onClick={() => {
+                setShow2FASetupModal(false);
+                setShowBackupCodes(false);
+                setTwoFactorSetup(null);
+                setVerificationCode('');
+              }}
+              fullWidth
+            >
+              I've Saved My Codes
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-gray-400">
+              Scan the QR code below with your authenticator app (like Google Authenticator or Authy).
+            </p>
+
+            {twoFactorSetup?.qr_code && (
+              <div className="flex justify-center">
+                <img
+                  src={twoFactorSetup.qr_code}
+                  alt="2FA QR Code"
+                  className="w-48 h-48 bg-white p-2 rounded-lg"
+                />
+              </div>
+            )}
+
+            <div className="bg-dark-300 rounded-lg p-4">
+              <p className="text-sm text-gray-400 mb-2">Or enter this code manually:</p>
+              <code className="block text-center font-mono text-gold-500 break-all">
+                {twoFactorSetup?.secret}
+              </code>
+            </div>
+
+            <Input
+              label="Enter 6-digit code from your app"
+              type="text"
+              value={verificationCode}
+              onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="000000"
+            />
+
+            <div className="flex gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShow2FASetupModal(false);
+                  setTwoFactorSetup(null);
+                  setVerificationCode('');
+                }}
+                fullWidth
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleVerify2FA} loading={loading} fullWidth>
+                Verify & Enable
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* 2FA Disable Modal */}
+      <Modal
+        isOpen={show2FADisableModal}
+        onClose={() => {
+          setShow2FADisableModal(false);
+          setVerificationCode('');
+        }}
+        title="Disable Two-Factor Authentication"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="bg-red-900/20 border border-red-700 rounded-lg p-4 flex items-start gap-3">
+            <MdWarning className="text-red-500 flex-shrink-0 mt-0.5" size={20} />
+            <div className="text-sm text-red-400">
+              Disabling 2FA will make your account less secure. You'll need to set it up again if you want to re-enable it.
+            </div>
+          </div>
+
+          <Input
+            label="Enter 6-digit code or backup code"
+            type="text"
+            value={verificationCode}
+            onChange={(e) => setVerificationCode(e.target.value.toUpperCase().slice(0, 8))}
+            placeholder="Enter code"
+          />
+
+          <div className="flex gap-3">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShow2FADisableModal(false);
+                setVerificationCode('');
+              }}
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleDisable2FA} loading={loading} fullWidth>
+              Disable 2FA
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Email Verification Modal */}
+      <Modal
+        isOpen={showEmailVerifyModal}
+        onClose={() => {
+          setShowEmailVerifyModal(false);
+          setEmailOTP('');
+        }}
+        title="Verify Your Email"
+        size="md"
+      >
+        <div className="space-y-4">
+          {!emailVerificationPending ? (
+            <>
+              <p className="text-gray-400">
+                Enter your email address to receive a verification code.
+              </p>
+              <Input
+                label="Email Address"
+                type="email"
+                value={verificationEmail}
+                onChange={(e) => setVerificationEmail(e.target.value)}
+                placeholder="you@example.com"
+              />
+              <div className="flex gap-3">
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowEmailVerifyModal(false)}
+                  fullWidth
+                >
+                  Cancel
+                </Button>
+                <Button onClick={handleSendVerificationEmail} loading={loading} fullWidth>
+                  Send Code
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-gray-400">
+                We sent a 6-digit verification code to <strong className="text-white">{verificationEmail}</strong>
+              </p>
+              <Input
+                label="Verification Code"
+                type="text"
+                value={emailOTP}
+                onChange={(e) => setEmailOTP(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="000000"
+              />
+              <button
+                type="button"
+                onClick={handleResendOTP}
+                disabled={loading}
+                className="text-gold-500 hover:text-gold-400 text-sm flex items-center gap-1 disabled:opacity-50"
+              >
+                <MdRefresh size={16} />
+                Resend Code
+              </button>
+              <div className="flex gap-3">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setEmailVerificationPending(false);
+                    setEmailOTP('');
+                  }}
+                  fullWidth
+                >
+                  Back
+                </Button>
+                <Button onClick={handleVerifyEmailOTP} loading={loading} fullWidth>
+                  Verify
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

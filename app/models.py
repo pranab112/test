@@ -34,7 +34,10 @@ class PromotionStatus(str, enum.Enum):
     CANCELLED = "cancelled"
 
 class ClaimStatus(str, enum.Enum):
-    CLAIMED = "claimed"
+    PENDING_APPROVAL = "pending_approval"  # Waiting for client approval
+    APPROVED = "approved"  # Client approved, credits can be used
+    REJECTED = "rejected"  # Client rejected the claim
+    CLAIMED = "claimed"  # Legacy: auto-approved claims
     USED = "used"
     EXPIRED = "expired"
 
@@ -220,11 +223,17 @@ class PromotionClaim(Base):
     client_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # Track which client's promotion
 
     claimed_value = Column(Integer, nullable=False)  # Actual value claimed
-    status = Column(Enum(ClaimStatus), default=ClaimStatus.CLAIMED)
+    status = Column(Enum(ClaimStatus), default=ClaimStatus.PENDING_APPROVAL)
 
     claimed_at = Column(DateTime(timezone=True), server_default=func.now())
     used_at = Column(DateTime(timezone=True))
     expired_at = Column(DateTime(timezone=True))
+
+    # Approval tracking
+    approval_message_id = Column(Integer, ForeignKey("messages.id"), nullable=True)  # Link to approval request message
+    approved_at = Column(DateTime(timezone=True), nullable=True)
+    approved_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # Client who approved
+    rejection_reason = Column(String, nullable=True)  # Reason if rejected
 
     # Track usage
     wagering_completed = Column(Integer, default=0)  # Track wagering progress
@@ -234,6 +243,8 @@ class PromotionClaim(Base):
     promotion = relationship("Promotion", back_populates="claims")
     player = relationship("User", foreign_keys=[player_id], backref="promotion_claims")
     client = relationship("User", foreign_keys=[client_id])
+    approved_by = relationship("User", foreign_keys=[approved_by_id])
+    approval_message = relationship("Message", foreign_keys=[approval_message_id])
 
     # Unique constraint - one claim per player per promotion
     __table_args__ = (

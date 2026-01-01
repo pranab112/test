@@ -6,7 +6,8 @@ from datetime import datetime, timedelta, timezone
 import json
 from app import models, schemas, auth
 from app.database import get_db
-from app.models import UserType, PromotionStatus, PromotionType, ClaimStatus
+from app.models import UserType, PromotionStatus, PromotionType, ClaimStatus, MessageType
+from app.websocket import manager, WSMessage, WSMessageType
 
 router = APIRouter(prefix="/promotions", tags=["promotions"])
 
@@ -191,7 +192,12 @@ async def claim_promotion(
     current_user: models.User = Depends(auth.get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Claim a promotion (Player only)"""
+    """
+    Claim a promotion (Player only)
+
+    This creates a PENDING_APPROVAL claim and sends an approval request message to the client.
+    The client must approve the claim before any credits are added.
+    """
     if current_user.user_type != UserType.PLAYER:
         raise HTTPException(status_code=403, detail="Only players can claim promotions")
 
@@ -239,19 +245,29 @@ async def claim_promotion(
             message=f"Minimum level {promotion.min_player_level} required"
         )
 
-    # Check if already claimed max times
-    existing_claims = db.query(models.PromotionClaim).filter(
+    # Check if already has a pending or approved claim
+    existing_claim = db.query(models.PromotionClaim).filter(
         models.PromotionClaim.promotion_id == claim_request.promotion_id,
         models.PromotionClaim.player_id == current_user.id
-    ).count()
+    ).first()
 
-    if existing_claims >= promotion.max_claims_per_player:
-        return schemas.PromotionClaimResponse(
-            success=False,
-            message=f"Already claimed maximum times ({promotion.max_claims_per_player})"
-        )
+    if existing_claim:
+        if existing_claim.status == ClaimStatus.PENDING_APPROVAL:
+            return schemas.PromotionClaimResponse(
+                success=False,
+                message="You already have a pending claim for this promotion. Please wait for approval."
+            )
+        elif existing_claim.status in [ClaimStatus.APPROVED, ClaimStatus.CLAIMED]:
+            return schemas.PromotionClaimResponse(
+                success=False,
+                message="You have already claimed this promotion"
+            )
+        elif existing_claim.status == ClaimStatus.REJECTED:
+            # Allow re-claiming if previously rejected
+            db.delete(existing_claim)
+            db.flush()
 
-    # Check budget if applicable
+    # Check budget if applicable (reserve the budget)
     if promotion.total_budget:
         if promotion.used_budget >= promotion.total_budget:
             promotion.status = PromotionStatus.DEPLETED
@@ -268,7 +284,7 @@ async def claim_promotion(
                 message="Insufficient promotion budget remaining"
             )
 
-    # Create the claim
+    # Create the claim with PENDING_APPROVAL status
     wagering_required = promotion.value * promotion.wagering_requirement
 
     claim = models.PromotionClaim(
@@ -276,56 +292,77 @@ async def claim_promotion(
         player_id=current_user.id,
         client_id=promotion.client_id,
         claimed_value=promotion.value,
+        status=ClaimStatus.PENDING_APPROVAL,
         wagering_required=wagering_required
     )
 
     db.add(claim)
+    db.flush()  # Get the claim ID
 
-    # Update promotion used budget
-    promotion.used_budget += promotion.value
+    # Create approval request message to the client
+    approval_message_content = json.dumps({
+        "type": "promotion_claim_request",
+        "claim_id": claim.id,
+        "promotion_id": promotion.id,
+        "promotion_title": promotion.title,
+        "promotion_type": promotion.promotion_type.value,
+        "value": promotion.value,
+        "player_id": current_user.id,
+        "player_username": current_user.username,
+        "player_level": current_user.player_level
+    })
 
-    # Get or create player wallet
-    wallet = db.query(models.PlayerWallet).filter(
-        models.PlayerWallet.player_id == current_user.id
-    ).first()
+    approval_message = models.Message(
+        sender_id=current_user.id,
+        receiver_id=promotion.client_id,
+        message_type=MessageType.PROMOTION,
+        content=approval_message_content,
+        is_read=False
+    )
 
-    if not wallet:
-        wallet = models.PlayerWallet(
-            player_id=current_user.id,
-            main_balance=0,
-            bonus_balances='{}'
-        )
-        db.add(wallet)
+    db.add(approval_message)
+    db.flush()
 
-    # Update wallet based on promotion type
-    if promotion.promotion_type in [PromotionType.BONUS, PromotionType.CREDITS]:
-        # Add to bonus balance for this client
-        bonus_balances = json.loads(wallet.bonus_balances)
-        client_key = str(promotion.client_id)
-
-        if client_key not in bonus_balances:
-            bonus_balances[client_key] = {"bonus": 0, "wagering_required": 0}
-
-        bonus_balances[client_key]["bonus"] += promotion.value
-        bonus_balances[client_key]["wagering_required"] += wagering_required
-
-        wallet.bonus_balances = json.dumps(bonus_balances)
-
-    # Add credits directly to player's credits field
-    if promotion.promotion_type == PromotionType.CREDITS:
-        current_user.credits += promotion.value
+    # Link message to claim
+    claim.approval_message_id = approval_message.id
 
     db.commit()
 
-    # Send notification via WebSocket (implemented later)
+    # Send WebSocket notification to the client
+    client = db.query(models.User).filter(models.User.id == promotion.client_id).first()
+
+    await manager.send_to_user(promotion.client_id, WSMessage(
+        type=WSMessageType.MESSAGE_NEW,
+        data={
+            "id": approval_message.id,
+            "sender_id": current_user.id,
+            "sender_name": current_user.username,
+            "sender_avatar": current_user.profile_picture,
+            "sender_type": current_user.user_type.value,
+            "receiver_id": promotion.client_id,
+            "message_type": "promotion",
+            "content": approval_message_content,
+            "is_read": False,
+            "created_at": approval_message.created_at.isoformat(),
+            "room_id": f"dm-{min(current_user.id, promotion.client_id)}-{max(current_user.id, promotion.client_id)}",
+            "promotion_claim": {
+                "claim_id": claim.id,
+                "promotion_title": promotion.title,
+                "promotion_type": promotion.promotion_type.value,
+                "value": promotion.value,
+                "player_username": current_user.username,
+                "status": "pending_approval"
+            }
+        }
+    ))
 
     return schemas.PromotionClaimResponse(
         success=True,
-        message="Promotion claimed successfully!",
+        message="Claim request sent! Waiting for client approval.",
         claim_id=claim.id,
         claimed_value=promotion.value,
-        new_balance=wallet.main_balance + promotion.value if promotion.promotion_type == PromotionType.CREDITS else wallet.main_balance,
-        wagering_required=wagering_required if promotion.wagering_requirement > 1 else None
+        wagering_required=wagering_required if promotion.wagering_requirement > 1 else None,
+        status="pending_approval"
     )
 
 
@@ -485,84 +522,252 @@ def _format_promotion_response(promotion: models.Promotion, current_user: models
     )
 
 
-@router.post("/approve-claim")
-async def approve_promotion_claim(
-    claim_data: dict,
+@router.get("/pending-approvals", response_model=List[dict])
+async def get_pending_approvals(
     current_user: models.User = Depends(auth.get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Approve a promotion claim (Client only)"""
+    """Get all pending promotion claim approvals for current client"""
+    if current_user.user_type != UserType.CLIENT:
+        raise HTTPException(status_code=403, detail="Only clients can view pending approvals")
+
+    pending_claims = db.query(models.PromotionClaim).filter(
+        models.PromotionClaim.client_id == current_user.id,
+        models.PromotionClaim.status == ClaimStatus.PENDING_APPROVAL
+    ).order_by(models.PromotionClaim.claimed_at.desc()).all()
+
+    result = []
+    for claim in pending_claims:
+        player = claim.player
+        promotion = claim.promotion
+
+        result.append({
+            "claim_id": claim.id,
+            "promotion_id": promotion.id,
+            "promotion_title": promotion.title,
+            "promotion_type": promotion.promotion_type.value,
+            "value": claim.claimed_value,
+            "player_id": player.id,
+            "player_username": player.username,
+            "player_level": player.player_level,
+            "player_avatar": player.profile_picture,
+            "claimed_at": claim.claimed_at.isoformat(),
+            "message_id": claim.approval_message_id
+        })
+
+    return result
+
+
+@router.post("/approve-claim/{claim_id}")
+async def approve_promotion_claim(
+    claim_id: int,
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Approve a pending promotion claim (Client only)
+
+    This approves the claim and marks it as APPROVED (no credits added).
+    """
     if current_user.user_type != UserType.CLIENT:
         raise HTTPException(status_code=403, detail="Only clients can approve claims")
 
-    promotion_id = claim_data.get("promotion_id")
-    player_id = claim_data.get("player_id")
-
-    # Verify the promotion belongs to this client
-    promotion = db.query(models.Promotion).filter(
-        models.Promotion.id == promotion_id,
-        models.Promotion.client_id == current_user.id
+    # Get the pending claim
+    claim = db.query(models.PromotionClaim).filter(
+        models.PromotionClaim.id == claim_id,
+        models.PromotionClaim.client_id == current_user.id,
+        models.PromotionClaim.status == ClaimStatus.PENDING_APPROVAL
     ).first()
 
-    if not promotion:
-        raise HTTPException(status_code=404, detail="Promotion not found or you don't own it")
+    if not claim:
+        raise HTTPException(status_code=404, detail="Pending claim not found")
 
-    # Get the player
-    player = db.query(models.User).filter(
-        models.User.id == player_id,
-        models.User.user_type == UserType.PLAYER
-    ).first()
-
-    if not player:
-        raise HTTPException(status_code=404, detail="Player not found")
-
-    # Check if already claimed
-    existing_claim = db.query(models.PromotionClaim).filter(
-        models.PromotionClaim.promotion_id == promotion_id,
-        models.PromotionClaim.player_id == player_id
-    ).first()
-
-    if existing_claim:
-        raise HTTPException(status_code=400, detail="Player already claimed this promotion")
+    promotion = claim.promotion
+    player = claim.player
 
     # Check budget
-    claim_value = promotion.value
-    if promotion.total_budget and promotion.used_budget + claim_value > promotion.total_budget:
+    if promotion.total_budget and promotion.used_budget + claim.claimed_value > promotion.total_budget:
         raise HTTPException(status_code=400, detail="Insufficient promotion budget")
 
-    # Create the claim
-    new_claim = models.PromotionClaim(
-        promotion_id=promotion_id,
-        player_id=player_id,
-        client_id=current_user.id,
-        claimed_value=claim_value,
-        status=ClaimStatus.CLAIMED,
-        wagering_required=claim_value * promotion.wagering_requirement
-    )
+    # Update claim status to APPROVED
+    claim.status = ClaimStatus.APPROVED
+    claim.approved_at = datetime.now(timezone.utc)
+    claim.approved_by_id = current_user.id
 
-    # Update player credits based on promotion type
-    if promotion.promotion_type in [PromotionType.BONUS, PromotionType.CREDITS]:
-        player.credits += claim_value
-    elif promotion.promotion_type == PromotionType.FREE_SPINS:
-        # In a real system, this would add free spins to player account
-        pass
-    elif promotion.promotion_type == PromotionType.CASHBACK:
-        # Cashback would be calculated based on losses
-        player.credits += claim_value
-
-    # Update promotion budget
-    promotion.used_budget += claim_value
+    # Update promotion used budget
+    promotion.used_budget += claim.claimed_value
 
     # Check if promotion should be marked as depleted
     if promotion.total_budget and promotion.used_budget >= promotion.total_budget:
         promotion.status = PromotionStatus.DEPLETED
 
-    db.add(new_claim)
+    # Create response message to the player
+    response_message_content = json.dumps({
+        "type": "promotion_claim_approved",
+        "claim_id": claim.id,
+        "promotion_id": promotion.id,
+        "promotion_title": promotion.title,
+        "promotion_type": promotion.promotion_type.value,
+        "value": claim.claimed_value,
+        "client_id": current_user.id,
+        "client_name": current_user.full_name or current_user.username
+    })
+
+    response_message = models.Message(
+        sender_id=current_user.id,
+        receiver_id=player.id,
+        message_type=MessageType.PROMOTION,
+        content=response_message_content,
+        is_read=False
+    )
+
+    db.add(response_message)
     db.commit()
+
+    # Send WebSocket notification to the player
+    await manager.send_to_user(player.id, WSMessage(
+        type=WSMessageType.MESSAGE_NEW,
+        data={
+            "id": response_message.id,
+            "sender_id": current_user.id,
+            "sender_name": current_user.full_name or current_user.username,
+            "sender_avatar": current_user.profile_picture,
+            "sender_type": current_user.user_type.value,
+            "receiver_id": player.id,
+            "message_type": "promotion",
+            "content": response_message_content,
+            "is_read": False,
+            "created_at": response_message.created_at.isoformat(),
+            "room_id": f"dm-{min(current_user.id, player.id)}-{max(current_user.id, player.id)}",
+            "promotion_claim": {
+                "claim_id": claim.id,
+                "promotion_title": promotion.title,
+                "promotion_type": promotion.promotion_type.value,
+                "value": claim.claimed_value,
+                "client_name": current_user.full_name or current_user.username,
+                "status": "approved"
+            }
+        }
+    ))
+
+    # Also send a notification event
+    await manager.send_to_user(player.id, WSMessage(
+        type=WSMessageType.NOTIFICATION,
+        data={
+            "notification_type": "promotion_approved",
+            "claim_id": claim.id,
+            "promotion_title": promotion.title,
+            "value": claim.claimed_value,
+            "message": f"Your claim for '{promotion.title}' has been approved!"
+        }
+    ))
 
     return {
         "success": True,
-        "message": f"Claim approved! {claim_value} credits added to player account.",
-        "claim_id": new_claim.id,
-        "player_new_balance": player.credits
+        "message": f"Claim approved! Player can now use the promotion.",
+        "claim_id": claim.id,
+        "status": "approved"
+    }
+
+
+@router.post("/reject-claim/{claim_id}")
+async def reject_promotion_claim(
+    claim_id: int,
+    rejection_data: Optional[dict] = None,
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Reject a pending promotion claim (Client only)
+    """
+    if current_user.user_type != UserType.CLIENT:
+        raise HTTPException(status_code=403, detail="Only clients can reject claims")
+
+    reason = rejection_data.get("reason", "") if rejection_data else ""
+
+    # Get the pending claim
+    claim = db.query(models.PromotionClaim).filter(
+        models.PromotionClaim.id == claim_id,
+        models.PromotionClaim.client_id == current_user.id,
+        models.PromotionClaim.status == ClaimStatus.PENDING_APPROVAL
+    ).first()
+
+    if not claim:
+        raise HTTPException(status_code=404, detail="Pending claim not found")
+
+    promotion = claim.promotion
+    player = claim.player
+
+    # Update claim status to REJECTED
+    claim.status = ClaimStatus.REJECTED
+    claim.rejection_reason = reason
+
+    # Create response message to the player
+    response_message_content = json.dumps({
+        "type": "promotion_claim_rejected",
+        "claim_id": claim.id,
+        "promotion_id": promotion.id,
+        "promotion_title": promotion.title,
+        "promotion_type": promotion.promotion_type.value,
+        "value": claim.claimed_value,
+        "client_id": current_user.id,
+        "client_name": current_user.full_name or current_user.username,
+        "reason": reason
+    })
+
+    response_message = models.Message(
+        sender_id=current_user.id,
+        receiver_id=player.id,
+        message_type=MessageType.PROMOTION,
+        content=response_message_content,
+        is_read=False
+    )
+
+    db.add(response_message)
+    db.commit()
+
+    # Send WebSocket notification to the player
+    await manager.send_to_user(player.id, WSMessage(
+        type=WSMessageType.MESSAGE_NEW,
+        data={
+            "id": response_message.id,
+            "sender_id": current_user.id,
+            "sender_name": current_user.full_name or current_user.username,
+            "sender_avatar": current_user.profile_picture,
+            "sender_type": current_user.user_type.value,
+            "receiver_id": player.id,
+            "message_type": "promotion",
+            "content": response_message_content,
+            "is_read": False,
+            "created_at": response_message.created_at.isoformat(),
+            "room_id": f"dm-{min(current_user.id, player.id)}-{max(current_user.id, player.id)}",
+            "promotion_claim": {
+                "claim_id": claim.id,
+                "promotion_title": promotion.title,
+                "promotion_type": promotion.promotion_type.value,
+                "value": claim.claimed_value,
+                "client_name": current_user.full_name or current_user.username,
+                "status": "rejected",
+                "reason": reason
+            }
+        }
+    ))
+
+    # Also send a notification event
+    await manager.send_to_user(player.id, WSMessage(
+        type=WSMessageType.NOTIFICATION,
+        data={
+            "notification_type": "promotion_rejected",
+            "claim_id": claim.id,
+            "promotion_title": promotion.title,
+            "reason": reason,
+            "message": f"Your claim for '{promotion.title}' was rejected." + (f" Reason: {reason}" if reason else "")
+        }
+    ))
+
+    return {
+        "success": True,
+        "message": "Claim rejected",
+        "claim_id": claim.id,
+        "status": "rejected"
     }

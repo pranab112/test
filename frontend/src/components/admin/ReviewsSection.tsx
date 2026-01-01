@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { DataTable } from '@/components/common/DataTable';
 import toast from 'react-hot-toast';
 import { MdStar, MdDelete } from 'react-icons/md';
-import { adminApi, type Review } from '@/api/endpoints';
+import { adminApi, type AdminReview as Review } from '@/api/endpoints';
 
 export function ReviewsSection() {
   const [reviews, setReviews] = useState<Review[]>([]);

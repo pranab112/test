@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Modal } from '@/components/common/Modal';
 import { Button } from '@/components/common/Button';
-import { Badge } from '@/components/common/Badge';
 import toast from 'react-hot-toast';
 import {
   MdUploadFile,
@@ -348,7 +347,7 @@ export function BulkGameImport({ isOpen, onClose, onImportComplete }: BulkGameIm
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <p className="text-sm text-gray-400">Add games manually one by one</p>
-              <Button onClick={handleAddGame} size="sm">
+              <Button onClick={handleAddGame}>
                 <MdAdd className="mr-2" />
                 Add Game
               </Button>
@@ -481,7 +480,7 @@ export function BulkGameImport({ isOpen, onClose, onImportComplete }: BulkGameIm
                     Copy Sample
                   </button>
                 </div>
-                <Button onClick={handleParseText} size="sm" disabled={!textInput}>
+                <Button onClick={handleParseText} disabled={!textInput}>
                   Parse Data
                 </Button>
               </div>

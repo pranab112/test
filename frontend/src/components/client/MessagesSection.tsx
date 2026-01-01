@@ -1,19 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { Avatar } from '@/components/common/Avatar';
 import { Badge } from '@/components/common/Badge';
-import { Input } from '@/components/common/Input';
-import { Button } from '@/components/common/Button';
 import toast from 'react-hot-toast';
 import {
   MdMessage,
   MdSend,
   MdImage,
-  MdMic,
-  MdExpandMore,
-  MdExpandLess,
-  MdContentCopy,
-  MdVisibility,
-  MdVisibilityOff,
   MdDelete,
 } from 'react-icons/md';
 import { chatApi, type Conversation, type Message } from '@/api/endpoints';
@@ -28,8 +20,6 @@ export function MessagesSection() {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sendingMessage, setSendingMessage] = useState(false);
-  const [showCredentials, setShowCredentials] = useState<{ [key: number]: boolean }>({});
-  const [expandedCredentials, setExpandedCredentials] = useState<{ [key: number]: boolean }>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -41,7 +31,7 @@ export function MessagesSection() {
 
   useEffect(() => {
     if (selectedConversation) {
-      loadMessages(selectedConversation.friend_id);
+      loadMessages(selectedConversation.friend.id);
       // Mark messages as read
       if (selectedConversation.last_message && !selectedConversation.last_message.is_read) {
         chatApi.markMessageAsRead(selectedConversation.last_message.id).catch(console.error);
@@ -84,16 +74,16 @@ export function MessagesSection() {
 
     setSendingMessage(true);
     try {
-      const message = await chatApi.sendTextMessage({
-        receiver_id: selectedConversation.friend_id,
-        content: newMessage,
-      });
+      const message = await chatApi.sendTextMessage(
+        selectedConversation.friend.id,
+        newMessage
+      );
       setMessages([...messages, message]);
       setNewMessage('');
       // Update conversation's last message
       const updatedConversations = conversations.map(conv =>
-        conv.friend_id === selectedConversation.friend_id
-          ? { ...conv, last_message: message, last_message_time: 'Just now' }
+        conv.friend.id === selectedConversation.friend.id
+          ? { ...conv, last_message: message }
           : conv
       );
       setConversations(updatedConversations);
@@ -109,7 +99,7 @@ export function MessagesSection() {
     if (!selectedConversation) return;
 
     try {
-      const message = await chatApi.sendImageMessage(selectedConversation.friend_id, file);
+      const message = await chatApi.sendImageMessage(selectedConversation.friend.id, file);
       setMessages([...messages, message]);
       toast.success('Image sent successfully');
     } catch (error) {
@@ -129,9 +119,12 @@ export function MessagesSection() {
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success('Copied to clipboard');
+  const formatMessageTime = (dateString: string) => {
+    try {
+      return formatDistanceToNow(new Date(dateString), { addSuffix: true });
+    } catch {
+      return '';
+    }
   };
 
   if (loading) {
@@ -158,23 +151,23 @@ export function MessagesSection() {
           ) : (
             conversations.map((conversation) => (
               <button
-                key={conversation.friend_id}
+                key={conversation.friend.id}
                 onClick={() => setSelectedConversation(conversation)}
                 className={`w-full p-4 border-b border-dark-400 hover:bg-dark-300 transition-colors text-left ${
-                  selectedConversation?.friend_id === conversation.friend_id ? 'bg-dark-300' : ''
+                  selectedConversation?.friend.id === conversation.friend.id ? 'bg-dark-300' : ''
                 }`}
               >
                 <div className="flex items-start gap-3">
                   <Avatar
-                    name={conversation.friend_full_name}
+                    name={conversation.friend.full_name || conversation.friend.username}
                     size="sm"
-                    online={conversation.friend_online}
-                    imageUrl={conversation.friend_profile_picture}
+                    online={conversation.friend.is_online}
+                    src={conversation.friend.profile_picture}
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <span className="font-medium text-white truncate">
-                        {conversation.friend_username}
+                        {conversation.friend.username}
                       </span>
                       {conversation.unread_count > 0 && (
                         <Badge variant="error" className="ml-2">
@@ -186,7 +179,9 @@ export function MessagesSection() {
                       {conversation.last_message?.content || 'No messages yet'}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
-                      {conversation.last_message_time || ''}
+                      {conversation.last_message?.created_at
+                        ? formatMessageTime(conversation.last_message.created_at)
+                        : ''}
                     </p>
                   </div>
                 </div>
@@ -204,17 +199,17 @@ export function MessagesSection() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Avatar
-                  name={selectedConversation.friend_full_name}
+                  name={selectedConversation.friend.full_name || selectedConversation.friend.username}
                   size="sm"
-                  online={selectedConversation.friend_online}
-                  imageUrl={selectedConversation.friend_profile_picture}
+                  online={selectedConversation.friend.is_online}
+                  src={selectedConversation.friend.profile_picture}
                 />
                 <div>
                   <h3 className="font-bold text-gold-500">
-                    {selectedConversation.friend_username}
+                    {selectedConversation.friend.username}
                   </h3>
                   <p className="text-xs text-gray-400">
-                    {selectedConversation.friend_online ? 'Online' : 'Offline'}
+                    {selectedConversation.friend.is_online ? 'Online' : 'Offline'}
                   </p>
                 </div>
               </div>
@@ -240,9 +235,9 @@ export function MessagesSection() {
                           : 'bg-dark-300 text-white'
                       }`}
                     >
-                      {message.content_type === 'image' && message.image_url ? (
+                      {message.message_type === 'image' && message.file_url ? (
                         <img
-                          src={message.image_url}
+                          src={message.file_url}
                           alt="Shared image"
                           className="rounded-lg max-w-full"
                         />
@@ -251,10 +246,12 @@ export function MessagesSection() {
                       )}
                       <div className="flex items-center justify-between mt-1">
                         <p className={`text-xs ${isOwnMessage ? 'text-dark-500' : 'text-gray-500'}`}>
-                          {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
+                          {formatMessageTime(message.created_at)}
                         </p>
                         {isOwnMessage && (
                           <button
+                            type="button"
+                            title="Delete message"
                             onClick={() => handleDeleteMessage(message.id)}
                             className="text-dark-500 hover:text-red-600 ml-2"
                           >
@@ -282,16 +279,19 @@ export function MessagesSection() {
                 className="flex-1 bg-dark-200 border border-gold-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gold-500"
                 disabled={sendingMessage}
               />
-              <label className="cursor-pointer text-gray-400 hover:text-gold-500 transition-colors">
+              <label className="cursor-pointer text-gray-400 hover:text-gold-500 transition-colors" title="Send image">
                 <MdImage size={24} />
                 <input
                   type="file"
                   accept="image/*"
                   className="hidden"
+                  title="Select image to send"
                   onChange={(e) => e.target.files?.[0] && handleSendImage(e.target.files[0])}
                 />
               </label>
               <button
+                type="button"
+                title="Send message"
                 onClick={handleSendMessage}
                 disabled={!newMessage.trim() || sendingMessage}
                 className="bg-gold-gradient text-dark-700 p-2 rounded-lg hover:shadow-gold transition-all disabled:opacity-50"

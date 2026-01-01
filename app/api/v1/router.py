@@ -20,7 +20,8 @@ from app.api.v1 import (
     admin,
     client,
     monitoring,
-    offers
+    offers,
+    two_factor
 )
 
 # Create main API v1 router
@@ -44,3 +45,4 @@ api_router.include_router(admin.router, tags=["admin"])
 api_router.include_router(client.router, tags=["client"])
 api_router.include_router(monitoring.router, tags=["monitoring"])
 api_router.include_router(offers.router, tags=["offers"])
+api_router.include_router(two_factor.router, tags=["two-factor-auth"])

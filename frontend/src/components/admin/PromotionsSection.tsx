@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { DataTable } from '@/components/common/DataTable';
 import { Badge } from '@/components/common/Badge';
 import toast from 'react-hot-toast';
-import { adminApi, type Promotion } from '@/api/endpoints';
+import { adminApi, type AdminPromotion as Promotion } from '@/api/endpoints';
 
 export function PromotionsSection() {
   const [promotions, setPromotions] = useState<Promotion[]>([]);

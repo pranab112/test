@@ -8,11 +8,8 @@ import {
   MdSearch,
   MdEdit,
   MdLink,
-  MdImage,
   MdCheck,
-  MdClose,
   MdSave,
-  MdFilterList,
   MdAdd,
   MdRemove,
   MdVideogameAsset,
@@ -211,8 +208,8 @@ export function GamesSection() {
         >
           <option value="all">All Categories</option>
           {categories.map(cat => (
-            <option key={cat} value={cat}>
-              {cat?.charAt(0).toUpperCase() + cat?.slice(1).replace('-', ' ')}
+            <option key={cat || 'uncategorized'} value={cat || ''}>
+              {cat ? cat.charAt(0).toUpperCase() + cat.slice(1).replace('-', ' ') : 'Uncategorized'}
             </option>
           ))}
         </select>

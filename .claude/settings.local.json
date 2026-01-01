@@ -80,7 +80,8 @@
       "Bash(railway service:*)",
       "Bash(railway domain:*)",
       "Bash(dir:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

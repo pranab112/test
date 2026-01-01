@@ -45,8 +45,8 @@ export const gamesApi = {
   getAllGames: async (): Promise<Game[]> => {
     try {
       // Fetch all games from backend
-      const response = await apiClient.get('/admin/games');
-      return response as Game[];
+      const response = await apiClient.get<never, Game[]>('/admin/games');
+      return response;
     } catch (error: any) {
       // If it's a 404, return empty array (no games yet)
       if (error?.response?.status === 404 || error?.error?.code === 'NOT_FOUND') {
@@ -69,12 +69,12 @@ export const gamesApi = {
       if (data.category) formData.append('category', data.category);
       formData.append('is_active', data.is_active?.toString() || 'true');
 
-      const response = await apiClient.post('/admin/games', formData, {
+      const response = await apiClient.post<never, Game>('/admin/games', formData, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
       });
-      return response as Game;
+      return response;
     } catch (error) {
       console.error('Failed to create game:', error);
       throw error;
@@ -107,12 +107,12 @@ export const gamesApi = {
       if (data.category) formData.append('category', data.category);
       if (data.is_active !== undefined) formData.append('is_active', data.is_active.toString());
 
-      const response = await apiClient.patch(`/admin/games/${gameId}`, formData, {
+      const response = await apiClient.patch<never, Game>(`/admin/games/${gameId}`, formData, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
       });
-      return response as Game;
+      return response;
     } catch (error) {
       console.error('Failed to update game:', error);
       throw error;
@@ -121,8 +121,8 @@ export const gamesApi = {
 
   deleteGame: async (gameId: number): Promise<{ message: string }> => {
     try {
-      const response = await apiClient.delete(`/admin/games/${gameId}`);
-      return response as { message: string };
+      const response = await apiClient.delete<never, { message: string }>(`/admin/games/${gameId}`);
+      return response;
     } catch (error) {
       console.error('Failed to delete game:', error);
       throw error;
@@ -159,7 +159,7 @@ export const gamesApi = {
 
   selectGames: async (gameIds: number[]): Promise<{ message: string }> => {
     try {
-      const response = await apiClient.post('/games/update-games', { game_ids: gameIds });
+      await apiClient.post('/games/update-games', { game_ids: gameIds });
       return { message: 'Games updated successfully' };
     } catch (error) {
       console.error('Failed to select games:', error);
@@ -173,8 +173,8 @@ export const gamesApi = {
     is_active?: boolean;
   }): Promise<ClientGame> => {
     try {
-      const response = await apiClient.patch(`/games/my-games/${clientGameId}`, data);
-      return response as ClientGame;
+      const response = await apiClient.patch<never, ClientGame>(`/games/my-games/${clientGameId}`, data);
+      return response;
     } catch (error) {
       console.error('Failed to update client game:', error);
       throw error;

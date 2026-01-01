@@ -5,38 +5,42 @@ export interface Message {
   id: number;
   sender_id: number;
   receiver_id: number;
-  content: string;
-  content_type: 'text' | 'image' | 'voice';
-  image_url?: string;
-  voice_url?: string;
+  message_type: 'text' | 'image' | 'voice' | 'promotion';
+  content?: string;
+  file_url?: string;
+  file_name?: string;
+  duration?: number;
   is_read: boolean;
   created_at: string;
   sender?: {
     id: number;
     username: string;
-    full_name: string;
+    full_name?: string;
     profile_picture?: string;
   };
 }
 
 export interface MessageResponse extends Message {}
 
+export interface Friend {
+  id: number;
+  username: string;
+  full_name?: string;
+  profile_picture?: string;
+  user_type?: string;
+  is_online?: boolean;
+  last_seen?: string;
+}
+
 export interface Conversation {
-  friend_id: number;
-  friend_username: string;
-  friend_full_name: string;
-  friend_profile_picture?: string;
-  friend_online: boolean;
+  friend: Friend;
   last_message?: Message;
   unread_count: number;
-  last_message_time?: string;
 }
 
 export interface MessageListResponse {
   messages: Message[];
-  total: number;
-  page: number;
-  per_page: number;
+  unread_count: number;
 }
 
 export interface SendMessageRequest {
@@ -45,23 +49,33 @@ export interface SendMessageRequest {
 }
 
 export interface ChatStats {
+  messages_sent: number;
+  messages_received: number;
   total_messages: number;
   unread_messages: number;
-  total_conversations: number;
+  unique_conversations: number;
 }
 
 export const chatApi = {
   // Send text message
-  sendTextMessage: async (data: SendMessageRequest): Promise<MessageResponse> => {
-    const response = await apiClient.post('/chat/send/text', data);
+  sendTextMessage: async (receiverId: number, content: string): Promise<MessageResponse> => {
+    const formData = new FormData();
+    formData.append('receiver_id', receiverId.toString());
+    formData.append('content', content);
+
+    const response = await apiClient.post('/chat/send/text', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response as any;
   },
 
   // Send image message
-  sendImageMessage: async (receiverId: number, image: File): Promise<MessageResponse> => {
+  sendImageMessage: async (receiverId: number, file: File): Promise<MessageResponse> => {
     const formData = new FormData();
     formData.append('receiver_id', receiverId.toString());
-    formData.append('image', image);
+    formData.append('file', file);
 
     const response = await apiClient.post('/chat/send/image', formData, {
       headers: {
@@ -72,10 +86,11 @@ export const chatApi = {
   },
 
   // Send voice message
-  sendVoiceMessage: async (receiverId: number, voice: File): Promise<MessageResponse> => {
+  sendVoiceMessage: async (receiverId: number, file: File, duration: number): Promise<MessageResponse> => {
     const formData = new FormData();
     formData.append('receiver_id', receiverId.toString());
-    formData.append('voice', voice);
+    formData.append('file', file);
+    formData.append('duration', duration.toString());
 
     const response = await apiClient.post('/chat/send/voice', formData, {
       headers: {
@@ -92,9 +107,9 @@ export const chatApi = {
   },
 
   // Get messages with a friend
-  getMessages: async (friendId: number, page = 1, perPage = 50): Promise<MessageListResponse> => {
+  getMessages: async (friendId: number, skip = 0, limit = 50): Promise<MessageListResponse> => {
     const response = await apiClient.get(`/chat/messages/${friendId}`, {
-      params: { page, per_page: perPage },
+      params: { skip, limit },
     });
     return response as any;
   },
@@ -102,6 +117,11 @@ export const chatApi = {
   // Mark message as read
   markMessageAsRead: async (messageId: number): Promise<void> => {
     await apiClient.put(`/chat/messages/${messageId}/read`);
+  },
+
+  // Mark multiple messages as read
+  markMessagesAsRead: async (messageIds: number[]): Promise<void> => {
+    await Promise.all(messageIds.map((id) => apiClient.put(`/chat/messages/${id}/read`)));
   },
 
   // Delete message

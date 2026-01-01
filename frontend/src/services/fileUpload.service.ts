@@ -63,7 +63,7 @@ class FileUploadService {
       }
 
       // The backend endpoint will handle S3 or local storage based on environment
-      const response = await apiClient.post('/upload', formData, {
+      const response = await apiClient.post<never, { url: string; key?: string }>('/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -103,7 +103,7 @@ class FileUploadService {
       const formData = new FormData();
       formData.append('image', file);
 
-      const response = await apiClient.post(`/admin/games/${gameId}/image`, formData, {
+      const response = await apiClient.post<never, { icon_url: string }>(`/admin/games/${gameId}/image`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -153,7 +153,7 @@ class FileUploadService {
     fileUrl: string;
   }> {
     try {
-      const response = await apiClient.post('/upload/presigned', {
+      const response = await apiClient.post<never, { uploadUrl: string; fileUrl: string }>('/upload/presigned', {
         filename,
         fileType,
         folder,
