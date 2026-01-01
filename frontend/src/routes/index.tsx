@@ -9,6 +9,8 @@ import { UserType } from '@/types';
 import { ROUTES } from '@/config/routes.config';
 
 // Lazy load pages for code splitting
+const Landing = lazy(() => import('@/pages/Landing'));
+const Contact = lazy(() => import('@/pages/Contact'));
 const Login = lazy(() => import('@/pages/auth/Login'));
 const AdminLogin = lazy(() => import('@/pages/auth/AdminLogin'));
 const ClientLogin = lazy(() => import('@/pages/auth/ClientLogin'));
@@ -21,6 +23,10 @@ export default function AppRouter() {
   return (
     <Suspense fallback={<Loading />}>
       <Routes>
+        {/* Public pages - No auth required, no redirect */}
+        <Route path={ROUTES.LANDING} element={<Landing />} />
+        <Route path={ROUTES.CONTACT} element={<Contact />} />
+
         {/* Public routes - Authentication (redirect to dashboard if already logged in) */}
         <Route element={<PublicRoute />}>
           <Route path={ROUTES.LOGIN} element={<Login />} />

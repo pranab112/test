@@ -21,7 +21,8 @@ from app.api.v1 import (
     client,
     monitoring,
     offers,
-    two_factor
+    two_factor,
+    contact
 )
 
 # Create main API v1 router
@@ -46,3 +47,4 @@ api_router.include_router(client.router, tags=["client"])
 api_router.include_router(monitoring.router, tags=["monitoring"])
 api_router.include_router(offers.router, tags=["offers"])
 api_router.include_router(two_factor.router, tags=["two-factor-auth"])
+api_router.include_router(contact.router, tags=["contact"])

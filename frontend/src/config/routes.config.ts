@@ -4,6 +4,8 @@ const CLIENT_TOKEN = import.meta.env.VITE_CLIENT_ROUTE_TOKEN || 'client-secure-2
 
 export const ROUTES = {
   HOME: '/',
+  LANDING: '/welcome',
+  CONTACT: '/contact',
   LOGIN: '/login',
   REGISTER: '/register',
   ADMIN_LOGIN: `/${ADMIN_TOKEN}/login`,
