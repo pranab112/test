@@ -82,3 +82,26 @@ export {
   type EmailVerificationStatus,
   type ActiveSession,
 } from './settings.api';
+
+// Game Credentials API
+export {
+  gameCredentialsApi,
+  type GameCredential,
+  type GameCredentialListResponse,
+  type CreateGameCredentialRequest,
+  type UpdateGameCredentialRequest,
+} from './gameCredentials.api';
+
+// Offers API
+export {
+  offersApi,
+  type PlatformOffer,
+  type OfferClaim,
+  type OfferType,
+  type OfferStatus,
+  type OfferClaimStatus,
+  type CreateOfferRequest,
+  type UpdateOfferRequest,
+  type ClaimOfferRequest,
+  type ProcessClaimRequest,
+} from './offers.api';

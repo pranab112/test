@@ -5,6 +5,7 @@ export interface Review {
   reviewer_id: number;
   reviewee_id: number;
   rating: number;
+  title?: string;
   comment: string;
   created_at: string;
   updated_at?: string;
@@ -27,7 +28,20 @@ export interface Review {
 export interface CreateReviewRequest {
   reviewee_id: number;
   rating: number;
+  title?: string;
   comment: string;
+}
+
+export interface UpdateReviewRequest {
+  rating?: number;
+  title?: string;
+  comment?: string;
+}
+
+export interface ReviewListResponse {
+  reviews: Review[];
+  total_count: number;
+  average_rating: number | null;
 }
 
 export interface ReviewStats {
@@ -50,25 +64,31 @@ export const reviewsApi = {
   },
 
   // Get my reviews (received)
-  getMyReviews: async (): Promise<Review[]> => {
-    const response = await apiClient.get('/reviews/my-reviews');
+  getMyReviews: async (skip = 0, limit = 50): Promise<ReviewListResponse> => {
+    const response = await apiClient.get('/reviews/my-reviews', {
+      params: { skip, limit },
+    });
     return response as any;
   },
 
-  // Get reviews I've written
-  getMyWrittenReviews: async (): Promise<Review[]> => {
-    const response = await apiClient.get('/reviews/written');
+  // Get reviews I've given
+  getGivenReviews: async (skip = 0, limit = 50): Promise<ReviewListResponse> => {
+    const response = await apiClient.get('/reviews/given', {
+      params: { skip, limit },
+    });
     return response as any;
   },
 
   // Get user reviews
-  getUserReviews: async (userId: number): Promise<Review[]> => {
-    const response = await apiClient.get(`/reviews/user/${userId}`);
+  getUserReviews: async (userId: number, skip = 0, limit = 50): Promise<ReviewListResponse> => {
+    const response = await apiClient.get(`/reviews/user/${userId}`, {
+      params: { skip, limit },
+    });
     return response as any;
   },
 
   // Update review
-  updateReview: async (reviewId: number, data: { rating?: number; comment?: string }): Promise<Review> => {
+  updateReview: async (reviewId: number, data: UpdateReviewRequest): Promise<Review> => {
     const response = await apiClient.put(`/reviews/${reviewId}`, data);
     return response as any;
   },
@@ -86,7 +106,7 @@ export const reviewsApi = {
   },
 
   // Check if can review user
-  canReviewUser: async (userId: number): Promise<{ can_review: boolean; reason?: string }> => {
+  canReviewUser: async (userId: number): Promise<{ can_review: boolean; reason?: string; existing_review_id?: number }> => {
     const response = await apiClient.get(`/reviews/can-review/${userId}`);
     return response as any;
   },

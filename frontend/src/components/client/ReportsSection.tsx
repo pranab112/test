@@ -1,127 +1,180 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Modal } from '@/components/common/Modal';
-import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import { Badge } from '@/components/common/Badge';
+import { Avatar } from '@/components/common/Avatar';
 import { StatCard } from '@/components/common/StatCard';
 import toast from 'react-hot-toast';
-import { MdReport, MdAdd, MdCheckCircle, MdPending, MdCancel } from 'react-icons/md';
-
-interface Report {
-  id: number;
-  reporterId: number;
-  reporterName: string;
-  reportedId: number;
-  reportedName: string;
-  reason: string;
-  description: string;
-  status: 'pending' | 'reviewed' | 'resolved' | 'dismissed';
-  adminNotes?: string;
-  createdAt: string;
-  type: 'made' | 'received';
-}
+import { MdReport, MdAdd, MdCheckCircle, MdPending, MdCancel, MdRefresh, MdEdit, MdDelete } from 'react-icons/md';
+import { reportsApi, type Report } from '@/api/endpoints/reports.api';
+import { friendsApi, type Friend } from '@/api/endpoints/friends.api';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function ReportsSection() {
-  const [activeTab, setActiveTab] = useState<'made' | 'received'>('made');
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<'made' | 'received' | 'report_player'>('made');
   const [showMakeReportModal, setShowMakeReportModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingReports, setLoadingReports] = useState(true);
+
+  // Reports data
+  const [reportsMade, setReportsMade] = useState<Report[]>([]);
+  const [reportsReceived, setReportsReceived] = useState<Report[]>([]);
+
+  // Friends (players) for report tab
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [loadingFriends, setLoadingFriends] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
-    username: '',
-    reason: 'harassment',
-    description: '',
+    playerId: 0,
+    playerUsername: '',
+    reason: '',
   });
 
-  // TODO: Replace with API call
-  const mockReports: Report[] = [
-    {
-      id: 1,
-      reporterId: 1,
-      reporterName: 'You',
-      reportedId: 101,
-      reportedName: 'player_alex',
-      reason: 'Inappropriate Behavior',
-      description: 'Player was using offensive language in chat.',
-      status: 'reviewed',
-      adminNotes: 'User has been warned.',
-      createdAt: '2025-12-20',
-      type: 'made',
-    },
-    {
-      id: 2,
-      reporterId: 1,
-      reporterName: 'You',
-      reportedId: 102,
-      reportedName: 'gamer_mike',
-      reason: 'Fraud/Scam',
-      description: 'Attempted to request credentials without claiming promotion.',
-      status: 'resolved',
-      adminNotes: 'User account suspended for violation of terms.',
-      createdAt: '2025-12-15',
-      type: 'made',
-    },
-    {
-      id: 3,
-      reporterId: 103,
-      reporterName: 'player_john',
-      reportedId: 1,
-      reportedName: 'You',
-      reason: 'Late Credential Delivery',
-      description: 'Credentials were provided 2 days late.',
-      status: 'dismissed',
-      adminNotes: 'Delay was due to verification process. Not a violation.',
-      createdAt: '2025-12-18',
-      type: 'received',
-    },
-    {
-      id: 4,
-      reporterId: 104,
-      reporterName: 'gamer_sarah',
-      reportedId: 1,
-      reportedName: 'You',
-      reason: 'Account Issues',
-      description: 'Game account credentials were not working.',
-      status: 'resolved',
-      adminNotes: 'Issue resolved. New credentials provided.',
-      createdAt: '2025-12-10',
-      type: 'received',
-    },
-  ];
+  // Load reports on mount
+  useEffect(() => {
+    loadReports();
+  }, []);
 
-  const [reports] = useState(mockReports);
+  // Load friends when report_player tab is selected
+  useEffect(() => {
+    if (activeTab === 'report_player' && friends.length === 0) {
+      loadFriends();
+    }
+  }, [activeTab]);
 
-  const filteredReports = reports.filter((report) => report.type === activeTab);
+  const loadReports = async () => {
+    setLoadingReports(true);
+    try {
+      const response = await reportsApi.getMyReports();
+      setReportsMade(response.reports_made);
+      setReportsReceived(response.reports_received);
+    } catch (error) {
+      console.error('Failed to load reports:', error);
+      toast.error('Failed to load reports');
+    } finally {
+      setLoadingReports(false);
+    }
+  };
+
+  const loadFriends = async () => {
+    setLoadingFriends(true);
+    try {
+      const data = await friendsApi.getFriends();
+      // Filter to show only players (clients report players)
+      const players = data.filter(f => f.user_type === 'player');
+      setFriends(players);
+    } catch (error) {
+      console.error('Failed to load friends:', error);
+    } finally {
+      setLoadingFriends(false);
+    }
+  };
 
   const stats = {
-    madeReports: reports.filter((r) => r.type === 'made').length,
-    receivedReports: reports.filter((r) => r.type === 'received').length,
-    pendingMade: reports.filter((r) => r.type === 'made' && r.status === 'pending').length,
-    resolvedReceived: reports.filter((r) => r.type === 'received' && r.status === 'resolved').length,
+    madeReports: reportsMade.length,
+    receivedReports: reportsReceived.length,
+    pendingMade: reportsMade.filter(r => r.status === 'pending').length,
+    resolvedReceived: reportsReceived.filter(r => r.status === 'resolved').length,
   };
 
   const handleMakeReport = async () => {
-    if (!formData.username || !formData.description) {
-      toast.error('Please fill in all required fields');
+    if (!formData.playerId || !formData.reason.trim()) {
+      toast.error('Please select a player and provide a reason');
       return;
     }
 
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // await clientApi.createReport(formData);
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const newReport = await reportsApi.createReport({
+        reported_user_id: formData.playerId,
+        reason: formData.reason,
+      });
+
+      setReportsMade(prev => [newReport, ...prev]);
       toast.success('Report submitted successfully');
       setShowMakeReportModal(false);
       resetForm();
-    } catch (error) {
-      toast.error('Failed to submit report');
+    } catch (error: any) {
+      toast.error(error.detail || 'Failed to submit report');
       console.error(error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEditReport = async () => {
+    if (!selectedReport || !formData.reason.trim()) {
+      toast.error('Please provide a reason');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const updatedReport = await reportsApi.updateReport(selectedReport.id, {
+        reason: formData.reason,
+      });
+
+      setReportsMade(prev => prev.map(r => r.id === updatedReport.id ? updatedReport : r));
+      toast.success('Report updated successfully');
+      setShowEditModal(false);
+      setSelectedReport(null);
+      resetForm();
+    } catch (error: any) {
+      toast.error(error.detail || 'Failed to update report');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteReport = async (reportId: number) => {
+    if (!confirm('Are you sure you want to delete this report?')) {
+      return;
+    }
+
+    try {
+      await reportsApi.deleteReport(reportId);
+      setReportsMade(prev => prev.filter(r => r.id !== reportId));
+      toast.success('Report deleted');
+    } catch (error: any) {
+      toast.error(error.detail || 'Failed to delete report');
+      console.error(error);
+    }
+  };
+
+  const openReportForPlayer = async (friend: Friend) => {
+    // Check if already reported
+    try {
+      const reportCheck = await reportsApi.getUserReports(friend.id);
+      if (!reportCheck.can_report) {
+        toast.error('You have already reported this player');
+        return;
+      }
+
+      setFormData({
+        playerId: friend.id,
+        playerUsername: friend.username,
+        reason: '',
+      });
+      setShowMakeReportModal(true);
+    } catch (error: any) {
+      toast.error(error.detail || 'Failed to check report eligibility');
+    }
+  };
+
+  const openEditModal = (report: Report) => {
+    setSelectedReport(report);
+    setFormData({
+      playerId: report.reported_user_id,
+      playerUsername: report.reported_user_username || '',
+      reason: report.reason,
+    });
+    setShowEditModal(true);
   };
 
   const handleViewDetails = (report: Report) => {
@@ -131,9 +184,9 @@ export function ReportsSection() {
 
   const resetForm = () => {
     setFormData({
-      username: '',
-      reason: 'harassment',
-      description: '',
+      playerId: 0,
+      playerUsername: '',
+      reason: '',
     });
   };
 
@@ -166,6 +219,20 @@ export function ReportsSection() {
     }
   };
 
+  const formatDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  const currentReports = activeTab === 'made' ? reportsMade : activeTab === 'received' ? reportsReceived : [];
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -173,13 +240,27 @@ export function ReportsSection() {
           <h1 className="text-3xl font-bold text-gold-500 mb-2">Reports</h1>
           <p className="text-gray-400">Manage reports and violations</p>
         </div>
-        <button
-          onClick={() => setShowMakeReportModal(true)}
-          className="bg-gold-600 hover:bg-gold-700 text-dark-700 px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
-        >
-          <MdAdd size={20} />
-          Make Report
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={loadReports}
+            className="bg-dark-300 hover:bg-dark-400 text-gold-500 p-3 rounded-lg transition-colors"
+            title="Refresh"
+          >
+            <MdRefresh size={20} />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              resetForm();
+              setShowMakeReportModal(true);
+            }}
+            className="bg-gold-600 hover:bg-gold-700 text-dark-700 px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+          >
+            <MdAdd size={20} />
+            Make Report
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -215,9 +296,11 @@ export function ReportsSection() {
         {[
           { key: 'made', label: 'Made' },
           { key: 'received', label: 'Received' },
+          { key: 'report_player', label: 'Report Player' },
         ].map((tab) => (
           <button
             key={tab.key}
+            type="button"
             onClick={() => setActiveTab(tab.key as typeof activeTab)}
             className={`px-6 py-3 font-medium transition-colors ${
               activeTab === tab.key
@@ -230,55 +313,133 @@ export function ReportsSection() {
         ))}
       </div>
 
-      {/* Reports List */}
+      {/* Content */}
       <div className="space-y-4">
-        {filteredReports.length === 0 ? (
+        {loadingReports ? (
+          <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-12 text-center">
+            <div className="text-gold-500">Loading reports...</div>
+          </div>
+        ) : activeTab === 'report_player' ? (
+          // Report Player Tab
+          <div>
+            {loadingFriends ? (
+              <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-12 text-center">
+                <div className="text-gold-500">Loading players...</div>
+              </div>
+            ) : friends.length === 0 ? (
+              <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-12 text-center">
+                <MdReport className="text-6xl text-gray-500 mx-auto mb-4" />
+                <p className="text-gray-400 mb-2">No players to report</p>
+                <p className="text-sm text-gray-500">You can only report players you are connected with</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {friends.map((friend) => (
+                  <div
+                    key={friend.id}
+                    className="bg-dark-200 border-2 border-gold-700 rounded-lg p-4 hover:shadow-gold transition-all"
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <Avatar
+                        name={friend.full_name || friend.username}
+                        size="md"
+                        online={friend.is_online}
+                        src={friend.profile_picture}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-white truncate">{friend.username}</h3>
+                        <p className="text-sm text-gray-400 truncate">{friend.full_name}</p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => openReportForPlayer(friend)}
+                      variant="secondary"
+                      fullWidth
+                      size="sm"
+                    >
+                      <MdReport className="mr-1" />
+                      Report
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : currentReports.length === 0 ? (
           <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-12 text-center">
             <MdReport className="text-6xl text-gray-500 mx-auto mb-4" />
             <p className="text-gray-400">No reports found</p>
           </div>
         ) : (
-          filteredReports.map((report) => (
-            <div
-              key={report.id}
-              className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6 hover:shadow-gold transition-all"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-lg font-bold text-white">{report.reason}</h3>
-                    <Badge variant={getStatusVariant(report.status)} dot>
-                      {getStatusIcon(report.status)} {report.status.toUpperCase()}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-gray-400 mb-2">
-                    {report.type === 'made' ? 'Reported User' : 'Reported By'}:{' '}
-                    <span className="text-gold-500">
-                      {report.type === 'made' ? report.reportedName : report.reporterName}
-                    </span>
-                  </p>
-                  <p className="text-gray-300 mb-3">{report.description}</p>
-                  <p className="text-xs text-gray-500">
-                    Submitted: {new Date(report.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleViewDetails(report)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                >
-                  View Details
-                </button>
-              </div>
+          // Reports List
+          currentReports.map((report) => {
+            const isMade = activeTab === 'made';
+            const displayName = isMade
+              ? report.reported_user_username || report.reported_user_name || 'Unknown Player'
+              : report.reporter_username || report.reporter_name || 'Unknown User';
 
-              {/* Admin Notes Preview (if available) */}
-              {report.adminNotes && (
-                <div className="mt-4 pt-4 border-t border-dark-400">
-                  <p className="text-sm text-gray-400 mb-1">Admin Notes:</p>
-                  <p className="text-sm text-white bg-dark-300 p-3 rounded">{report.adminNotes}</p>
+            return (
+              <div
+                key={report.id}
+                className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6 hover:shadow-gold transition-all"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="text-lg font-bold text-white">{report.reason}</h3>
+                      <Badge variant={getStatusVariant(report.status)} dot>
+                        {getStatusIcon(report.status)} {report.status.toUpperCase()}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-gray-400 mb-2">
+                      {isMade ? 'Reported User' : 'Reported By'}:{' '}
+                      <span className="text-gold-500">{displayName}</span>
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Submitted: {formatDate(report.created_at)}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    {isMade && report.status === 'pending' && (
+                      <>
+                        <button
+                          type="button"
+                          title="Edit report"
+                          onClick={() => openEditModal(report)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1"
+                        >
+                          <MdEdit size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          title="Delete report"
+                          onClick={() => handleDeleteReport(report.id)}
+                          className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1"
+                        >
+                          <MdDelete size={16} />
+                        </button>
+                      </>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleViewDetails(report)}
+                      className="bg-dark-300 hover:bg-dark-400 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                    >
+                      View Details
+                    </button>
+                  </div>
                 </div>
-              )}
-            </div>
-          ))
+
+                {/* Admin Notes Preview (if available) */}
+                {report.admin_notes && (
+                  <div className="mt-4 pt-4 border-t border-dark-400">
+                    <p className="text-sm text-gray-400 mb-1">Admin Notes:</p>
+                    <p className="text-sm text-white bg-dark-300 p-3 rounded">{report.admin_notes}</p>
+                  </div>
+                )}
+              </div>
+            );
+          })
         )}
       </div>
 
@@ -293,35 +454,42 @@ export function ReportsSection() {
         size="lg"
       >
         <div className="space-y-4">
-          <Input
-            label="Username to Report"
-            type="text"
-            value={formData.username}
-            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-            placeholder="Enter username..."
-          />
+          {formData.playerUsername ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Player</label>
+              <p className="text-white bg-dark-300 px-4 py-3 rounded-lg">{formData.playerUsername}</p>
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Select a Player to Report</label>
+              <select
+                title="Select a player to report"
+                value={formData.playerId}
+                onChange={(e) => {
+                  const selectedFriend = friends.find(f => f.id === Number(e.target.value));
+                  setFormData({
+                    ...formData,
+                    playerId: Number(e.target.value),
+                    playerUsername: selectedFriend?.username || '',
+                  });
+                }}
+                className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500"
+              >
+                <option value={0}>Select a player...</option>
+                {friends.map((friend) => (
+                  <option key={friend.id} value={friend.id}>
+                    {friend.username} ({friend.full_name})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Reason</label>
-            <select
+            <label className="block text-sm font-medium text-gray-300 mb-2">Reason *</label>
+            <textarea
               value={formData.reason}
               onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-              className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500"
-            >
-              <option value="harassment">Harassment</option>
-              <option value="fraud">Fraud/Scam</option>
-              <option value="inappropriate_behavior">Inappropriate Behavior</option>
-              <option value="spam">Spam</option>
-              <option value="account_issues">Account Issues</option>
-              <option value="payment_issues">Payment Issues</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Provide details about the issue..."
+              placeholder="Describe the issue in detail..."
               rows={5}
               className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-gold-500"
             />
@@ -350,6 +518,47 @@ export function ReportsSection() {
         </div>
       </Modal>
 
+      {/* Edit Report Modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setSelectedReport(null);
+          resetForm();
+        }}
+        title="Edit Report"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Reason</label>
+            <textarea
+              value={formData.reason}
+              onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+              placeholder="Update your report reason..."
+              rows={5}
+              className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-gold-500"
+            />
+          </div>
+          <div className="flex gap-3 pt-4">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowEditModal(false);
+                setSelectedReport(null);
+                resetForm();
+              }}
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleEditReport} loading={loading} fullWidth>
+              Save Changes
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Report Details Modal */}
       {selectedReport && (
         <Modal
@@ -370,35 +579,31 @@ export function ReportsSection() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                {selectedReport.type === 'made' ? 'Reported User' : 'Reporter'}
+                {activeTab === 'made' ? 'Reported User' : 'Reporter'}
               </label>
               <p className="text-white">
-                {selectedReport.type === 'made'
-                  ? selectedReport.reportedName
-                  : selectedReport.reporterName}
+                {activeTab === 'made'
+                  ? selectedReport.reported_user_username || selectedReport.reported_user_name
+                  : selectedReport.reporter_username || selectedReport.reporter_name}
               </p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">Reason</label>
-              <p className="text-white">{selectedReport.reason}</p>
+              <p className="text-white bg-dark-300 p-4 rounded-lg">{selectedReport.reason}</p>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
-              <p className="text-white bg-dark-300 p-4 rounded-lg">{selectedReport.description}</p>
-            </div>
-            {selectedReport.adminNotes && (
+            {selectedReport.admin_notes && (
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Admin Response
                 </label>
                 <p className="text-white bg-blue-900/20 border border-blue-700 p-4 rounded-lg">
-                  {selectedReport.adminNotes}
+                  {selectedReport.admin_notes}
                 </p>
               </div>
             )}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">Submitted</label>
-              <p className="text-white">{new Date(selectedReport.createdAt).toLocaleString()}</p>
+              <p className="text-white">{new Date(selectedReport.created_at).toLocaleString()}</p>
             </div>
           </div>
         </Modal>

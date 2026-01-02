@@ -1,97 +1,206 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { StatCard } from '@/components/common/StatCard';
 import { Badge } from '@/components/common/Badge';
 import { Modal } from '@/components/common/Modal';
 import { Button } from '@/components/common/Button';
 import toast from 'react-hot-toast';
 import {
-  MdCardGiftcard, MdGroup, MdCasino
+  MdCardGiftcard, MdGroup, MdCasino, MdRefresh
 } from 'react-icons/md';
 import { FaGift, FaTrophy, FaDice } from 'react-icons/fa';
 import { GiCash, GiLevelEndFlag, GiCardRandom } from 'react-icons/gi';
+import { authApi } from '@/api/endpoints/auth.api';
+import { friendsApi } from '@/api/endpoints/friends.api';
+import { offersApi, type PlatformOffer, type OfferClaim } from '@/api/endpoints/offers.api';
+import { promotionsApi } from '@/api/endpoints/promotions.api';
+import type { User } from '@/types';
 
-// TODO: Replace with API integration
-const MOCK_USER = {
-  credits: 5000,
-  level: 15,
-  activePromotions: 3,
-  platformRewards: 2,
-  friends: 8,
-  achievements: 12,
-};
+interface DashboardStats {
+  credits: number;
+  level: number;
+  activePromotions: number;
+  platformRewards: number;
+  friends: number;
+  claimedRewards: number;
+}
+
+interface RecentActivity {
+  title: string;
+  description: string;
+  time: string;
+  type: 'success' | 'warning' | 'info';
+}
 
 export function HomeSection() {
   const [showDiceGame, setShowDiceGame] = useState(false);
   const [showSlotsGame, setShowSlotsGame] = useState(false);
   const [showMemoryGame, setShowMemoryGame] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
+    credits: 0,
+    level: 1,
+    activePromotions: 0,
+    platformRewards: 0,
+    friends: 0,
+    claimedRewards: 0,
+  });
+  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
+  const [availableOffers, setAvailableOffers] = useState<PlatformOffer[]>([]);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    setLoading(true);
+    try {
+      const [userData, friendsData, offersData, claimsData, promotionsData] = await Promise.all([
+        authApi.getCurrentUser(),
+        friendsApi.getFriends().catch(() => []),
+        offersApi.getAvailableOffers().catch(() => []),
+        offersApi.getMyClaims().catch(() => []),
+        promotionsApi.getAvailablePromotions().catch(() => []),
+      ]);
+
+      setUser(userData);
+      setAvailableOffers((offersData || []).slice(0, 3)); // Show top 3 offers
+
+      // Calculate stats - count active promotions available to the player
+      const activePromos = (promotionsData || []).filter((p: any) => p.is_active).length;
+
+      setDashboardStats({
+        credits: userData.credits || 0,
+        level: userData.player_level || 1,
+        activePromotions: activePromos,
+        platformRewards: (offersData || []).length,
+        friends: (friendsData || []).length,
+        claimedRewards: (claimsData || []).filter((c: OfferClaim) => c.status === 'approved' || c.status === 'completed').length,
+      });
+
+      // Build recent activities from claims
+      const activities: RecentActivity[] = [];
+
+      // Add recent claims as activities
+      (claimsData || []).slice(0, 3).forEach((claim: OfferClaim) => {
+        const statusText = claim.status === 'pending' ? 'Pending approval'
+          : claim.status === 'approved' ? 'Approved!'
+          : claim.status === 'completed' ? 'Completed!'
+          : 'Rejected';
+
+        activities.push({
+          title: `Claimed ${claim.offer_title || 'Reward'}`,
+          description: `$${claim.bonus_amount} bonus - ${statusText}`,
+          time: formatTimeAgo(claim.claimed_at),
+          type: claim.status === 'approved' || claim.status === 'completed' ? 'success' : claim.status === 'pending' ? 'warning' : 'info',
+        });
+      });
+
+      // Add friend count as activity if they have friends
+      if ((friendsData || []).length > 0) {
+        activities.push({
+          title: 'Connected Friends',
+          description: `You have ${(friendsData || []).length} friend${(friendsData || []).length !== 1 ? 's' : ''}`,
+          time: 'Current',
+          type: 'info',
+        });
+      }
+
+      setRecentActivities(activities.length > 0 ? activities : [
+        {
+          title: 'Welcome to Golden Ace!',
+          description: 'Start by connecting with clients and claiming rewards',
+          time: 'Just now',
+          type: 'info',
+        },
+      ]);
+    } catch (error) {
+      console.error('Failed to load dashboard data:', error);
+      toast.error('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min${diffMins !== 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+    return date.toLocaleDateString();
+  };
 
   const stats = [
     {
       title: 'Credits',
-      value: MOCK_USER.credits.toLocaleString(),
+      value: dashboardStats.credits.toLocaleString(),
       icon: <GiCash />,
       color: 'warning' as const,
     },
     {
       title: 'Level',
-      value: MOCK_USER.level.toString(),
+      value: dashboardStats.level.toString(),
       icon: <GiLevelEndFlag />,
-      trend: { value: '+2', isPositive: true },
       color: 'purple' as const,
     },
     {
       title: 'Active Promotions',
-      value: MOCK_USER.activePromotions.toString(),
+      value: dashboardStats.activePromotions.toString(),
       icon: <MdCardGiftcard />,
       color: 'success' as const,
     },
     {
       title: 'Platform Rewards',
-      value: MOCK_USER.platformRewards.toString(),
+      value: dashboardStats.platformRewards.toString(),
       icon: <FaGift />,
       color: 'info' as const,
     },
     {
       title: 'Friends',
-      value: MOCK_USER.friends.toString(),
+      value: dashboardStats.friends.toString(),
       icon: <MdGroup />,
       color: 'warning' as const,
     },
     {
-      title: 'Achievements',
-      value: MOCK_USER.achievements.toString(),
+      title: 'Claimed Rewards',
+      value: dashboardStats.claimedRewards.toString(),
       icon: <FaTrophy />,
       color: 'error' as const,
     },
   ];
 
-  // TODO: Replace with API data
-  const recentActivities = [
-    {
-      title: 'Claimed Welcome Bonus',
-      description: 'Received 100 credits',
-      time: '2 hours ago',
-      type: 'success' as const,
-    },
-    {
-      title: 'Leveled Up to 15',
-      description: 'Unlocked new achievements',
-      time: '1 day ago',
-      type: 'success' as const,
-    },
-    {
-      title: 'New Friend Request',
-      description: 'From player_mike',
-      time: '2 days ago',
-      type: 'info' as const,
-    },
-  ];
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gold-500">Loading dashboard...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gold-500 mb-2">Welcome Back!</h1>
-        <p className="text-gray-400">Your player dashboard overview</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gold-500 mb-2">
+            Welcome Back{user?.full_name ? `, ${user.full_name.split(' ')[0]}` : ''}!
+          </h1>
+          <p className="text-gray-400">Your player dashboard overview</p>
+        </div>
+        <button
+          type="button"
+          onClick={loadDashboardData}
+          className="bg-dark-300 hover:bg-dark-400 text-gold-500 p-3 rounded-lg transition-colors"
+          title="Refresh"
+        >
+          <MdRefresh size={20} />
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -101,7 +210,6 @@ export function HomeSection() {
             title={stat.title}
             value={stat.value}
             icon={stat.icon}
-            trend={stat.trend}
             color={stat.color}
           />
         ))}
@@ -118,29 +226,35 @@ export function HomeSection() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
             onClick={() => setShowDiceGame(true)}
-            className="bg-gradient-to-br from-purple-600 to-purple-800 hover:from-purple-500 hover:to-purple-700 text-white p-6 rounded-lg transition-all transform hover:scale-105 shadow-lg"
+            className="bg-gradient-to-br from-purple-600 to-purple-800 hover:from-purple-500 hover:to-purple-700 text-white p-6 rounded-lg transition-all transform hover:scale-105 shadow-lg flex items-center gap-4"
           >
-            <FaDice className="text-5xl mx-auto mb-3" />
-            <h3 className="text-xl font-bold mb-2">Lucky Dice</h3>
-            <p className="text-sm text-purple-100">Bet on dice rolls</p>
+            <FaDice className="text-4xl flex-shrink-0" />
+            <div className="text-left">
+              <h3 className="text-xl font-bold">Lucky Dice</h3>
+              <p className="text-sm text-purple-100">Bet on dice rolls</p>
+            </div>
           </button>
 
           <button
             onClick={() => setShowSlotsGame(true)}
-            className="bg-gradient-to-br from-gold-600 to-yellow-700 hover:from-gold-500 hover:to-yellow-600 text-dark-700 p-6 rounded-lg transition-all transform hover:scale-105 shadow-lg"
+            className="bg-gradient-to-br from-gold-600 to-yellow-700 hover:from-gold-500 hover:to-yellow-600 text-dark-700 p-6 rounded-lg transition-all transform hover:scale-105 shadow-lg flex items-center gap-4"
           >
-            <GiCardRandom className="text-5xl mx-auto mb-3" />
-            <h3 className="text-xl font-bold mb-2">Lucky Slots</h3>
-            <p className="text-sm text-yellow-900">Spin to win!</p>
+            <GiCardRandom className="text-4xl flex-shrink-0" />
+            <div className="text-left">
+              <h3 className="text-xl font-bold">Lucky Slots</h3>
+              <p className="text-sm text-yellow-900">Spin to win!</p>
+            </div>
           </button>
 
           <button
             onClick={() => setShowMemoryGame(true)}
-            className="bg-gradient-to-br from-blue-600 to-blue-800 hover:from-blue-500 hover:to-blue-700 text-white p-6 rounded-lg transition-all transform hover:scale-105 shadow-lg"
+            className="bg-gradient-to-br from-blue-600 to-blue-800 hover:from-blue-500 hover:to-blue-700 text-white p-6 rounded-lg transition-all transform hover:scale-105 shadow-lg flex items-center gap-4"
           >
-            <MdCardGiftcard className="text-5xl mx-auto mb-3" />
-            <h3 className="text-xl font-bold mb-2">Memory Match</h3>
-            <p className="text-sm text-blue-100">Match the cards</p>
+            <MdCardGiftcard className="text-4xl flex-shrink-0" />
+            <div className="text-left">
+              <h3 className="text-xl font-bold">Memory Match</h3>
+              <p className="text-sm text-blue-100">Match the cards</p>
+            </div>
           </button>
         </div>
       </div>
@@ -160,18 +274,19 @@ export function HomeSection() {
         <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
           <h2 className="text-xl font-bold text-gold-500 mb-4">Available Offers</h2>
           <div className="space-y-3">
-            <OfferCard
-              title="Weekend Bonus"
-              description="Claim 50 extra credits"
-              value={50}
-              expiry="2 days left"
-            />
-            <OfferCard
-              title="Email Verification"
-              description="Get 100 credits reward"
-              value={100}
-              expiry="Platform offer"
-            />
+            {availableOffers.length === 0 ? (
+              <p className="text-gray-400 text-center py-4">No offers available right now</p>
+            ) : (
+              availableOffers.map((offer) => (
+                <OfferCard
+                  key={offer.id}
+                  title={offer.title}
+                  description={offer.description}
+                  value={offer.bonus_amount}
+                  expiry={offer.end_date ? `Expires ${new Date(offer.end_date).toLocaleDateString()}` : 'No expiry'}
+                />
+              ))
+            )}
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { DashboardProvider } from '@/contexts/DashboardContext';
 import { HomeSection } from '@/components/player/HomeSection';
 import { ClientsSection } from '@/components/player/ClientsSection';
 import { FriendsSection } from '@/components/player/FriendsSection';
@@ -47,8 +48,10 @@ export default function PlayerDashboard() {
   };
 
   return (
-    <DashboardLayout activeSection={activeSection} onSectionChange={setActiveSection}>
-      {renderContent()}
-    </DashboardLayout>
+    <DashboardProvider activeSection={activeSection} onSectionChange={setActiveSection}>
+      <DashboardLayout activeSection={activeSection} onSectionChange={setActiveSection}>
+        {renderContent()}
+      </DashboardLayout>
+    </DashboardProvider>
   );
 }

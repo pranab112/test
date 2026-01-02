@@ -1,161 +1,240 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DataTable } from '@/components/common/DataTable';
 import { Badge } from '@/components/common/Badge';
 import { Modal } from '@/components/common/Modal';
 import { Button } from '@/components/common/Button';
+import { Avatar } from '@/components/common/Avatar';
 import toast from 'react-hot-toast';
-import { FaGift, FaTrophy, FaMedal, FaStar } from 'react-icons/fa';
-import { MdCheckCircle, MdLock } from 'react-icons/md';
-
-interface Reward {
-  id: number;
-  title: string;
-  description: string;
-  type: 'verification' | 'welcome' | 'achievement' | 'referral' | 'loyalty';
-  bonus: number;
-  status: 'available' | 'claimed' | 'locked';
-  expires: string;
-  requirements?: string;
-  icon?: string;
-}
-
-// TODO: Replace with API data
-const MOCK_REWARDS: Reward[] = [
-  {
-    id: 1,
-    title: 'Email Verification Bonus',
-    description: 'Verify your email to unlock this reward',
-    type: 'verification',
-    bonus: 100,
-    status: 'available',
-    expires: 'No expiry',
-    requirements: 'Verify your email address',
-  },
-  {
-    id: 2,
-    title: 'Welcome to Golden Ace',
-    description: 'Thank you for joining our platform',
-    type: 'welcome',
-    bonus: 50,
-    status: 'claimed',
-    expires: 'Claimed',
-  },
-  {
-    id: 3,
-    title: 'First Friend Added',
-    description: 'Add your first friend to the platform',
-    type: 'achievement',
-    bonus: 25,
-    status: 'claimed',
-    expires: 'Claimed',
-  },
-  {
-    id: 4,
-    title: 'Level 20 Achievement',
-    description: 'Reach level 20 to unlock',
-    type: 'achievement',
-    bonus: 150,
-    status: 'locked',
-    expires: 'Unlock at Level 20',
-    requirements: 'Reach player level 20',
-  },
-  {
-    id: 5,
-    title: 'Refer 5 Friends',
-    description: 'Get rewarded for bringing friends',
-    type: 'referral',
-    bonus: 200,
-    status: 'locked',
-    expires: 'Unlock with 5 referrals',
-    requirements: 'Refer 5 friends who reach level 5',
-  },
-  {
-    id: 6,
-    title: 'Phone Verification',
-    description: 'Add and verify your phone number',
-    type: 'verification',
-    bonus: 75,
-    status: 'available',
-    expires: 'No expiry',
-    requirements: 'Verify your phone number',
-  },
-  {
-    id: 7,
-    title: '30-Day Loyalty Reward',
-    description: 'Active for 30 consecutive days',
-    type: 'loyalty',
-    bonus: 300,
-    status: 'locked',
-    expires: 'Unlock with 30 active days',
-    requirements: 'Be active for 30 consecutive days',
-  },
-];
+import { FaGift, FaMedal } from 'react-icons/fa';
+import { MdCheckCircle, MdRefresh, MdEmail, MdPerson, MdPayment, MdGroup, MdEvent } from 'react-icons/md';
+import { offersApi, type PlatformOffer, type OfferClaim, type OfferType } from '@/api/endpoints/offers.api';
+import { friendsApi, type Friend } from '@/api/endpoints/friends.api';
 
 export function RewardsSection() {
-  const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [availableOffers, setAvailableOffers] = useState<PlatformOffer[]>([]);
+  const [myClaims, setMyClaims] = useState<OfferClaim[]>([]);
+  const [selectedOffer, setSelectedOffer] = useState<PlatformOffer | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showClaimModal, setShowClaimModal] = useState(false);
   const [claiming, setClaiming] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'available' | 'claimed' | 'locked'>('all');
+  const [filter, setFilter] = useState<'all' | 'available' | 'claimed'>('all');
 
-  const handleViewDetails = (reward: Reward) => {
-    setSelectedReward(reward);
+  // For claiming - need to select a client
+  const [clients, setClients] = useState<Friend[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
+  const [loadingClients, setLoadingClients] = useState(false);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [offersData, claimsData] = await Promise.all([
+        offersApi.getAvailableOffers(),
+        offersApi.getMyClaims(),
+      ]);
+      setAvailableOffers(offersData);
+      setMyClaims(claimsData);
+    } catch (error) {
+      console.error('Failed to load rewards data:', error);
+      toast.error('Failed to load rewards');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadClients = async () => {
+    setLoadingClients(true);
+    try {
+      const friends = await friendsApi.getFriends();
+      // Filter to get only clients
+      const clientFriends = friends.filter(f => f.user_type === 'client');
+      setClients(clientFriends);
+    } catch (error) {
+      console.error('Failed to load clients:', error);
+      toast.error('Failed to load clients');
+    } finally {
+      setLoadingClients(false);
+    }
+  };
+
+  const handleViewDetails = (offer: PlatformOffer) => {
+    setSelectedOffer(offer);
     setShowDetailsModal(true);
   };
 
-  const handleClaimReward = (reward: Reward) => {
+  const handleStartClaim = async (offer: PlatformOffer) => {
+    setSelectedOffer(offer);
+    setSelectedClientId(null);
+    await loadClients();
+    setShowClaimModal(true);
+  };
+
+  const handleClaimReward = async () => {
+    if (!selectedOffer || !selectedClientId) {
+      toast.error('Please select a client to claim with');
+      return;
+    }
+
     setClaiming(true);
-    // TODO: API call to claim reward
-    setTimeout(() => {
-      setClaiming(false);
-      toast.success(`Successfully claimed "${reward.title}"! +${reward.bonus} credits`);
+    try {
+      await offersApi.claimOffer({
+        offer_id: selectedOffer.id,
+        client_id: selectedClientId,
+      });
+      toast.success(`Claim request sent for "${selectedOffer.title}"! The client will review your request.`);
+      setShowClaimModal(false);
       setShowDetailsModal(false);
-    }, 1000);
-  };
-
-  const getTypeIcon = (type: Reward['type']) => {
-    switch (type) {
-      case 'verification': return <MdCheckCircle className="text-blue-500" />;
-      case 'welcome': return <FaGift className="text-gold-500" />;
-      case 'achievement': return <FaTrophy className="text-purple-500" />;
-      case 'referral': return <FaStar className="text-green-500" />;
-      case 'loyalty': return <FaMedal className="text-red-500" />;
-      default: return <FaGift className="text-gold-500" />;
+      await loadData();
+    } catch (error: any) {
+      toast.error(error.detail || 'Failed to claim reward');
+    } finally {
+      setClaiming(false);
     }
   };
 
-  const getTypeColor = (type: Reward['type']): 'info' | 'warning' | 'purple' | 'success' | 'error' | 'default' => {
+  const getTypeIcon = (type: OfferType) => {
     switch (type) {
-      case 'verification': return 'info';
-      case 'welcome': return 'warning';
-      case 'achievement': return 'purple';
-      case 'referral': return 'success';
-      case 'loyalty': return 'error';
-      default: return 'default';
+      case 'email_verification':
+        return <MdEmail className="text-blue-500" />;
+      case 'profile_completion':
+        return <MdPerson className="text-purple-500" />;
+      case 'first_deposit':
+        return <MdPayment className="text-green-500" />;
+      case 'referral':
+        return <MdGroup className="text-orange-500" />;
+      case 'loyalty':
+        return <FaMedal className="text-gold-500" />;
+      case 'special_event':
+        return <MdEvent className="text-pink-500" />;
+      default:
+        return <FaGift className="text-gold-500" />;
     }
   };
 
-  const getTypeLabel = (type: Reward['type']) => {
-    return type.replace('_', ' ').toUpperCase();
+  const getTypeColor = (type: OfferType): 'info' | 'warning' | 'purple' | 'success' | 'error' | 'default' => {
+    switch (type) {
+      case 'email_verification':
+        return 'info';
+      case 'profile_completion':
+        return 'purple';
+      case 'first_deposit':
+        return 'success';
+      case 'referral':
+        return 'warning';
+      case 'loyalty':
+        return 'error';
+      case 'special_event':
+        return 'purple';
+      default:
+        return 'default';
+    }
   };
 
-  const filteredRewards = MOCK_REWARDS.filter(reward => {
-    if (filter === 'all') return true;
-    return reward.status === filter;
-  });
+  const getTypeLabel = (type: OfferType) => {
+    return type.replace(/_/g, ' ').toUpperCase();
+  };
+
+  const getClaimStatusBadge = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return <Badge variant="warning">PENDING</Badge>;
+      case 'approved':
+      case 'completed':
+        return <Badge variant="success">APPROVED</Badge>;
+      case 'rejected':
+        return <Badge variant="error">REJECTED</Badge>;
+      default:
+        return <Badge variant="default">{status.toUpperCase()}</Badge>;
+    }
+  };
+
+  // Combine available offers and claims for display
+  const getDisplayData = () => {
+    const claimedOfferIds = new Set(myClaims.map(c => c.offer_id));
+
+    if (filter === 'available') {
+      return availableOffers.map(offer => ({
+        ...offer,
+        displayStatus: 'available' as const,
+        claim: null as OfferClaim | null,
+      }));
+    }
+
+    if (filter === 'claimed') {
+      return myClaims.map(claim => {
+        const offer = availableOffers.find(o => o.id === claim.offer_id);
+        return {
+          id: claim.offer_id,
+          title: claim.offer_title || 'Unknown Offer',
+          description: offer?.description || '',
+          offer_type: offer?.offer_type || 'special_event' as OfferType,
+          bonus_amount: claim.bonus_amount,
+          requirement_description: offer?.requirement_description,
+          max_claims: offer?.max_claims,
+          max_claims_per_player: offer?.max_claims_per_player || 1,
+          status: offer?.status || 'active',
+          start_date: offer?.start_date || claim.claimed_at,
+          end_date: offer?.end_date,
+          created_at: offer?.created_at || claim.claimed_at,
+          displayStatus: 'claimed' as const,
+          claim,
+        };
+      });
+    }
+
+    // All - combine available and claimed
+    const combined = [
+      ...availableOffers.map(offer => ({
+        ...offer,
+        displayStatus: claimedOfferIds.has(offer.id) ? 'claimed' as const : 'available' as const,
+        claim: myClaims.find(c => c.offer_id === offer.id) || null,
+      })),
+    ];
+
+    // Add claims for offers not in available list
+    myClaims.forEach(claim => {
+      if (!combined.find(o => o.id === claim.offer_id)) {
+        combined.push({
+          id: claim.offer_id,
+          title: claim.offer_title || 'Unknown Offer',
+          description: '',
+          offer_type: 'special_event' as OfferType,
+          bonus_amount: claim.bonus_amount,
+          requirement_description: undefined,
+          max_claims: undefined,
+          max_claims_per_player: 1,
+          status: 'active' as const,
+          start_date: claim.claimed_at,
+          end_date: undefined,
+          created_at: claim.claimed_at,
+          displayStatus: 'claimed' as const,
+          claim,
+        });
+      }
+    });
+
+    return combined;
+  };
+
+  const displayData = getDisplayData();
 
   const columns = [
     {
       key: 'title',
       label: 'Reward',
       width: '30%',
-      render: (reward: Reward) => (
+      render: (item: (typeof displayData)[0]) => (
         <div className="flex items-center gap-3">
           <div className="text-2xl">
-            {reward.status === 'locked' ? <MdLock className="text-gray-600" /> : getTypeIcon(reward.type)}
+            {getTypeIcon(item.offer_type)}
           </div>
           <div>
-            <div className="font-medium text-white">{reward.title}</div>
-            <div className="text-xs text-gray-400 mt-1">{reward.description}</div>
+            <div className="font-medium text-white">{item.title}</div>
+            <div className="text-xs text-gray-400 mt-1 line-clamp-2">{item.description}</div>
           </div>
         </div>
       ),
@@ -163,60 +242,58 @@ export function RewardsSection() {
     {
       key: 'type',
       label: 'Type',
-      render: (reward: Reward) => (
-        <Badge variant={getTypeColor(reward.type)}>
-          {getTypeLabel(reward.type)}
+      render: (item: (typeof displayData)[0]) => (
+        <Badge variant={getTypeColor(item.offer_type)}>
+          {getTypeLabel(item.offer_type)}
         </Badge>
       ),
     },
     {
       key: 'bonus',
       label: 'Bonus Amount',
-      render: (reward: Reward) => (
+      render: (item: (typeof displayData)[0]) => (
         <div className="flex items-center gap-1">
-          <span className="font-bold text-gold-500 text-lg">{reward.bonus}</span>
-          <span className="text-sm text-gray-400">credits</span>
+          <span className="font-bold text-gold-500 text-lg">${item.bonus_amount}</span>
         </div>
       ),
     },
     {
       key: 'status',
       label: 'Status',
-      render: (reward: Reward) => {
-        let variant: 'success' | 'default' | 'warning' = 'default';
-        if (reward.status === 'available') variant = 'success';
-        if (reward.status === 'locked') variant = 'warning';
-        return (
-          <Badge variant={variant}>
-            {reward.status.toUpperCase()}
-          </Badge>
-        );
+      render: (item: (typeof displayData)[0]) => {
+        if (item.displayStatus === 'claimed' && item.claim) {
+          return getClaimStatusBadge(item.claim.status);
+        }
+        return <Badge variant="success">AVAILABLE</Badge>;
       },
     },
     {
       key: 'expires',
       label: 'Expires',
-      render: (reward: Reward) => (
-        <span className="text-sm text-gray-400">{reward.expires}</span>
+      render: (item: (typeof displayData)[0]) => (
+        <span className="text-sm text-gray-400">
+          {item.end_date
+            ? new Date(item.end_date).toLocaleDateString()
+            : 'No expiry'}
+        </span>
       ),
     },
     {
       key: 'actions',
       label: 'Actions',
-      render: (reward: Reward) => (
+      render: (item: (typeof displayData)[0]) => (
         <div className="flex gap-2">
           <button
-            onClick={() => handleViewDetails(reward)}
+            type="button"
+            onClick={() => handleViewDetails(item)}
             className="text-blue-500 hover:text-blue-400 text-sm font-medium"
           >
             Details
           </button>
-          {reward.status === 'available' && (
+          {item.displayStatus === 'available' && (
             <button
-              onClick={() => {
-                setSelectedReward(reward);
-                handleClaimReward(reward);
-              }}
+              type="button"
+              onClick={() => handleStartClaim(item)}
               className="bg-gold-gradient text-dark-700 font-bold px-3 py-1 rounded text-sm hover:shadow-gold transition-all"
             >
               Claim
@@ -227,19 +304,38 @@ export function RewardsSection() {
     },
   ];
 
-  const availableCount = MOCK_REWARDS.filter(r => r.status === 'available').length;
-  const claimedCount = MOCK_REWARDS.filter(r => r.status === 'claimed').length;
-  const totalEarned = MOCK_REWARDS.filter(r => r.status === 'claimed').reduce((sum, r) => sum + r.bonus, 0);
+  const availableCount = availableOffers.length;
+  const claimedCount = myClaims.length;
+  const totalEarned = myClaims
+    .filter(c => c.status === 'approved' || c.status === 'completed')
+    .reduce((sum, c) => sum + c.bonus_amount, 0);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gold-500">Loading rewards...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gold-500 mb-2">Platform Rewards</h1>
-          <p className="text-gray-400">Special rewards from Golden Ace platform</p>
+          <p className="text-gray-400">Claim special rewards from Golden Ace platform</p>
         </div>
         <div className="flex gap-2">
           <button
+            type="button"
+            onClick={loadData}
+            className="bg-dark-300 hover:bg-dark-400 text-gold-500 p-3 rounded-lg transition-colors"
+            title="Refresh"
+          >
+            <MdRefresh size={20} />
+          </button>
+          <button
+            type="button"
             onClick={() => setFilter('all')}
             className={`px-4 py-2 rounded-lg font-medium transition-all ${
               filter === 'all'
@@ -247,9 +343,10 @@ export function RewardsSection() {
                 : 'bg-dark-300 text-gray-400 hover:text-gold-500'
             }`}
           >
-            All ({MOCK_REWARDS.length})
+            All
           </button>
           <button
+            type="button"
             onClick={() => setFilter('available')}
             className={`px-4 py-2 rounded-lg font-medium transition-all ${
               filter === 'available'
@@ -260,6 +357,7 @@ export function RewardsSection() {
             Available ({availableCount})
           </button>
           <button
+            type="button"
             onClick={() => setFilter('claimed')}
             className={`px-4 py-2 rounded-lg font-medium transition-all ${
               filter === 'claimed'
@@ -290,7 +388,7 @@ export function RewardsSection() {
               </div>
               <div>
                 <p className="text-sm text-gray-400">Total Earned</p>
-                <p className="text-2xl font-bold text-purple-400">{totalEarned}</p>
+                <p className="text-2xl font-bold text-purple-400">${totalEarned}</p>
               </div>
             </div>
           </div>
@@ -300,7 +398,7 @@ export function RewardsSection() {
       {/* Rewards Table */}
       <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
         <DataTable
-          data={filteredRewards}
+          data={displayData}
           columns={columns}
           emptyMessage={
             filter === 'all'
@@ -311,33 +409,29 @@ export function RewardsSection() {
       </div>
 
       {/* Reward Details Modal */}
-      {showDetailsModal && selectedReward && (
+      {showDetailsModal && selectedOffer && (
         <Modal
           isOpen={showDetailsModal}
           onClose={() => {
             setShowDetailsModal(false);
-            setSelectedReward(null);
+            setSelectedOffer(null);
           }}
-          title={selectedReward.title}
+          title={selectedOffer.title}
           size="lg"
         >
           <div className="space-y-4">
             <div className="bg-dark-300 rounded-lg p-6">
               <div className="flex items-start gap-4 mb-4">
                 <div className="text-5xl">
-                  {selectedReward.status === 'locked' ? (
-                    <MdLock className="text-gray-600" />
-                  ) : (
-                    getTypeIcon(selectedReward.type)
-                  )}
+                  {getTypeIcon(selectedOffer.offer_type)}
                 </div>
                 <div className="flex-1">
                   <h3 className="text-2xl font-bold text-gold-500 mb-2">
-                    {selectedReward.title}
+                    {selectedOffer.title}
                   </h3>
-                  <p className="text-gray-300 mb-3">{selectedReward.description}</p>
-                  <Badge variant={getTypeColor(selectedReward.type)} size="lg">
-                    {getTypeLabel(selectedReward.type)}
+                  <p className="text-gray-300 mb-3">{selectedOffer.description}</p>
+                  <Badge variant={getTypeColor(selectedOffer.offer_type)} size="lg">
+                    {getTypeLabel(selectedOffer.offer_type)}
                   </Badge>
                 </div>
               </div>
@@ -345,77 +439,135 @@ export function RewardsSection() {
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div className="bg-dark-200 rounded-lg p-4 text-center">
                   <p className="text-sm text-gray-400 mb-1">Bonus Amount</p>
-                  <p className="text-3xl font-bold text-gold-500">{selectedReward.bonus}</p>
-                  <p className="text-xs text-gray-400">credits</p>
+                  <p className="text-3xl font-bold text-gold-500">${selectedOffer.bonus_amount}</p>
                 </div>
                 <div className="bg-dark-200 rounded-lg p-4 text-center">
-                  <p className="text-sm text-gray-400 mb-1">Status</p>
-                  <Badge
-                    variant={
-                      selectedReward.status === 'available'
-                        ? 'success'
-                        : selectedReward.status === 'claimed'
-                        ? 'default'
-                        : 'warning'
-                    }
-                    size="lg"
-                  >
-                    {selectedReward.status.toUpperCase()}
-                  </Badge>
+                  <p className="text-sm text-gray-400 mb-1">Expires</p>
+                  <p className="text-lg font-medium text-white">
+                    {selectedOffer.end_date
+                      ? new Date(selectedOffer.end_date).toLocaleDateString()
+                      : 'No expiry'}
+                  </p>
                 </div>
-              </div>
-
-              <div className="bg-dark-200 rounded-lg p-4">
-                <p className="text-sm text-gray-400 mb-1">Expires</p>
-                <p className="text-white font-medium">{selectedReward.expires}</p>
               </div>
             </div>
 
-            {selectedReward.requirements && (
+            {selectedOffer.requirement_description && (
               <div className="bg-dark-300 rounded-lg p-4">
                 <h4 className="font-bold text-gold-500 mb-2">Requirements</h4>
-                <p className="text-sm text-gray-300">{selectedReward.requirements}</p>
+                <p className="text-sm text-gray-300">{selectedOffer.requirement_description}</p>
               </div>
             )}
 
-            {selectedReward.status === 'available' && (
-              <div className="flex gap-3">
-                <Button
-                  onClick={() => handleClaimReward(selectedReward)}
-                  loading={claiming}
-                  variant="primary"
-                  fullWidth
-                >
-                  Claim Reward (+{selectedReward.bonus} credits)
-                </Button>
-                <Button
-                  onClick={() => setShowDetailsModal(false)}
-                  variant="secondary"
-                >
-                  Cancel
-                </Button>
-              </div>
-            )}
+            <div className="flex gap-3">
+              <Button
+                onClick={() => handleStartClaim(selectedOffer)}
+                variant="primary"
+                fullWidth
+              >
+                Claim Reward (+${selectedOffer.bonus_amount})
+              </Button>
+              <Button
+                onClick={() => setShowDetailsModal(false)}
+                variant="secondary"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
-            {selectedReward.status === 'claimed' && (
-              <div className="bg-green-900/30 border-2 border-green-500 rounded-lg p-4 text-center">
-                <MdCheckCircle className="text-5xl text-green-500 mx-auto mb-2" />
-                <p className="text-green-400 font-bold text-lg">Already Claimed</p>
-                <p className="text-sm text-gray-400 mt-1">
-                  You have already received this reward
-                </p>
+      {/* Claim Modal - Select Client */}
+      {showClaimModal && selectedOffer && (
+        <Modal
+          isOpen={showClaimModal}
+          onClose={() => {
+            setShowClaimModal(false);
+            setSelectedOffer(null);
+            setSelectedClientId(null);
+          }}
+          title="Select Client to Claim With"
+          size="lg"
+        >
+          <div className="space-y-4">
+            <div className="bg-dark-300 rounded-lg p-4">
+              <div className="flex items-center gap-3">
+                <div className="text-3xl">{getTypeIcon(selectedOffer.offer_type)}</div>
+                <div>
+                  <h3 className="font-bold text-white">{selectedOffer.title}</h3>
+                  <p className="text-gold-500 font-bold">${selectedOffer.bonus_amount} bonus</p>
+                </div>
               </div>
-            )}
+            </div>
 
-            {selectedReward.status === 'locked' && (
-              <div className="bg-yellow-900/30 border-2 border-yellow-600 rounded-lg p-4 text-center">
-                <MdLock className="text-5xl text-yellow-500 mx-auto mb-2" />
-                <p className="text-yellow-400 font-bold text-lg">Locked</p>
-                <p className="text-sm text-gray-400 mt-1">
-                  Complete the requirements to unlock this reward
-                </p>
-              </div>
-            )}
+            <div>
+              <p className="text-gray-400 mb-3">
+                Select a client to claim this reward with. The client will review and approve your claim.
+              </p>
+
+              {loadingClients ? (
+                <div className="text-center py-8 text-gold-500">Loading clients...</div>
+              ) : clients.length === 0 ? (
+                <div className="text-center py-8">
+                  <MdGroup className="text-5xl text-gray-500 mx-auto mb-3" />
+                  <p className="text-gray-400">No connected clients found</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Add clients as friends to claim rewards with them
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {clients.map(client => (
+                    <button
+                      key={client.id}
+                      type="button"
+                      onClick={() => setSelectedClientId(client.id)}
+                      className={`w-full p-4 rounded-lg flex items-center gap-3 transition-all ${
+                        selectedClientId === client.id
+                          ? 'bg-gold-600/20 border-2 border-gold-500'
+                          : 'bg-dark-400 hover:bg-dark-300 border-2 border-transparent'
+                      }`}
+                    >
+                      <Avatar
+                        name={client.full_name || client.username}
+                        size="md"
+                        src={client.profile_picture}
+                        online={client.is_online}
+                      />
+                      <div className="text-left flex-1">
+                        <p className="text-white font-medium">{client.username}</p>
+                        <p className="text-sm text-gray-400">{client.full_name}</p>
+                      </div>
+                      {selectedClientId === client.id && (
+                        <MdCheckCircle className="text-gold-500 text-2xl" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <Button
+                onClick={handleClaimReward}
+                loading={claiming}
+                disabled={!selectedClientId || clients.length === 0}
+                variant="primary"
+                fullWidth
+              >
+                Submit Claim Request
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowClaimModal(false);
+                  setSelectedClientId(null);
+                }}
+                variant="secondary"
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
         </Modal>
       )}

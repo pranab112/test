@@ -5,8 +5,9 @@ import { Button } from '@/components/common/Button';
 import { Avatar } from '@/components/common/Avatar';
 import { Badge } from '@/components/common/Badge';
 import toast from 'react-hot-toast';
-import { MdPersonAdd, MdMessage, MdPersonRemove, MdCheck, MdClose, MdSearch, MdRefresh } from 'react-icons/md';
+import { MdPersonAdd, MdMessage, MdPersonRemove, MdCheck, MdClose, MdSearch, MdRefresh, MdFlag } from 'react-icons/md';
 import { friendsApi, type FriendDetails, type FriendRequest } from '@/api/endpoints';
+import { reportsApi } from '@/api/endpoints/reports.api';
 import { formatDistanceToNow } from 'date-fns';
 
 export function FriendsSection() {
@@ -18,6 +19,12 @@ export function FriendsSection() {
   const [friends, setFriends] = useState<FriendDetails[]>([]);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [processingRequests, setProcessingRequests] = useState<Set<number>>(new Set());
+
+  // Report modal state
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportTarget, setReportTarget] = useState<FriendDetails | null>(null);
+  const [reportReason, setReportReason] = useState('');
+  const [submittingReport, setSubmittingReport] = useState(false);
 
   // Load friends and friend requests on mount
   useEffect(() => {
@@ -133,6 +140,46 @@ export function FriendsSection() {
   const handleMessageFriend = (_friendId: number, username: string) => {
     // TODO: Navigate to messages section with this friend selected
     toast.success(`Opening chat with ${username}...`);
+  };
+
+  const openReportModal = async (friend: FriendDetails) => {
+    // Check if user can report this friend
+    try {
+      const reportInfo = await reportsApi.getUserReports(friend.id);
+      if (!reportInfo.can_report) {
+        toast.error('You have already reported this user');
+        return;
+      }
+      setReportTarget(friend);
+      setReportReason('');
+      setShowReportModal(true);
+    } catch (error: any) {
+      toast.error(error.detail || 'Failed to check report status');
+    }
+  };
+
+  const handleSubmitReport = async () => {
+    if (!reportTarget) return;
+    if (!reportReason.trim()) {
+      toast.error('Please enter a reason for the report');
+      return;
+    }
+
+    setSubmittingReport(true);
+    try {
+      await reportsApi.createReport({
+        reported_user_id: reportTarget.id,
+        reason: reportReason.trim(),
+      });
+      toast.success(`Report submitted for ${reportTarget.username}`);
+      setShowReportModal(false);
+      setReportTarget(null);
+      setReportReason('');
+    } catch (error: any) {
+      toast.error(error.detail || 'Failed to submit report');
+    } finally {
+      setSubmittingReport(false);
+    }
   };
 
   const formatTime = (dateString: string) => {
@@ -292,8 +339,16 @@ export function FriendsSection() {
                   </button>
                   <button
                     type="button"
+                    onClick={() => openReportModal(friend)}
+                    className="bg-yellow-600/20 hover:bg-yellow-600 text-yellow-500 hover:text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                    title="Report user"
+                  >
+                    <MdFlag size={16} />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => handleRemoveFriend(friend.id, friend.username)}
-                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1"
+                    className="bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
                     title="Remove friend"
                   >
                     <MdPersonRemove size={16} />
@@ -387,6 +442,72 @@ export function FriendsSection() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Report User Modal */}
+      <Modal
+        isOpen={showReportModal}
+        onClose={() => {
+          setShowReportModal(false);
+          setReportTarget(null);
+          setReportReason('');
+        }}
+        title="Report User"
+        size="md"
+      >
+        {reportTarget && (
+          <div className="space-y-4">
+            <div className="bg-dark-300 p-4 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Avatar
+                  name={reportTarget.full_name || reportTarget.username}
+                  size="md"
+                  src={reportTarget.profile_picture}
+                />
+                <div>
+                  <p className="text-white font-medium">{reportTarget.username}</p>
+                  <p className="text-sm text-gray-400">{reportTarget.full_name}</p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Reason for Report *
+              </label>
+              <textarea
+                value={reportReason}
+                onChange={(e) => setReportReason(e.target.value)}
+                placeholder="Describe why you are reporting this user..."
+                rows={4}
+                className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-gold-500"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowReportModal(false);
+                  setReportTarget(null);
+                  setReportReason('');
+                }}
+                fullWidth
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSubmitReport}
+                loading={submittingReport}
+                fullWidth
+                className="bg-red-600 hover:bg-red-700"
+              >
+                <MdFlag size={16} className="mr-1" />
+                Submit Report
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

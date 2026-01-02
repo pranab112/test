@@ -1,104 +1,97 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DataTable } from '@/components/common/DataTable';
 import { Badge } from '@/components/common/Badge';
 import { Avatar } from '@/components/common/Avatar';
 import { Modal } from '@/components/common/Modal';
 import { Button } from '@/components/common/Button';
-import { MdStar } from 'react-icons/md';
+import { MdStar, MdRefresh } from 'react-icons/md';
 import toast from 'react-hot-toast';
+import { friendsApi, type FriendDetails } from '@/api/endpoints/friends.api';
+import { gamesApi, type Game } from '@/api/endpoints/games.api';
+import { reviewsApi, type ReviewStats } from '@/api/endpoints/reviews.api';
+import { promotionsApi } from '@/api/endpoints/promotions.api';
+import { useDashboard } from '@/contexts/DashboardContext';
 
-// Game library images mapping
-const GAME_IMAGES = [
-  { name: 'Egames', image: 'Egames.png' },
-  { name: 'Gameroom Online', image: 'Gameroom online.png' },
-  { name: 'Highstake', image: 'Highstake.jpg' },
-  { name: 'Megaspin', image: 'Megaspin.jpg' },
-  { name: 'Panda Master', image: 'Panda Master.jpg' },
-  { name: 'Paracasino', image: 'Paracasino.jpg' },
-  { name: 'Rivermonster', image: 'Rivermonster.png' },
-  { name: 'Vega Sweeps', image: 'Vega Sweeps.png' },
-  { name: 'Blue Dragon', image: 'bluedragon.png' },
-  { name: 'Cash Frenzy', image: 'cashfrenzy 1.png' },
-  { name: 'Cash Machine', image: 'cashmachine.png' },
-  { name: 'Casino Ignitee', image: 'casinoignitee.jpg' },
-  { name: 'Casino Royale', image: 'casinoroyale.png' },
-  { name: 'Fire Kirin', image: 'firekirin.png' },
-  { name: 'Game Vault', image: 'gamevault.png' },
-  { name: 'Joker 777', image: 'joker 777.png' },
-  { name: 'Juwa Online', image: 'juwaonline.png' },
-  { name: 'Loot', image: 'loot.jpg' },
-  { name: 'Milky Way', image: 'milkyway 2.png' },
-  { name: 'Moolah', image: 'moolah.jpg' },
-  { name: 'Orion Stars', image: 'orionstars.jpg' },
-  { name: 'River Sweeps', image: 'riversweeps.png' },
-  { name: 'Ultra Panda', image: 'ultrapanda.png' },
-  { name: 'VBlink', image: 'vblink 2.png' },
-  { name: 'Vegas X', image: 'vegas x.png' },
-  { name: 'Vegas Roll', image: 'vegasroll.png' },
-  { name: 'Winstar', image: 'winstar.png' },
-  { name: 'Yolo 777', image: 'yolo777.png' },
-];
-
-interface Client {
-  id: number;
-  username: string;
-  company_name: string;
-  is_online: boolean;
-  promotions: number;
-  rating: number;
-  games: string[];
+interface ClientWithDetails extends FriendDetails {
+  games: Game[];
+  reviewStats: ReviewStats | null;
+  promotionsCount: number;
 }
 
-// TODO: Replace with API data
-const MOCK_CLIENTS: Client[] = [
-  {
-    id: 1,
-    username: 'client_abc',
-    company_name: 'ABC Gaming Company',
-    is_online: true,
-    promotions: 5,
-    rating: 4.8,
-    games: ['Fire Kirin', 'Game Vault', 'Ultra Panda', 'Vegas X', 'Orion Stars'],
-  },
-  {
-    id: 2,
-    username: 'client_xyz',
-    company_name: 'XYZ Casino Corporation',
-    is_online: false,
-    promotions: 3,
-    rating: 4.5,
-    games: ['Milky Way', 'River Sweeps', 'Panda Master', 'Cash Frenzy'],
-  },
-  {
-    id: 3,
-    username: 'client_golden',
-    company_name: 'Golden Entertainment',
-    is_online: true,
-    promotions: 8,
-    rating: 4.9,
-    games: ['VBlink', 'Joker 777', 'Blue Dragon', 'Casino Royale', 'Vega Sweeps'],
-  },
-];
-
 export function ClientsSection() {
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const { onSectionChange } = useDashboard();
+  const [clients, setClients] = useState<ClientWithDetails[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedClient, setSelectedClient] = useState<ClientWithDetails | null>(null);
   const [showGamesModal, setShowGamesModal] = useState(false);
 
-  const handleViewGames = (client: Client) => {
+  useEffect(() => {
+    loadClients();
+  }, []);
+
+  const loadClients = async () => {
+    setLoading(true);
+    try {
+      // Get friends and filter for clients only
+      const friends = await friendsApi.getFriends();
+      const clientFriends = friends.filter(f => f.user_type === 'client');
+
+      // Load additional details for each client
+      const clientsWithDetails = await Promise.all(
+        clientFriends.map(async (client) => {
+          const [games, reviewStats, promotions] = await Promise.all([
+            gamesApi.getGamesForClient(client.id).catch(() => []),
+            reviewsApi.getUserReviewStats(client.id).catch(() => null),
+            promotionsApi.getAvailablePromotions().catch(() => []),
+          ]);
+
+          // Filter promotions for this client
+          const clientPromotions = promotions.filter((p: any) => p.client_id === client.id && p.is_active);
+
+          return {
+            ...client,
+            games,
+            reviewStats,
+            promotionsCount: clientPromotions.length,
+          };
+        })
+      );
+
+      setClients(clientsWithDetails);
+    } catch (error) {
+      console.error('Failed to load clients:', error);
+      toast.error('Failed to load clients');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewGames = (client: ClientWithDetails) => {
     setSelectedClient(client);
     setShowGamesModal(true);
+  };
+
+  const handleViewPromotions = (client: ClientWithDetails) => {
+    // Navigate to promotions section with client filter
+    toast.success(`Viewing promotions from ${client.full_name || client.username}`);
+    onSectionChange('promotions');
   };
 
   const columns = [
     {
       key: 'username',
       label: 'Client',
-      render: (client: Client) => (
+      render: (client: ClientWithDetails) => (
         <div className="flex items-center gap-3">
-          <Avatar name={client.company_name} size="sm" online={client.is_online} />
+          <Avatar
+            name={client.full_name || client.username}
+            size="sm"
+            online={client.is_online}
+            src={client.profile_picture}
+          />
           <div>
             <div className="font-medium text-white">{client.username}</div>
-            <div className="text-xs text-gray-400">{client.company_name}</div>
+            <div className="text-xs text-gray-400">{client.full_name}</div>
           </div>
         </div>
       ),
@@ -106,7 +99,7 @@ export function ClientsSection() {
     {
       key: 'is_online',
       label: 'Status',
-      render: (client: Client) => (
+      render: (client: ClientWithDetails) => (
         <Badge variant={client.is_online ? 'success' : 'default'} dot>
           {client.is_online ? 'Online' : 'Offline'}
         </Badge>
@@ -115,31 +108,40 @@ export function ClientsSection() {
     {
       key: 'promotions',
       label: 'Active Promotions',
-      render: (client: Client) => (
-        <Badge variant="info">{client.promotions}</Badge>
+      render: (client: ClientWithDetails) => (
+        <Badge variant="info">{client.promotionsCount}</Badge>
       ),
     },
     {
       key: 'rating',
       label: 'Rating',
-      render: (client: Client) => (
+      render: (client: ClientWithDetails) => (
         <div className="flex items-center gap-1">
           <MdStar className="text-gold-500" />
-          <span className="font-medium">{client.rating}/5</span>
+          <span className="font-medium">
+            {client.reviewStats?.average_rating
+              ? `${client.reviewStats.average_rating.toFixed(1)}/5`
+              : 'N/A'}
+          </span>
+          {client.reviewStats?.total_reviews ? (
+            <span className="text-xs text-gray-400">
+              ({client.reviewStats.total_reviews})
+            </span>
+          ) : null}
         </div>
       ),
     },
     {
       key: 'games',
       label: 'Games',
-      render: (client: Client) => (
+      render: (client: ClientWithDetails) => (
         <Badge variant="purple">{client.games.length} Games</Badge>
       ),
     },
     {
       key: 'actions',
       label: 'Actions',
-      render: (client: Client) => (
+      render: (client: ClientWithDetails) => (
         <div className="flex gap-2">
           <button
             onClick={() => handleViewGames(client)}
@@ -148,7 +150,7 @@ export function ClientsSection() {
             View Games
           </button>
           <button
-            onClick={() => toast.success('Viewing promotions...')}
+            onClick={() => handleViewPromotions(client)}
             className="text-blue-500 hover:text-blue-400 text-sm font-medium"
           >
             View Offers
@@ -158,20 +160,51 @@ export function ClientsSection() {
     },
   ];
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gold-500">Loading clients...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gold-500 mb-2">Available Clients</h1>
-        <p className="text-gray-400">Browse clients and explore their game libraries</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gold-500 mb-2">Available Clients</h1>
+          <p className="text-gray-400">Browse clients and explore their game libraries</p>
+        </div>
+        <button
+          type="button"
+          onClick={loadClients}
+          className="bg-dark-300 hover:bg-dark-400 text-gold-500 p-3 rounded-lg transition-colors"
+          title="Refresh"
+        >
+          <MdRefresh size={20} />
+        </button>
       </div>
 
       <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
         <h2 className="text-xl font-bold text-gold-500 mb-4">Client Friends</h2>
-        <DataTable
-          data={MOCK_CLIENTS}
-          columns={columns}
-          emptyMessage="No clients found"
-        />
+        {clients.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-400 mb-2">No client friends yet</p>
+            <p className="text-sm text-gray-500">Add clients as friends to see them here</p>
+            <Button
+              onClick={() => onSectionChange('friends')}
+              className="mt-4"
+            >
+              Find Clients
+            </Button>
+          </div>
+        ) : (
+          <DataTable
+            data={clients}
+            columns={columns}
+            emptyMessage="No clients found"
+          />
+        )}
       </div>
 
       {/* Games Library Modal */}
@@ -182,33 +215,59 @@ export function ClientsSection() {
             setShowGamesModal(false);
             setSelectedClient(null);
           }}
-          title={`${selectedClient.company_name} - Game Library`}
+          title={`${selectedClient.full_name || selectedClient.username} - Game Library`}
           size="xl"
         >
-          <GamesLibrary client={selectedClient} />
+          <GamesLibrary client={selectedClient} onViewPromotions={handleViewPromotions} />
         </Modal>
       )}
     </div>
   );
 }
 
-function GamesLibrary({ client }: { client: Client }) {
-  const clientGames = GAME_IMAGES.filter(game =>
-    client.games.includes(game.name)
-  );
+function GamesLibrary({
+  client,
+  onViewPromotions
+}: {
+  client: ClientWithDetails;
+  onViewPromotions: (client: ClientWithDetails) => void;
+}) {
+  const { openChatWith } = useDashboard();
+
+  const handleSendMessage = () => {
+    openChatWith({
+      id: client.id,
+      username: client.username,
+      full_name: client.full_name,
+      profile_picture: client.profile_picture,
+      is_online: client.is_online,
+    });
+  };
 
   return (
     <div className="space-y-6">
       <div className="bg-dark-300 rounded-lg p-4">
         <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-xl font-bold text-gold-500">{client.company_name}</h3>
-            <p className="text-gray-400 text-sm">@{client.username}</p>
+          <div className="flex items-center gap-3">
+            <Avatar
+              name={client.full_name || client.username}
+              size="lg"
+              src={client.profile_picture}
+              online={client.is_online}
+            />
+            <div>
+              <h3 className="text-xl font-bold text-gold-500">{client.full_name || client.username}</h3>
+              <p className="text-gray-400 text-sm">@{client.username}</p>
+            </div>
           </div>
           <div className="text-right">
             <div className="flex items-center gap-1 mb-1">
               <MdStar className="text-gold-500 text-xl" />
-              <span className="font-bold text-white text-lg">{client.rating}/5</span>
+              <span className="font-bold text-white text-lg">
+                {client.reviewStats?.average_rating
+                  ? `${client.reviewStats.average_rating.toFixed(1)}/5`
+                  : 'N/A'}
+              </span>
             </div>
             <Badge variant={client.is_online ? 'success' : 'default'} dot>
               {client.is_online ? 'Online' : 'Offline'}
@@ -223,21 +282,27 @@ function GamesLibrary({ client }: { client: Client }) {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-gray-400">Active Promotions:</span>
-            <Badge variant="info">{client.promotions}</Badge>
+            <Badge variant="info">{client.promotionsCount}</Badge>
           </div>
+          {client.reviewStats && (
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400">Reviews:</span>
+              <Badge variant="default">{client.reviewStats.total_reviews}</Badge>
+            </div>
+          )}
         </div>
       </div>
 
       <div>
         <h4 className="text-lg font-bold text-gold-500 mb-4">Available Games</h4>
-        {clientGames.length === 0 ? (
+        {client.games.length === 0 ? (
           <div className="text-center py-12 bg-dark-300 rounded-lg">
             <p className="text-gray-400">No games available</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {clientGames.map((game, index) => (
-              <GameCard key={index} game={game} clientName={client.company_name} />
+            {client.games.map((game) => (
+              <GameCard key={game.id} game={game} clientName={client.full_name || client.username} />
             ))}
           </div>
         )}
@@ -247,14 +312,14 @@ function GamesLibrary({ client }: { client: Client }) {
         <Button
           variant="primary"
           fullWidth
-          onClick={() => toast.success(`Viewing promotions from ${client.company_name}`)}
+          onClick={() => onViewPromotions(client)}
         >
-          View Promotions ({client.promotions})
+          View Promotions ({client.promotionsCount})
         </Button>
         <Button
           variant="secondary"
           fullWidth
-          onClick={() => toast.success(`Sending message to ${client.company_name}`)}
+          onClick={handleSendMessage}
         >
           Send Message
         </Button>
@@ -263,31 +328,36 @@ function GamesLibrary({ client }: { client: Client }) {
   );
 }
 
-function GameCard({ game, clientName }: { game: typeof GAME_IMAGES[0]; clientName: string }) {
+function GameCard({ game, clientName }: { game: Game; clientName: string }) {
   const [imageError, setImageError] = useState(false);
 
   return (
     <div className="bg-dark-300 rounded-lg overflow-hidden border-2 border-gold-700 hover:shadow-gold transition-all transform hover:scale-105 cursor-pointer">
       <div className="aspect-square bg-dark-400 relative overflow-hidden">
-        {imageError ? (
+        {imageError || !game.icon_url ? (
           <div className="absolute inset-0 flex items-center justify-center text-gray-500">
             <div className="text-center">
               <div className="text-4xl mb-2">🎮</div>
-              <p className="text-xs">{game.name}</p>
+              <p className="text-xs">{game.display_name}</p>
             </div>
           </div>
         ) : (
           <img
-            src={`/images/games/${game.image}`}
-            alt={game.name}
+            src={game.icon_url}
+            alt={game.display_name}
             className="w-full h-full object-cover"
             onError={() => setImageError(true)}
           />
         )}
       </div>
       <div className="p-3">
-        <h5 className="font-bold text-white text-sm mb-1 truncate">{game.name}</h5>
+        <h5 className="font-bold text-white text-sm mb-1 truncate">{game.display_name}</h5>
         <p className="text-xs text-gray-400 truncate">by {clientName}</p>
+        {game.category && (
+          <Badge variant="default" size="sm" className="mt-1">
+            {game.category}
+          </Badge>
+        )}
       </div>
     </div>
   );

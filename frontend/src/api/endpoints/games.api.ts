@@ -180,4 +180,18 @@ export const gamesApi = {
       throw error;
     }
   },
+
+  // Get games for a specific client (player view)
+  getGamesForClient: async (clientId: number): Promise<Game[]> => {
+    try {
+      const response = await apiClient.get<never, Game[]>(`/games/client/${clientId}/games`);
+      return response;
+    } catch (error: any) {
+      if (error?.response?.status === 404) {
+        return [];
+      }
+      console.error('Failed to fetch client games:', error);
+      return [];
+    }
+  },
 };

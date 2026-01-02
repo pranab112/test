@@ -13,6 +13,9 @@ export interface Friend {
   created_at: string;
 }
 
+// Alias for use in player ClientsSection
+export type FriendDetails = Friend;
+
 export interface FriendRequest {
   id: number;
   requester_id: number;
@@ -37,7 +40,8 @@ export const friendsApi = {
   // Get all friends
   getFriends: async (): Promise<Friend[]> => {
     const response = await apiClient.get('/friends/');
-    return response as any;
+    // Backend returns { friends: [...] }, extract the array
+    return (response as any).friends || [];
   },
 
   // Send friend request

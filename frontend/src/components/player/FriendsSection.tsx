@@ -5,11 +5,14 @@ import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import { Modal } from '@/components/common/Modal';
 import toast from 'react-hot-toast';
-import { MdSearch, MdPersonAdd, MdMessage, MdPersonRemove, MdCheck, MdClose, MdRefresh } from 'react-icons/md';
+import { MdSearch, MdPersonAdd, MdMessage, MdPersonRemove, MdCheck, MdClose, MdRefresh, MdFlag } from 'react-icons/md';
 import { friendsApi, type FriendDetails, type FriendRequest } from '@/api/endpoints';
+import { reportsApi } from '@/api/endpoints/reports.api';
 import { formatDistanceToNow } from 'date-fns';
+import { useDashboard } from '@/contexts/DashboardContext';
 
 export function FriendsSection() {
+  const { openChatWith } = useDashboard();
   const [loading, setLoading] = useState(true);
   const [friends, setFriends] = useState<FriendDetails[]>([]);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
@@ -18,6 +21,12 @@ export function FriendsSection() {
   const [searchResults, setSearchResults] = useState<FriendDetails[]>([]);
   const [searching, setSearching] = useState(false);
   const [processingRequests, setProcessingRequests] = useState<Set<number>>(new Set());
+
+  // Report modal state
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportTarget, setReportTarget] = useState<FriendDetails | null>(null);
+  const [reportReason, setReportReason] = useState('');
+  const [submittingReport, setSubmittingReport] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -121,8 +130,54 @@ export function FriendsSection() {
     }
   };
 
-  const handleMessageFriend = (_friendId: number, username: string) => {
-    toast.success(`Opening chat with ${username}...`);
+  const handleMessageFriend = (friend: FriendDetails) => {
+    openChatWith({
+      id: friend.id,
+      username: friend.username,
+      full_name: friend.full_name,
+      profile_picture: friend.profile_picture,
+      is_online: friend.is_online,
+    });
+  };
+
+  const openReportModal = async (friend: FriendDetails) => {
+    // Check if user can report this friend
+    try {
+      const reportInfo = await reportsApi.getUserReports(friend.id);
+      if (!reportInfo.can_report) {
+        toast.error('You have already reported this user');
+        return;
+      }
+      setReportTarget(friend);
+      setReportReason('');
+      setShowReportModal(true);
+    } catch (error: any) {
+      toast.error(error.detail || 'Failed to check report status');
+    }
+  };
+
+  const handleSubmitReport = async () => {
+    if (!reportTarget) return;
+    if (!reportReason.trim()) {
+      toast.error('Please enter a reason for the report');
+      return;
+    }
+
+    setSubmittingReport(true);
+    try {
+      await reportsApi.createReport({
+        reported_user_id: reportTarget.id,
+        reason: reportReason.trim(),
+      });
+      toast.success(`Report submitted for ${reportTarget.username}`);
+      setShowReportModal(false);
+      setReportTarget(null);
+      setReportReason('');
+    } catch (error: any) {
+      toast.error(error.detail || 'Failed to submit report');
+    } finally {
+      setSubmittingReport(false);
+    }
   };
 
   const formatTime = (dateString: string) => {
@@ -272,11 +327,19 @@ export function FriendsSection() {
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => handleMessageFriend(friend.id, friend.username)}
+                    onClick={() => handleMessageFriend(friend)}
                     className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1"
                   >
                     <MdMessage size={16} />
                     Message
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openReportModal(friend)}
+                    className="bg-yellow-600/20 hover:bg-yellow-600 text-yellow-500 hover:text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                    title="Report user"
+                  >
+                    <MdFlag size={16} />
                   </button>
                   <button
                     type="button"
@@ -372,6 +435,72 @@ export function FriendsSection() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Report User Modal */}
+      <Modal
+        isOpen={showReportModal}
+        onClose={() => {
+          setShowReportModal(false);
+          setReportTarget(null);
+          setReportReason('');
+        }}
+        title="Report User"
+        size="md"
+      >
+        {reportTarget && (
+          <div className="space-y-4">
+            <div className="bg-dark-300 p-4 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Avatar
+                  name={reportTarget.full_name || reportTarget.username}
+                  size="md"
+                  src={reportTarget.profile_picture}
+                />
+                <div>
+                  <p className="text-white font-medium">{reportTarget.username}</p>
+                  <p className="text-sm text-gray-400">{reportTarget.full_name}</p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Reason for Report *
+              </label>
+              <textarea
+                value={reportReason}
+                onChange={(e) => setReportReason(e.target.value)}
+                placeholder="Describe why you are reporting this user..."
+                rows={4}
+                className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-gold-500"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowReportModal(false);
+                  setReportTarget(null);
+                  setReportReason('');
+                }}
+                fullWidth
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSubmitReport}
+                loading={submittingReport}
+                fullWidth
+                className="bg-red-600 hover:bg-red-700"
+              >
+                <MdFlag size={16} className="mr-1" />
+                Submit Report
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

@@ -1,472 +1,587 @@
-import { useState } from 'react';
-import { DataTable } from '@/components/common/DataTable';
-import { Badge } from '@/components/common/Badge';
+import { useState, useEffect } from 'react';
 import { Modal } from '@/components/common/Modal';
-import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
+import { Button } from '@/components/common/Button';
+import { Avatar } from '@/components/common/Avatar';
+import { StatCard } from '@/components/common/StatCard';
 import toast from 'react-hot-toast';
-import { MdStar, MdStarBorder, MdRateReview } from 'react-icons/md';
-
-interface Review {
-  id: number;
-  user: string;
-  user_type: 'client' | 'player';
-  rating: number;
-  title: string;
-  comment: string;
-  created_at: string;
-}
-
-// TODO: Replace with API data
-const MOCK_GIVEN_REVIEWS: Review[] = [
-  {
-    id: 1,
-    user: 'ABC Gaming Company',
-    user_type: 'client',
-    rating: 5,
-    title: 'Great client!',
-    comment: 'Excellent promotions and fast support. Highly recommended!',
-    created_at: '2025-12-20',
-  },
-  {
-    id: 2,
-    user: 'XYZ Casino Corp',
-    user_type: 'client',
-    rating: 4,
-    title: 'Good experience',
-    comment: 'Nice game selection, but support could be faster.',
-    created_at: '2025-12-18',
-  },
-];
-
-const MOCK_RECEIVED_REVIEWS: Review[] = [
-  {
-    id: 1,
-    user: 'ABC Gaming Company',
-    user_type: 'client',
-    rating: 4,
-    title: 'Good player',
-    comment: 'Active and follows the rules. Pleasure to have them on our platform.',
-    created_at: '2025-12-22',
-  },
-  {
-    id: 2,
-    user: 'player_john',
-    user_type: 'player',
-    rating: 5,
-    title: 'Awesome friend!',
-    comment: 'Always helpful and fun to play with!',
-    created_at: '2025-12-21',
-  },
-];
-
-const MOCK_REVIEWABLE_ENTITIES = [
-  { id: 1, name: 'Golden Entertainment', type: 'client' },
-  { id: 2, name: 'player_sarah', type: 'player' },
-];
+import { MdStar, MdStarBorder, MdEdit, MdDelete, MdRateReview, MdTrendingUp, MdRefresh } from 'react-icons/md';
+import { reviewsApi, type Review } from '@/api/endpoints/reviews.api';
+import { friendsApi, type Friend } from '@/api/endpoints/friends.api';
 
 export function ReviewsSection() {
-  const [activeTab, setActiveTab] = useState<'given' | 'received' | 'write'>('given');
-  const [showReviewModal, setShowReviewModal] = useState(false);
-  const [selectedEntity, setSelectedEntity] = useState<typeof MOCK_REVIEWABLE_ENTITIES[0] | null>(null);
-  const [rating, setRating] = useState(0);
-  const [hoverRating, setHoverRating] = useState(0);
-  const [reviewTitle, setReviewTitle] = useState('');
-  const [reviewComment, setReviewComment] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState<'given' | 'received' | 'review_clients'>('given');
+  const [showWriteReviewModal, setShowWriteReviewModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedReview, setSelectedReview] = useState<Review | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [loadingReviews, setLoadingReviews] = useState(true);
 
-  const handleWriteReview = (entity: typeof MOCK_REVIEWABLE_ENTITIES[0]) => {
-    setSelectedEntity(entity);
-    setRating(0);
-    setHoverRating(0);
-    setReviewTitle('');
-    setReviewComment('');
-    setShowReviewModal(true);
+  // Reviews data
+  const [givenReviews, setGivenReviews] = useState<Review[]>([]);
+  const [receivedReviews, setReceivedReviews] = useState<Review[]>([]);
+  const [givenTotal, setGivenTotal] = useState(0);
+  const [receivedTotal, setReceivedTotal] = useState(0);
+  const [avgRatingReceived, setAvgRatingReceived] = useState<number | null>(null);
+
+  // Friends (clients) for review tab
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [loadingFriends, setLoadingFriends] = useState(false);
+
+  // Form state
+  const [formData, setFormData] = useState({
+    clientId: 0,
+    clientUsername: '',
+    rating: 5,
+    title: '',
+    comment: '',
+  });
+
+  // Load reviews on mount
+  useEffect(() => {
+    loadReviews();
+  }, []);
+
+  // Load friends when review_clients tab is selected
+  useEffect(() => {
+    if (activeTab === 'review_clients' && friends.length === 0) {
+      loadFriends();
+    }
+  }, [activeTab]);
+
+  const loadReviews = async () => {
+    setLoadingReviews(true);
+    try {
+      const [givenResponse, receivedResponse] = await Promise.all([
+        reviewsApi.getGivenReviews(),
+        reviewsApi.getMyReviews(),
+      ]);
+
+      setGivenReviews(givenResponse.reviews);
+      setGivenTotal(givenResponse.total_count);
+      setReceivedReviews(receivedResponse.reviews);
+      setReceivedTotal(receivedResponse.total_count);
+      setAvgRatingReceived(receivedResponse.average_rating);
+    } catch (error) {
+      console.error('Failed to load reviews:', error);
+      toast.error('Failed to load reviews');
+    } finally {
+      setLoadingReviews(false);
+    }
   };
 
-  const handleSubmitReview = () => {
-    if (!selectedEntity) return;
-    if (rating === 0) {
-      toast.error('Please select a rating');
-      return;
+  const loadFriends = async () => {
+    setLoadingFriends(true);
+    try {
+      const data = await friendsApi.getFriends();
+      // Filter to show only clients (players review clients)
+      const clients = data.filter(f => f.user_type === 'client');
+      setFriends(clients);
+    } catch (error) {
+      console.error('Failed to load friends:', error);
+    } finally {
+      setLoadingFriends(false);
     }
-    if (!reviewTitle.trim()) {
-      toast.error('Please enter a title');
-      return;
-    }
-    if (!reviewComment.trim()) {
-      toast.error('Please enter a comment');
-      return;
-    }
-
-    setSubmitting(true);
-    // TODO: API call to submit review
-    setTimeout(() => {
-      setSubmitting(false);
-      toast.success(`Review submitted for ${selectedEntity.name}!`);
-      setShowReviewModal(false);
-      setActiveTab('given');
-    }, 1000);
   };
 
-  const renderStars = (rating: number, interactive = false, onRate?: (rating: number) => void) => {
+  const stats = {
+    givenReviews: givenTotal,
+    receivedReviews: receivedTotal,
+    avgRatingGiven: givenReviews.length > 0
+      ? givenReviews.reduce((sum, r) => sum + r.rating, 0) / givenReviews.length
+      : 0,
+    avgRatingReceived: avgRatingReceived || 0,
+  };
+
+  const handleWriteReview = async () => {
+    if (!formData.clientId || !formData.comment) {
+      toast.error('Please select a client and write a comment');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const newReview = await reviewsApi.createReview({
+        reviewee_id: formData.clientId,
+        rating: formData.rating,
+        title: formData.title || undefined,
+        comment: formData.comment,
+      });
+
+      setGivenReviews(prev => [newReview, ...prev]);
+      setGivenTotal(prev => prev + 1);
+      toast.success('Review submitted successfully');
+      setShowWriteReviewModal(false);
+      resetForm();
+    } catch (error: any) {
+      toast.error(error.detail || 'Failed to submit review');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditReview = async () => {
+    if (!selectedReview) return;
+
+    setLoading(true);
+    try {
+      const updatedReview = await reviewsApi.updateReview(selectedReview.id, {
+        rating: formData.rating,
+        title: formData.title || undefined,
+        comment: formData.comment,
+      });
+
+      setGivenReviews(prev => prev.map(r => r.id === updatedReview.id ? updatedReview : r));
+      toast.success('Review updated successfully');
+      setShowEditModal(false);
+      setSelectedReview(null);
+      resetForm();
+    } catch (error: any) {
+      toast.error(error.detail || 'Failed to update review');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteReview = async (reviewId: number, revieweeName: string) => {
+    if (!confirm(`Delete your review for ${revieweeName}?`)) {
+      return;
+    }
+
+    try {
+      await reviewsApi.deleteReview(reviewId);
+      setGivenReviews(prev => prev.filter(r => r.id !== reviewId));
+      setGivenTotal(prev => prev - 1);
+      toast.success('Review deleted');
+    } catch (error: any) {
+      toast.error(error.detail || 'Failed to delete review');
+      console.error(error);
+    }
+  };
+
+  const openEditModal = (review: Review) => {
+    setSelectedReview(review);
+    setFormData({
+      clientId: review.reviewee_id,
+      clientUsername: review.reviewee?.username || '',
+      rating: review.rating,
+      title: review.title || '',
+      comment: review.comment,
+    });
+    setShowEditModal(true);
+  };
+
+  const openWriteReviewForClient = async (friend: Friend) => {
+    // Check if can review
+    try {
+      const canReview = await reviewsApi.canReviewUser(friend.id);
+      if (!canReview.can_review) {
+        toast.error(canReview.reason || 'Cannot review this client');
+        return;
+      }
+
+      setFormData({
+        clientId: friend.id,
+        clientUsername: friend.username,
+        rating: 5,
+        title: '',
+        comment: '',
+      });
+      setShowWriteReviewModal(true);
+    } catch (error: any) {
+      toast.error(error.detail || 'Failed to check review eligibility');
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      clientId: 0,
+      clientUsername: '',
+      rating: 5,
+      title: '',
+      comment: '',
+    });
+  };
+
+  const renderStars = (rating: number, interactive: boolean = false, onRate?: (rating: number) => void) => {
     return (
-      <div className="flex items-center gap-1">
-        {[1, 2, 3, 4, 5].map((star) => {
-          const filled = interactive
-            ? star <= (hoverRating || rating)
-            : star <= rating;
-
-          return (
-            <button
-              key={star}
-              type="button"
-              onClick={() => interactive && onRate?.(star)}
-              onMouseEnter={() => interactive && setHoverRating(star)}
-              onMouseLeave={() => interactive && setHoverRating(0)}
-              disabled={!interactive}
-              className={`text-2xl ${
-                interactive ? 'cursor-pointer hover:scale-110 transition-transform' : ''
-              } ${filled ? 'text-gold-500' : 'text-gray-600'}`}
-            >
-              {filled ? <MdStar /> : <MdStarBorder />}
-            </button>
-          );
-        })}
+      <div className="flex gap-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            key={star}
+            type="button"
+            onClick={() => interactive && onRate && onRate(star)}
+            disabled={!interactive}
+            className={`${interactive ? 'cursor-pointer hover:scale-110' : 'cursor-default'} transition-transform`}
+            title={interactive ? `Rate ${star} stars` : `${star} stars`}
+          >
+            {star <= rating ? (
+              <MdStar className="text-gold-500" size={24} />
+            ) : (
+              <MdStarBorder className="text-gray-500" size={24} />
+            )}
+          </button>
+        ))}
       </div>
     );
   };
 
-  const givenColumns = [
-    {
-      key: 'user',
-      label: 'Reviewed',
-      render: (review: Review) => (
-        <div>
-          <div className="font-medium text-white">{review.user}</div>
-          <Badge variant={review.user_type === 'client' ? 'info' : 'purple'} size="sm">
-            {review.user_type}
-          </Badge>
-        </div>
-      ),
-    },
-    {
-      key: 'rating',
-      label: 'Rating',
-      render: (review: Review) => (
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1">
-            <MdStar className="text-gold-500 text-xl" />
-            <span className="font-bold text-white">{review.rating}</span>
-          </div>
-          {renderStars(review.rating)}
-        </div>
-      ),
-    },
-    {
-      key: 'title',
-      label: 'Title',
-      width: '25%',
-    },
-    {
-      key: 'created_at',
-      label: 'Date',
-      render: (review: Review) => (
-        <span className="text-sm text-gray-400">
-          {new Date(review.created_at).toLocaleDateString()}
-        </span>
-      ),
-    },
-    {
-      key: 'actions',
-      label: 'Actions',
-      render: (_review: Review) => (
-        <button
-          onClick={() => toast.success('Opening review details')}
-          className="text-blue-500 hover:text-blue-400 text-sm font-medium"
-        >
-          View Details
-        </button>
-      ),
-    },
-  ];
+  const formatDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch {
+      return dateString;
+    }
+  };
 
-  const receivedColumns = [
-    {
-      key: 'user',
-      label: 'From',
-      render: (review: Review) => (
-        <div>
-          <div className="font-medium text-white">{review.user}</div>
-          <Badge variant={review.user_type === 'client' ? 'info' : 'purple'} size="sm">
-            {review.user_type}
-          </Badge>
-        </div>
-      ),
-    },
-    {
-      key: 'rating',
-      label: 'Rating',
-      render: (review: Review) => (
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1">
-            <MdStar className="text-gold-500 text-xl" />
-            <span className="font-bold text-white">{review.rating}</span>
-          </div>
-          {renderStars(review.rating)}
-        </div>
-      ),
-    },
-    {
-      key: 'title',
-      label: 'Title',
-      width: '25%',
-    },
-    {
-      key: 'created_at',
-      label: 'Date',
-      render: (review: Review) => (
-        <span className="text-sm text-gray-400">
-          {new Date(review.created_at).toLocaleDateString()}
-        </span>
-      ),
-    },
-    {
-      key: 'actions',
-      label: 'Actions',
-      render: (_review: Review) => (
-        <button
-          onClick={() => toast.success('Opening review details')}
-          className="text-blue-500 hover:text-blue-400 text-sm font-medium"
-        >
-          View Details
-        </button>
-      ),
-    },
-  ];
-
-  const averageRating = MOCK_RECEIVED_REVIEWS.length > 0
-    ? (MOCK_RECEIVED_REVIEWS.reduce((sum, r) => sum + r.rating, 0) / MOCK_RECEIVED_REVIEWS.length).toFixed(1)
-    : '0.0';
+  const currentReviews = activeTab === 'given' ? givenReviews : activeTab === 'received' ? receivedReviews : [];
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gold-500">Reviews</h1>
-          <p className="text-gray-400 mt-1">
-            {activeTab === 'given' && `You have given ${MOCK_GIVEN_REVIEWS.length} reviews`}
-            {activeTab === 'received' && `You have received ${MOCK_RECEIVED_REVIEWS.length} reviews`}
-            {activeTab === 'write' && 'Write a new review'}
-          </p>
+          <h1 className="text-3xl font-bold text-gold-500 mb-2">Reviews</h1>
+          <p className="text-gray-400">Manage your reviews and reputation</p>
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => setActiveTab('given')}
-            className={`px-4 py-2 rounded-lg font-medium transition-all ${
-              activeTab === 'given'
-                ? 'bg-gold-gradient text-dark-700'
-                : 'bg-dark-300 text-gray-400 hover:text-gold-500'
-            }`}
+            type="button"
+            onClick={loadReviews}
+            className="bg-dark-300 hover:bg-dark-400 text-gold-500 p-3 rounded-lg transition-colors"
+            title="Refresh"
           >
-            Given ({MOCK_GIVEN_REVIEWS.length})
+            <MdRefresh size={20} />
           </button>
           <button
-            onClick={() => setActiveTab('received')}
-            className={`px-4 py-2 rounded-lg font-medium transition-all ${
-              activeTab === 'received'
-                ? 'bg-gold-gradient text-dark-700'
-                : 'bg-dark-300 text-gray-400 hover:text-gold-500'
-            }`}
+            type="button"
+            onClick={() => {
+              resetForm();
+              setShowWriteReviewModal(true);
+            }}
+            className="bg-gold-600 hover:bg-gold-700 text-dark-700 px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
           >
-            Received ({MOCK_RECEIVED_REVIEWS.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('write')}
-            className={`px-4 py-2 rounded-lg font-medium transition-all ${
-              activeTab === 'write'
-                ? 'bg-gold-gradient text-dark-700'
-                : 'bg-dark-300 text-gray-400 hover:text-gold-500'
-            }`}
-          >
+            <MdRateReview size={20} />
             Write Review
           </button>
         </div>
       </div>
 
-      {/* Average Rating Card (for received reviews) */}
-      {activeTab === 'received' && (
-        <div className="bg-gradient-to-r from-gold-900/40 to-yellow-900/40 border-2 border-gold-700 rounded-lg p-6">
-          <div className="flex items-center gap-6">
-            <div className="text-center">
-              <p className="text-6xl font-bold text-gold-500">{averageRating}</p>
-              <div className="flex items-center justify-center mt-2">
-                {renderStars(parseFloat(averageRating))}
-              </div>
-              <p className="text-sm text-gray-400 mt-2">Average Rating</p>
-            </div>
-            <div className="flex-1">
-              <h3 className="text-xl font-bold text-gold-500 mb-2">Your Reputation</h3>
-              <p className="text-gray-300 mb-3">
-                Based on {MOCK_RECEIVED_REVIEWS.length} reviews from clients and players
-              </p>
-              <div className="space-y-2">
-                {[5, 4, 3, 2, 1].map((stars) => {
-                  const count = MOCK_RECEIVED_REVIEWS.filter(r => r.rating === stars).length;
-                  const percentage = MOCK_RECEIVED_REVIEWS.length > 0
-                    ? (count / MOCK_RECEIVED_REVIEWS.length) * 100
-                    : 0;
-                  return (
-                    <div key={stars} className="flex items-center gap-3">
-                      <span className="text-sm text-gray-400 w-12">{stars} stars</span>
-                      <div className="flex-1 bg-dark-400 rounded-full h-2">
-                        <div
-                          className="bg-gold-500 h-2 rounded-full transition-all"
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                      <span className="text-sm text-gray-400 w-12">{count}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title="Reviews Given"
+          value={stats.givenReviews}
+          icon={<MdRateReview />}
+          color="blue"
+        />
+        <StatCard
+          title="Reviews Received"
+          value={stats.receivedReviews}
+          icon={<MdTrendingUp />}
+          color="green"
+        />
+        <StatCard
+          title="Avg Rating Given"
+          value={stats.avgRatingGiven.toFixed(1)}
+          icon={<MdStar />}
+          color="gold"
+        />
+        <StatCard
+          title="Avg Rating Received"
+          value={stats.avgRatingReceived.toFixed(1)}
+          icon={<MdStar />}
+          color="purple"
+        />
+      </div>
+
+      {/* Tab Interface */}
+      <div className="flex gap-2 border-b border-gold-700">
+        {[
+          { key: 'given', label: 'Given' },
+          { key: 'received', label: 'Received' },
+          { key: 'review_clients', label: 'Review Clients' },
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setActiveTab(tab.key as typeof activeTab)}
+            className={`px-6 py-3 font-medium transition-colors ${
+              activeTab === tab.key
+                ? 'text-gold-500 border-b-2 border-gold-500'
+                : 'text-gray-400 hover:text-gold-500'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Content */}
+      <div className="space-y-4">
+        {loadingReviews ? (
+          <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-12 text-center">
+            <div className="text-gold-500">Loading reviews...</div>
           </div>
-        </div>
-      )}
-
-      {/* Reviews Tables */}
-      <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-        {activeTab === 'given' && (
-          <>
-            <h2 className="text-xl font-bold text-gold-500 mb-4">Reviews You've Given</h2>
-            <DataTable
-              data={MOCK_GIVEN_REVIEWS}
-              columns={givenColumns}
-              emptyMessage="You haven't written any reviews yet"
-            />
-          </>
-        )}
-
-        {activeTab === 'received' && (
-          <>
-            <h2 className="text-xl font-bold text-gold-500 mb-4">Reviews You've Received</h2>
-            <DataTable
-              data={MOCK_RECEIVED_REVIEWS}
-              columns={receivedColumns}
-              emptyMessage="You haven't received any reviews yet"
-            />
-          </>
-        )}
-
-        {activeTab === 'write' && (
-          <>
-            <h2 className="text-xl font-bold text-gold-500 mb-4 flex items-center gap-2">
-              <MdRateReview className="text-2xl" />
-              Write a New Review
-            </h2>
-            <div className="space-y-4">
-              <p className="text-gray-400">Select who you want to review:</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {MOCK_REVIEWABLE_ENTITIES.map((entity) => (
-                  <button
-                    key={entity.id}
-                    onClick={() => handleWriteReview(entity)}
-                    className="bg-dark-300 border-2 border-gold-700 rounded-lg p-6 text-left hover:bg-dark-400 hover:shadow-gold transition-all"
+        ) : activeTab === 'review_clients' ? (
+          // Review Clients Tab
+          <div>
+            {loadingFriends ? (
+              <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-12 text-center">
+                <div className="text-gold-500">Loading clients...</div>
+              </div>
+            ) : friends.length === 0 ? (
+              <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-12 text-center">
+                <MdRateReview className="text-6xl text-gray-500 mx-auto mb-4" />
+                <p className="text-gray-400 mb-2">No clients to review</p>
+                <p className="text-sm text-gray-500">Add clients as friends first to review them</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {friends.map((friend) => (
+                  <div
+                    key={friend.id}
+                    className="bg-dark-200 border-2 border-gold-700 rounded-lg p-4 hover:shadow-gold transition-all"
                   >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-lg font-bold text-white mb-1">{entity.name}</h3>
-                        <Badge variant={entity.type === 'client' ? 'info' : 'purple'}>
-                          {entity.type}
-                        </Badge>
+                    <div className="flex items-center gap-3 mb-3">
+                      <Avatar
+                        name={friend.full_name || friend.username}
+                        size="md"
+                        online={friend.is_online}
+                        src={friend.profile_picture}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-white truncate">{friend.username}</h3>
+                        <p className="text-sm text-gray-400 truncate">{friend.full_name}</p>
                       </div>
-                      <MdRateReview className="text-3xl text-gold-500" />
                     </div>
-                  </button>
+                    <Button
+                      onClick={() => openWriteReviewForClient(friend)}
+                      variant="primary"
+                      fullWidth
+                      size="sm"
+                    >
+                      <MdRateReview className="mr-1" />
+                      Write Review
+                    </Button>
+                  </div>
                 ))}
               </div>
-            </div>
-          </>
+            )}
+          </div>
+        ) : currentReviews.length === 0 ? (
+          <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-12 text-center">
+            <MdRateReview className="text-6xl text-gray-500 mx-auto mb-4" />
+            <p className="text-gray-400">No reviews found</p>
+          </div>
+        ) : (
+          // Reviews List
+          currentReviews.map((review) => {
+            const isGiven = activeTab === 'given';
+            const displayUser = isGiven ? review.reviewee : review.reviewer;
+            const displayName = displayUser?.username || (isGiven ? 'Unknown Client' : 'Unknown User');
+
+            return (
+              <div
+                key={review.id}
+                className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6 hover:shadow-gold transition-all"
+              >
+                <div className="flex items-start gap-4">
+                  <Avatar
+                    name={displayUser?.full_name || displayName}
+                    size="lg"
+                    src={displayUser?.profile_picture}
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <h3 className="text-lg font-bold text-white">
+                          {review.title || 'Review'}
+                        </h3>
+                        <p className="text-sm text-gray-400">
+                          {isGiven ? 'To' : 'From'}:{' '}
+                          <span className="text-gold-500">{displayName}</span>
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {renderStars(review.rating)}
+                        <span className="text-white font-bold ml-2">{review.rating}/5</span>
+                      </div>
+                    </div>
+                    <p className="text-gray-300 mb-3">{review.comment}</p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-gray-500">
+                        {formatDate(review.created_at)}
+                      </p>
+                      {isGiven && (
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(review)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
+                          >
+                            <MdEdit size={14} />
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteReview(review.id, displayName)}
+                            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
+                          >
+                            <MdDelete size={14} />
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
 
       {/* Write Review Modal */}
-      {showReviewModal && selectedEntity && (
-        <Modal
-          isOpen={showReviewModal}
-          onClose={() => {
-            setShowReviewModal(false);
-            setSelectedEntity(null);
-          }}
-          title={`Write Review for ${selectedEntity.name}`}
-          size="lg"
-        >
-          <div className="space-y-6">
-            <div className="bg-dark-300 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-white">{selectedEntity.name}</h3>
-                  <Badge variant={selectedEntity.type === 'client' ? 'info' : 'purple'}>
-                    {selectedEntity.type}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-
+      <Modal
+        isOpen={showWriteReviewModal}
+        onClose={() => {
+          setShowWriteReviewModal(false);
+          resetForm();
+        }}
+        title="Write a Review"
+        size="lg"
+      >
+        <div className="space-y-4">
+          {formData.clientUsername ? (
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-3">
-                Rating <span className="text-red-500">*</span>
-              </label>
-              <div className="flex items-center gap-4">
-                {renderStars(rating, true, setRating)}
-                {rating > 0 && (
-                  <span className="text-lg font-bold text-gold-500">{rating}/5</span>
-                )}
-              </div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Client</label>
+              <p className="text-white bg-dark-300 px-4 py-3 rounded-lg">{formData.clientUsername}</p>
             </div>
-
+          ) : (
             <div>
-              <Input
-                label="Title *"
-                placeholder="Brief summary of your review"
-                value={reviewTitle}
-                onChange={(e) => setReviewTitle(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Comment <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                value={reviewComment}
-                onChange={(e) => setReviewComment(e.target.value)}
-                placeholder="Share your experience..."
-                rows={5}
-                className="w-full bg-dark-300 border-2 border-gold-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-gold-500 resize-none"
-              />
-            </div>
-
-            <div className="flex gap-3">
-              <Button
-                onClick={handleSubmitReview}
-                loading={submitting}
-                variant="primary"
-                fullWidth
+              <label className="block text-sm font-medium text-gray-300 mb-2">Select a Client</label>
+              <select
+                title="Select a client to review"
+                value={formData.clientId}
+                onChange={(e) => {
+                  const selectedFriend = friends.find(f => f.id === Number(e.target.value));
+                  setFormData({
+                    ...formData,
+                    clientId: Number(e.target.value),
+                    clientUsername: selectedFriend?.username || '',
+                  });
+                }}
+                className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500"
               >
-                Submit Review
-              </Button>
-              <Button
-                onClick={() => setShowReviewModal(false)}
-                variant="secondary"
-              >
-                Cancel
-              </Button>
+                <option value={0}>Select a client...</option>
+                {friends.map((friend) => (
+                  <option key={friend.id} value={friend.id}>
+                    {friend.username} ({friend.full_name})
+                  </option>
+                ))}
+              </select>
             </div>
+          )}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Rating</label>
+            {renderStars(formData.rating, true, (rating) =>
+              setFormData({ ...formData, rating })
+            )}
           </div>
-        </Modal>
-      )}
+          <Input
+            label="Review Title (Optional)"
+            type="text"
+            value={formData.title}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            placeholder="Enter review title..."
+          />
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Comment *</label>
+            <textarea
+              value={formData.comment}
+              onChange={(e) => setFormData({ ...formData, comment: e.target.value })}
+              placeholder="Share your experience..."
+              rows={4}
+              className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-gold-500"
+            />
+          </div>
+          <div className="flex gap-3 pt-4">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowWriteReviewModal(false);
+                resetForm();
+              }}
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleWriteReview} loading={loading} fullWidth>
+              Submit Review
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Review Modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setSelectedReview(null);
+          resetForm();
+        }}
+        title="Edit Review"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Rating</label>
+            {renderStars(formData.rating, true, (rating) =>
+              setFormData({ ...formData, rating })
+            )}
+          </div>
+          <Input
+            label="Review Title (Optional)"
+            type="text"
+            value={formData.title}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            placeholder="Enter review title..."
+          />
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Comment</label>
+            <textarea
+              value={formData.comment}
+              onChange={(e) => setFormData({ ...formData, comment: e.target.value })}
+              rows={4}
+              placeholder="Update your review..."
+              className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-gold-500"
+            />
+          </div>
+          <div className="flex gap-3 pt-4">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowEditModal(false);
+                setSelectedReview(null);
+                resetForm();
+              }}
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleEditReview} loading={loading} fullWidth>
+              Save Changes
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

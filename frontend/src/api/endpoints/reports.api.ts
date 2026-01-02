@@ -4,38 +4,35 @@ export interface Report {
   id: number;
   reporter_id: number;
   reported_user_id: number;
+  reporter_name?: string;
+  reporter_username?: string;
+  reported_user_name?: string;
+  reported_user_username?: string;
   reason: string;
-  description: string;
-  status: 'pending' | 'resolved' | 'dismissed';
+  status: 'pending' | 'reviewed' | 'resolved' | 'dismissed';
   created_at: string;
   updated_at?: string;
-  resolved_at?: string;
-  resolved_by?: number;
-  reporter?: {
-    id: number;
-    username: string;
-    full_name: string;
-    user_type: string;
-  };
-  reported_user?: {
-    id: number;
-    username: string;
-    full_name: string;
-    user_type: string;
-  };
+  admin_notes?: string;
 }
 
 export interface CreateReportRequest {
   reported_user_id: number;
   reason: string;
-  description: string;
 }
 
-export interface ReportStats {
+export interface UpdateReportRequest {
+  reason: string;
+}
+
+export interface ReportListResponse {
+  reports_made: Report[];
+  reports_received: Report[];
+}
+
+export interface UserReportResponse {
   total_reports: number;
-  pending_reports: number;
-  resolved_reports: number;
-  dismissed_reports: number;
+  my_report: Report | null;
+  can_report: boolean;
 }
 
 export const reportsApi = {
@@ -45,41 +42,27 @@ export const reportsApi = {
     return response as any;
   },
 
-  // Get my submitted reports
-  getMyReports: async (): Promise<Report[]> => {
+  // Get my reports (both made and received)
+  getMyReports: async (): Promise<ReportListResponse> => {
     const response = await apiClient.get('/reports/my-reports');
     return response as any;
   },
 
-  // Get reports about me
-  getReportsAboutMe: async (): Promise<Report[]> => {
-    const response = await apiClient.get('/reports/about-me');
+  // Get reports for a specific user (shows total count and your report if exists)
+  getUserReports: async (userId: number): Promise<UserReportResponse> => {
+    const response = await apiClient.get(`/reports/user/${userId}`);
     return response as any;
   },
 
-  // Admin: Get all reports
-  getAllReports: async (status?: 'pending' | 'resolved' | 'dismissed'): Promise<Report[]> => {
-    const params = status ? { status } : {};
-    const response = await apiClient.get('/reports/', { params });
+  // Update a report (only reporter can update)
+  updateReport: async (reportId: number, data: UpdateReportRequest): Promise<Report> => {
+    const response = await apiClient.put(`/reports/${reportId}`, data);
     return response as any;
   },
 
-  // Admin: Update report status
-  updateReportStatus: async (
-    reportId: number,
-    status: 'resolved' | 'dismissed',
-    resolution_notes?: string
-  ): Promise<Report> => {
-    const response = await apiClient.put(`/reports/${reportId}/status`, {
-      status,
-      resolution_notes,
-    });
-    return response as any;
-  },
-
-  // Get report stats
-  getReportStats: async (): Promise<ReportStats> => {
-    const response = await apiClient.get('/reports/stats');
+  // Delete a report (only reporter can delete)
+  deleteReport: async (reportId: number): Promise<{ message: string }> => {
+    const response = await apiClient.delete(`/reports/${reportId}`);
     return response as any;
   },
 };

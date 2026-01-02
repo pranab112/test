@@ -63,11 +63,8 @@ export const chatApi = {
     formData.append('receiver_id', receiverId.toString());
     formData.append('content', content);
 
-    const response = await apiClient.post('/chat/send/text', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    // Don't set Content-Type header manually - axios will set it with proper boundary for FormData
+    const response = await apiClient.post('/chat/send/text', formData);
     return response as any;
   },
 
@@ -77,11 +74,8 @@ export const chatApi = {
     formData.append('receiver_id', receiverId.toString());
     formData.append('file', file);
 
-    const response = await apiClient.post('/chat/send/image', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    // Don't set Content-Type header manually - axios will set it with proper boundary for FormData
+    const response = await apiClient.post('/chat/send/image', formData);
     return response as any;
   },
 
@@ -92,11 +86,8 @@ export const chatApi = {
     formData.append('file', file);
     formData.append('duration', duration.toString());
 
-    const response = await apiClient.post('/chat/send/voice', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    // Don't set Content-Type header manually - axios will set it with proper boundary for FormData
+    const response = await apiClient.post('/chat/send/voice', formData);
     return response as any;
   },
 

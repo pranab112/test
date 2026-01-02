@@ -6,50 +6,32 @@ import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import toast from 'react-hot-toast';
 import { FaGift, FaPlus, FaEdit, FaCheck, FaBan } from 'react-icons/fa';
-
-// Types
-interface PlatformOffer {
-  id: number;
-  title: string;
-  description: string;
-  offer_type: string;
-  bonus_amount: number;
-  max_claims: number | null;
-  total_claims: number;
-  status: 'active' | 'inactive' | 'expired';
-  end_date: string | null;
-  created_at: string;
-}
-
-interface OfferClaim {
-  id: number;
-  offer_id: number;
-  offer_title: string;
-  player_id: number;
-  player_username: string;
-  client_id: number;
-  client_username: string;
-  bonus_amount: number;
-  status: 'pending' | 'approved' | 'rejected' | 'completed';
-  claimed_at: string;
-  processed_at: string | null;
-}
+import { MdRefresh, MdDelete } from 'react-icons/md';
+import {
+  offersApi,
+  type PlatformOffer,
+  type OfferClaim,
+  type OfferType,
+  type OfferStatus,
+} from '@/api/endpoints/offers.api';
 
 interface OfferFormData {
   title: string;
   description: string;
-  offer_type: string;
+  offer_type: OfferType;
   bonus_amount: string;
+  requirement_description: string;
   max_claims: string;
+  max_claims_per_player: string;
   end_date: string;
 }
 
-const offerTypes = [
-  { value: 'welcome_bonus', label: 'Welcome Bonus' },
-  { value: 'deposit_match', label: 'Deposit Match' },
-  { value: 'free_spins', label: 'Free Spins' },
-  { value: 'cashback', label: 'Cashback' },
-  { value: 'loyalty_reward', label: 'Loyalty Reward' },
+const offerTypes: { value: OfferType; label: string }[] = [
+  { value: 'email_verification', label: 'Email Verification' },
+  { value: 'profile_completion', label: 'Profile Completion' },
+  { value: 'first_deposit', label: 'First Deposit' },
+  { value: 'referral', label: 'Referral' },
+  { value: 'loyalty', label: 'Loyalty Reward' },
   { value: 'special_event', label: 'Special Event' },
 ];
 
@@ -62,28 +44,31 @@ export function OffersSection() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<PlatformOffer | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState<OfferFormData>({
     title: '',
     description: '',
-    offer_type: 'welcome_bonus',
+    offer_type: 'email_verification',
     bonus_amount: '',
+    requirement_description: '',
     max_claims: '',
+    max_claims_per_player: '1',
     end_date: '',
   });
 
   useEffect(() => {
-    loadOffers();
-    loadClaims();
+    loadData();
   }, []);
 
-  const loadOffers = async () => {
+  const loadData = async () => {
+    setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // const data = await adminApi.getPlatformOffers();
-      // setOffers(data.offers);
-
-      // Mock data for now
-      setOffers([]);
+      const [offersData, claimsData] = await Promise.all([
+        offersApi.getAllOffersAdmin(true),
+        offersApi.getAllClaimsAdmin(),
+      ]);
+      setOffers(offersData);
+      setClaims(claimsData);
     } catch (error) {
       toast.error('Failed to load platform offers');
       console.error(error);
@@ -92,77 +77,96 @@ export function OffersSection() {
     }
   };
 
-  const loadClaims = async () => {
-    try {
-      // TODO: Replace with actual API call
-      // const data = await adminApi.getOfferClaims();
-      // setClaims(data.claims);
-
-      // Mock data
-      setClaims([]);
-    } catch (error) {
-      console.error('Failed to load offer claims:', error);
-    }
-  };
-
   const handleCreateOffer = async () => {
-    try {
-      // const offerData = {
-      //   title: formData.title,
-      //   description: formData.description,
-      //   offer_type: formData.offer_type,
-      //   bonus_amount: parseFloat(formData.bonus_amount),
-      //   max_claims: formData.max_claims ? parseInt(formData.max_claims) : null,
-      //   end_date: formData.end_date || null,
-      // };
+    if (!formData.title || !formData.description || !formData.bonus_amount) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
 
-      // TODO: Replace with actual API call
-      // await adminApi.createPlatformOffer(offerData);
+    setSubmitting(true);
+    try {
+      await offersApi.createOffer({
+        title: formData.title,
+        description: formData.description,
+        offer_type: formData.offer_type,
+        bonus_amount: parseInt(formData.bonus_amount),
+        requirement_description: formData.requirement_description || undefined,
+        max_claims: formData.max_claims ? parseInt(formData.max_claims) : undefined,
+        max_claims_per_player: formData.max_claims_per_player
+          ? parseInt(formData.max_claims_per_player)
+          : 1,
+        end_date: formData.end_date || undefined,
+      });
 
       toast.success('Platform offer created successfully!');
       setShowCreateModal(false);
       resetForm();
-      loadOffers();
+      loadData();
     } catch (error: any) {
-      toast.error(error?.response?.data?.detail || 'Failed to create offer');
+      toast.error(error?.detail || 'Failed to create offer');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleUpdateOffer = async () => {
     if (!selectedOffer) return;
 
+    setSubmitting(true);
     try {
-      // const offerData = {
-      //   title: formData.title,
-      //   description: formData.description,
-      //   offer_type: formData.offer_type,
-      //   bonus_amount: parseFloat(formData.bonus_amount),
-      //   max_claims: formData.max_claims ? parseInt(formData.max_claims) : null,
-      //   end_date: formData.end_date || null,
-      // };
-
-      // TODO: Replace with actual API call
-      // await adminApi.updatePlatformOffer(selectedOffer.id, offerData);
+      await offersApi.updateOffer(selectedOffer.id, {
+        title: formData.title,
+        description: formData.description,
+        offer_type: formData.offer_type,
+        bonus_amount: parseInt(formData.bonus_amount),
+        requirement_description: formData.requirement_description || undefined,
+        max_claims: formData.max_claims ? parseInt(formData.max_claims) : undefined,
+        max_claims_per_player: formData.max_claims_per_player
+          ? parseInt(formData.max_claims_per_player)
+          : 1,
+        end_date: formData.end_date || undefined,
+      });
 
       toast.success('Platform offer updated successfully!');
       setShowEditModal(false);
       setSelectedOffer(null);
       resetForm();
-      loadOffers();
+      loadData();
     } catch (error: any) {
-      toast.error(error?.response?.data?.detail || 'Failed to update offer');
+      toast.error(error?.detail || 'Failed to update offer');
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const handleToggleOfferStatus = async (_offerId: number) => {
+  const handleToggleOfferStatus = async (offer: PlatformOffer) => {
     try {
-      // TODO: Replace with actual API call
-      // await adminApi.togglePlatformOfferStatus(offerId);
-
-      toast.success('Offer status updated');
-      loadOffers();
+      if (offer.status === 'active') {
+        // Deactivate
+        await offersApi.deleteOffer(offer.id);
+        toast.success('Offer deactivated');
+      } else {
+        // Activate
+        await offersApi.updateOffer(offer.id, { status: 'active' as OfferStatus });
+        toast.success('Offer activated');
+      }
+      loadData();
     } catch (error: any) {
-      toast.error('Failed to update offer status');
+      toast.error(error?.detail || 'Failed to update offer status');
+    }
+  };
+
+  const handleDeleteOffer = async (offer: PlatformOffer) => {
+    if (!confirm(`Are you sure you want to deactivate "${offer.title}"?`)) {
+      return;
+    }
+
+    try {
+      await offersApi.deleteOffer(offer.id);
+      toast.success('Offer deactivated');
+      loadData();
+    } catch (error: any) {
+      toast.error(error?.detail || 'Failed to delete offer');
     }
   };
 
@@ -173,8 +177,10 @@ export function OffersSection() {
       description: offer.description,
       offer_type: offer.offer_type,
       bonus_amount: offer.bonus_amount.toString(),
+      requirement_description: offer.requirement_description || '',
       max_claims: offer.max_claims?.toString() || '',
-      end_date: offer.end_date || '',
+      max_claims_per_player: offer.max_claims_per_player?.toString() || '1',
+      end_date: offer.end_date ? offer.end_date.split('T')[0] : '',
     });
     setShowEditModal(true);
   };
@@ -183,9 +189,11 @@ export function OffersSection() {
     setFormData({
       title: '',
       description: '',
-      offer_type: 'welcome_bonus',
+      offer_type: 'email_verification',
       bonus_amount: '',
+      requirement_description: '',
       max_claims: '',
+      max_claims_per_player: '1',
       end_date: '',
     });
   };
@@ -213,7 +221,8 @@ export function OffersSection() {
       label: 'Type',
       render: (offer: PlatformOffer) => (
         <Badge variant="info">
-          {offerTypes.find((t) => t.value === offer.offer_type)?.label || offer.offer_type}
+          {offerTypes.find((t) => t.value === offer.offer_type)?.label ||
+            offer.offer_type.replace(/_/g, ' ')}
         </Badge>
       ),
     },
@@ -221,9 +230,7 @@ export function OffersSection() {
       key: 'bonus_amount',
       label: 'Bonus',
       render: (offer: PlatformOffer) => (
-        <span className="text-gold-500 font-semibold">
-          ${offer.bonus_amount.toFixed(2)}
-        </span>
+        <span className="text-gold-500 font-semibold">${offer.bonus_amount}</span>
       ),
     },
     {
@@ -231,7 +238,7 @@ export function OffersSection() {
       label: 'Claims',
       render: (offer: PlatformOffer) => (
         <span className="text-gray-300">
-          {offer.total_claims}
+          {offer.total_claims || 0}
           {offer.max_claims && ` / ${offer.max_claims}`}
         </span>
       ),
@@ -240,16 +247,12 @@ export function OffersSection() {
       key: 'status',
       label: 'Status',
       render: (offer: PlatformOffer) => {
-        const variantMap = {
-          active: 'success' as const,
-          inactive: 'default' as const,
-          expired: 'error' as const,
+        const variantMap: Record<OfferStatus, 'success' | 'default' | 'error'> = {
+          active: 'success',
+          inactive: 'default',
+          expired: 'error',
         };
-        return (
-          <Badge variant={variantMap[offer.status]}>
-            {offer.status}
-          </Badge>
-        );
+        return <Badge variant={variantMap[offer.status]}>{offer.status}</Badge>;
       },
     },
     {
@@ -257,9 +260,7 @@ export function OffersSection() {
       label: 'End Date',
       render: (offer: PlatformOffer) => (
         <span className="text-gray-400">
-          {offer.end_date
-            ? new Date(offer.end_date).toLocaleDateString()
-            : 'No expiry'}
+          {offer.end_date ? new Date(offer.end_date).toLocaleDateString() : 'No expiry'}
         </span>
       ),
     },
@@ -269,6 +270,7 @@ export function OffersSection() {
       render: (offer: PlatformOffer) => (
         <div className="flex gap-2">
           <button
+            type="button"
             onClick={() => openEditModal(offer)}
             className="text-blue-500 hover:text-blue-400 p-1"
             title="Edit offer"
@@ -276,7 +278,8 @@ export function OffersSection() {
             <FaEdit />
           </button>
           <button
-            onClick={() => handleToggleOfferStatus(offer.id)}
+            type="button"
+            onClick={() => handleToggleOfferStatus(offer)}
             className={`p-1 ${
               offer.status === 'active'
                 ? 'text-red-500 hover:text-red-400'
@@ -285,6 +288,14 @@ export function OffersSection() {
             title={offer.status === 'active' ? 'Deactivate' : 'Activate'}
           >
             {offer.status === 'active' ? <FaBan /> : <FaCheck />}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleDeleteOffer(offer)}
+            className="text-red-500 hover:text-red-400 p-1"
+            title="Delete offer"
+          >
+            <MdDelete />
           </button>
         </div>
       ),
@@ -296,43 +307,41 @@ export function OffersSection() {
       key: 'offer_title',
       label: 'Offer',
       render: (claim: OfferClaim) => (
-        <span className="text-white font-medium">{claim.offer_title}</span>
+        <span className="text-white font-medium">{claim.offer_title || 'Unknown'}</span>
       ),
     },
     {
       key: 'player',
       label: 'Player',
       render: (claim: OfferClaim) => (
-        <span className="text-gray-300">{claim.player_username}</span>
+        <span className="text-gray-300">{claim.player_name || 'Unknown'}</span>
       ),
     },
     {
       key: 'client',
       label: 'Client',
       render: (claim: OfferClaim) => (
-        <span className="text-gray-300">{claim.client_username}</span>
+        <span className="text-gray-300">{claim.client_name || 'Unknown'}</span>
       ),
     },
     {
       key: 'bonus_amount',
       label: 'Bonus',
       render: (claim: OfferClaim) => (
-        <span className="text-gold-500 font-semibold">
-          ${claim.bonus_amount.toFixed(2)}
-        </span>
+        <span className="text-gold-500 font-semibold">${claim.bonus_amount}</span>
       ),
     },
     {
       key: 'status',
       label: 'Status',
       render: (claim: OfferClaim) => {
-        const variantMap = {
-          pending: 'pending' as const,
-          approved: 'approved' as const,
-          rejected: 'rejected' as const,
-          completed: 'info' as const,
+        const variantMap: Record<string, 'warning' | 'success' | 'error' | 'info'> = {
+          pending: 'warning',
+          approved: 'success',
+          rejected: 'error',
+          completed: 'info',
         };
-        return <Badge variant={variantMap[claim.status]}>{claim.status}</Badge>;
+        return <Badge variant={variantMap[claim.status] || 'default'}>{claim.status}</Badge>;
       },
     },
     {
@@ -349,9 +358,7 @@ export function OffersSection() {
       label: 'Processed At',
       render: (claim: OfferClaim) => (
         <span className="text-gray-400">
-          {claim.processed_at
-            ? new Date(claim.processed_at).toLocaleDateString()
-            : '-'}
+          {claim.processed_at ? new Date(claim.processed_at).toLocaleDateString() : '-'}
         </span>
       ),
     },
@@ -378,15 +385,22 @@ export function OffersSection() {
             Manage platform-wide promotional offers
           </p>
         </div>
-        <Button onClick={() => setShowCreateModal(true)}>
-          <FaPlus className="mr-2" />
-          Create Offer
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={loadData}>
+            <MdRefresh className="mr-1" />
+            Refresh
+          </Button>
+          <Button onClick={() => setShowCreateModal(true)}>
+            <FaPlus className="mr-2" />
+            Create Offer
+          </Button>
+        </div>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-4 border-b border-dark-400">
         <button
+          type="button"
           onClick={() => setActiveTab('offers')}
           className={`pb-3 px-4 font-semibold transition-colors ${
             activeTab === 'offers'
@@ -397,6 +411,7 @@ export function OffersSection() {
           Offers ({offers.length})
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab('claims')}
           className={`pb-3 px-4 font-semibold transition-colors ${
             activeTab === 'claims'
@@ -416,6 +431,7 @@ export function OffersSection() {
             {['all', 'active', 'inactive', 'expired'].map((status) => (
               <button
                 key={status}
+                type="button"
                 onClick={() => setStatusFilter(status)}
                 className={`px-4 py-2 rounded-lg capitalize transition-colors ${
                   statusFilter === status
@@ -435,10 +451,7 @@ export function OffersSection() {
             <div className="text-center py-12 bg-dark-400 rounded-lg">
               <FaGift className="text-4xl text-gray-500 mx-auto mb-3" />
               <p className="text-gray-400">No platform offers found</p>
-              <Button
-                onClick={() => setShowCreateModal(true)}
-                className="mt-4"
-              >
+              <Button onClick={() => setShowCreateModal(true)} className="mt-4">
                 <FaPlus className="mr-2" />
                 Create First Offer
               </Button>
@@ -468,19 +481,18 @@ export function OffersSection() {
           resetForm();
         }}
         title="Create Platform Offer"
+        size="lg"
       >
         <div className="space-y-4">
           <Input
-            label="Title"
+            label="Title *"
             value={formData.title}
-            onChange={(e) =>
-              setFormData({ ...formData, title: e.target.value })
-            }
-            placeholder="e.g., Welcome Bonus"
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            placeholder="e.g., Email Verification Bonus"
           />
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
-              Description
+              Description *
             </label>
             <textarea
               value={formData.description}
@@ -494,12 +506,13 @@ export function OffersSection() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
-              Offer Type
+              Offer Type *
             </label>
             <select
+              title="Select offer type"
               value={formData.offer_type}
               onChange={(e) =>
-                setFormData({ ...formData, offer_type: e.target.value })
+                setFormData({ ...formData, offer_type: e.target.value as OfferType })
               }
               className="w-full px-4 py-2 bg-dark-400 border border-dark-300 rounded-lg text-white focus:border-gold-500 focus:ring-1 focus:ring-gold-500"
             >
@@ -511,7 +524,7 @@ export function OffersSection() {
             </select>
           </div>
           <Input
-            label="Bonus Amount ($)"
+            label="Bonus Amount ($) *"
             type="number"
             value={formData.bonus_amount}
             onChange={(e) =>
@@ -520,24 +533,41 @@ export function OffersSection() {
             placeholder="e.g., 50"
           />
           <Input
-            label="Max Claims (optional)"
-            type="number"
-            value={formData.max_claims}
+            label="Requirement Description"
+            value={formData.requirement_description}
             onChange={(e) =>
-              setFormData({ ...formData, max_claims: e.target.value })
+              setFormData({ ...formData, requirement_description: e.target.value })
             }
-            placeholder="Leave empty for unlimited"
+            placeholder="e.g., Verify your email address"
           />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Max Total Claims"
+              type="number"
+              value={formData.max_claims}
+              onChange={(e) =>
+                setFormData({ ...formData, max_claims: e.target.value })
+              }
+              placeholder="Leave empty for unlimited"
+            />
+            <Input
+              label="Max Claims Per Player"
+              type="number"
+              value={formData.max_claims_per_player}
+              onChange={(e) =>
+                setFormData({ ...formData, max_claims_per_player: e.target.value })
+              }
+              placeholder="Default: 1"
+            />
+          </div>
           <Input
             label="End Date (optional)"
             type="date"
             value={formData.end_date}
-            onChange={(e) =>
-              setFormData({ ...formData, end_date: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
           />
           <div className="flex gap-3 pt-4">
-            <Button onClick={handleCreateOffer} className="flex-1">
+            <Button onClick={handleCreateOffer} loading={submitting} className="flex-1">
               Create Offer
             </Button>
             <Button
@@ -563,19 +593,18 @@ export function OffersSection() {
           resetForm();
         }}
         title="Edit Platform Offer"
+        size="lg"
       >
         <div className="space-y-4">
           <Input
-            label="Title"
+            label="Title *"
             value={formData.title}
-            onChange={(e) =>
-              setFormData({ ...formData, title: e.target.value })
-            }
-            placeholder="e.g., Welcome Bonus"
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            placeholder="e.g., Email Verification Bonus"
           />
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
-              Description
+              Description *
             </label>
             <textarea
               value={formData.description}
@@ -589,12 +618,13 @@ export function OffersSection() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
-              Offer Type
+              Offer Type *
             </label>
             <select
+              title="Select offer type"
               value={formData.offer_type}
               onChange={(e) =>
-                setFormData({ ...formData, offer_type: e.target.value })
+                setFormData({ ...formData, offer_type: e.target.value as OfferType })
               }
               className="w-full px-4 py-2 bg-dark-400 border border-dark-300 rounded-lg text-white focus:border-gold-500 focus:ring-1 focus:ring-gold-500"
             >
@@ -606,7 +636,7 @@ export function OffersSection() {
             </select>
           </div>
           <Input
-            label="Bonus Amount ($)"
+            label="Bonus Amount ($) *"
             type="number"
             value={formData.bonus_amount}
             onChange={(e) =>
@@ -615,24 +645,41 @@ export function OffersSection() {
             placeholder="e.g., 50"
           />
           <Input
-            label="Max Claims (optional)"
-            type="number"
-            value={formData.max_claims}
+            label="Requirement Description"
+            value={formData.requirement_description}
             onChange={(e) =>
-              setFormData({ ...formData, max_claims: e.target.value })
+              setFormData({ ...formData, requirement_description: e.target.value })
             }
-            placeholder="Leave empty for unlimited"
+            placeholder="e.g., Verify your email address"
           />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Max Total Claims"
+              type="number"
+              value={formData.max_claims}
+              onChange={(e) =>
+                setFormData({ ...formData, max_claims: e.target.value })
+              }
+              placeholder="Leave empty for unlimited"
+            />
+            <Input
+              label="Max Claims Per Player"
+              type="number"
+              value={formData.max_claims_per_player}
+              onChange={(e) =>
+                setFormData({ ...formData, max_claims_per_player: e.target.value })
+              }
+              placeholder="Default: 1"
+            />
+          </div>
           <Input
             label="End Date (optional)"
             type="date"
             value={formData.end_date}
-            onChange={(e) =>
-              setFormData({ ...formData, end_date: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
           />
           <div className="flex gap-3 pt-4">
-            <Button onClick={handleUpdateOffer} className="flex-1">
+            <Button onClick={handleUpdateOffer} loading={submitting} className="flex-1">
               Update Offer
             </Button>
             <Button
