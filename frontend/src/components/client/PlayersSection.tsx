@@ -6,8 +6,10 @@ import { Modal } from '@/components/common/Modal';
 import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import toast from 'react-hot-toast';
-import { FaUserPlus, FaUsers } from 'react-icons/fa';
+import { FaUserPlus, FaUsers, FaBan, FaKey, FaEllipsisV } from 'react-icons/fa';
+import { MdBlock, MdLockReset } from 'react-icons/md';
 import { clientApi, type Player, type PlayerCreateRequest, type BulkPlayerCreate } from '@/api/endpoints';
+import { apiClient } from '@/api/client';
 
 export function PlayersSection() {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -15,10 +17,49 @@ export function PlayersSection() {
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [registering, setRegistering] = useState(false);
+  const [actionMenuId, setActionMenuId] = useState<number | null>(null);
+  const [processingAction, setProcessingAction] = useState<number | null>(null);
 
   useEffect(() => {
     loadPlayers();
   }, []);
+
+  const handleBlockPlayer = async (player: Player) => {
+    const action = player.is_active ? 'block' : 'unblock';
+    if (!confirm(`Are you sure you want to ${action} ${player.username}?`)) {
+      return;
+    }
+
+    setProcessingAction(player.id);
+    try {
+      await apiClient.patch(`/client/block-player/${player.id}`);
+      toast.success(`Player ${player.username} has been ${action}ed`);
+      loadPlayers();
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || `Failed to ${action} player`);
+    } finally {
+      setProcessingAction(null);
+      setActionMenuId(null);
+    }
+  };
+
+  const handleResetPassword = async (player: Player) => {
+    if (!confirm(`Reset password for ${player.username}? The new password will be: ${player.username}@135`)) {
+      return;
+    }
+
+    setProcessingAction(player.id);
+    try {
+      const result = await apiClient.post(`/client/reset-player-password/${player.id}`) as { message: string; temp_password?: string };
+      toast.success(`Password reset! New password: ${result.temp_password || `${player.username}@135`}`, { duration: 10000 });
+      loadPlayers();
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to reset password');
+    } finally {
+      setProcessingAction(null);
+      setActionMenuId(null);
+    }
+  };
 
   const loadPlayers = async () => {
     setLoading(true);
@@ -107,6 +148,41 @@ export function PlayersSection() {
       key: 'created_at',
       label: 'Registered',
       render: (player: Player) => new Date(player.created_at).toLocaleDateString(),
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (player: Player) => (
+        <div className="relative">
+          <button
+            onClick={() => setActionMenuId(actionMenuId === player.id ? null : player.id)}
+            className="p-2 text-gray-400 hover:text-gold-500 transition-colors"
+            disabled={processingAction === player.id}
+          >
+            <FaEllipsisV />
+          </button>
+          {actionMenuId === player.id && (
+            <div className="absolute right-0 top-full mt-1 bg-dark-300 border border-gold-700 rounded-lg shadow-lg z-10 min-w-[160px]">
+              <button
+                onClick={() => handleBlockPlayer(player)}
+                disabled={processingAction === player.id}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-dark-400 flex items-center gap-2 text-gray-300 hover:text-white"
+              >
+                <MdBlock className={player.is_active ? 'text-red-500' : 'text-green-500'} />
+                {player.is_active ? 'Block Player' : 'Unblock Player'}
+              </button>
+              <button
+                onClick={() => handleResetPassword(player)}
+                disabled={processingAction === player.id}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-dark-400 flex items-center gap-2 text-gray-300 hover:text-white"
+              >
+                <MdLockReset className="text-yellow-500" />
+                Reset Password
+              </button>
+            </div>
+          )}
+        </div>
+      ),
     },
   ];
 

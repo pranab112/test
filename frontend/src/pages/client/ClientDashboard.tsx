@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { DashboardSection } from '@/components/client/DashboardSection';
 import { PlayersSection } from '@/components/client/PlayersSection';
+import { ApprovalsSection } from '@/components/client/ApprovalsSection';
 import { GamesSection } from '@/components/client/GamesSection';
 import { PromotionsSection } from '@/components/client/PromotionsSection';
 import { AnalyticsSection } from '@/components/client/AnalyticsSection';
@@ -28,6 +29,8 @@ export default function ClientDashboard() {
         return <DashboardSection />;
       case 'players':
         return <PlayersSection />;
+      case 'approvals':
+        return <ApprovalsSection />;
       case 'games':
         return <GamesSection />;
       case 'promotions':
