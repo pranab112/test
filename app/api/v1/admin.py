@@ -5,7 +5,7 @@ import secrets
 import string
 from app import models, schemas, auth
 from app.database import get_db
-from app.models import UserType
+from app.models import UserType, ReferralStatus, REFERRAL_BONUS_CREDITS
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_, or_
 
@@ -153,11 +153,35 @@ def approve_user(
         )
 
     user.is_approved = True
+
+    # Process referral bonus if this user was referred
+    referral_bonus_credited = False
+    referral = db.query(models.Referral).filter(
+        models.Referral.referred_id == user.id,
+        models.Referral.status == ReferralStatus.PENDING
+    ).first()
+
+    if referral:
+        # Get the referrer and credit their bonus
+        referrer = db.query(models.User).filter(
+            models.User.id == referral.referrer_id
+        ).first()
+
+        if referrer:
+            referrer.credits = (referrer.credits or 0) + referral.bonus_amount
+            referral.status = ReferralStatus.COMPLETED
+            referral.completed_at = func.now()
+            referral_bonus_credited = True
+
     db.commit()
     db.refresh(user)
 
+    message = f"User {user.username} approved successfully"
+    if referral_bonus_credited:
+        message += f". Referral bonus of {REFERRAL_BONUS_CREDITS} credits credited to referrer."
+
     return {
-        "message": f"User {user.username} approved successfully",
+        "message": message,
         "user": user
     }
 

@@ -101,3 +101,9 @@ class TicketCategory(str, enum.Enum):
     APPEAL_REVIEW = "appeal_review"  # Dispute a review
     APPEAL_REPORT = "appeal_report"  # Dispute a report against you
     OTHER = "other"
+
+
+class ReferralStatus(str, enum.Enum):
+    PENDING = "pending"  # Referred user registered but not yet approved
+    COMPLETED = "completed"  # Referred user approved, bonus credited
+    EXPIRED = "expired"  # Referred user never completed registration

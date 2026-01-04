@@ -4,7 +4,7 @@ from sqlalchemy import func
 from typing import List, Optional
 from app import models, schemas, auth
 from app.database import get_db
-from app.models import UserType
+from app.models import UserType, ReferralStatus, REFERRAL_BONUS_CREDITS
 import random
 import string
 
@@ -372,3 +372,140 @@ async def get_recent_activity(
     activities = activities[:limit]
 
     return {"activities": activities}
+
+
+@router.get("/pending-players", response_model=List[schemas.UserResponse])
+def get_pending_players(
+    client: models.User = Depends(get_client_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get all players waiting for approval from this client.
+    These are players who self-registered and specified this client.
+    """
+    pending_players = db.query(models.User).filter(
+        models.User.created_by_client_id == client.id,
+        models.User.user_type == UserType.PLAYER,
+        models.User.is_approved == False
+    ).order_by(models.User.created_at.desc()).all()
+
+    return pending_players
+
+
+@router.patch("/approve-player/{player_id}")
+def approve_player(
+    player_id: int,
+    client: models.User = Depends(get_client_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Approve a pending player registration.
+    The player must have registered under this client.
+    Also processes referral bonus if applicable.
+    """
+    # Find the player
+    player = db.query(models.User).filter(
+        models.User.id == player_id,
+        models.User.user_type == UserType.PLAYER
+    ).first()
+
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+
+    # Check if this client can approve this player
+    if player.created_by_client_id != client.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only approve players who registered under your account"
+        )
+
+    if player.is_approved:
+        raise HTTPException(status_code=400, detail="Player is already approved")
+
+    # Approve the player
+    player.is_approved = True
+
+    # Automatically create friend connection between client and player
+    if client.id not in [f.id for f in player.friends]:
+        player.friends.append(client)
+        client.friends.append(player)
+
+    # Process referral bonus if this player was referred
+    referral_bonus_credited = False
+    referral = db.query(models.Referral).filter(
+        models.Referral.referred_id == player.id,
+        models.Referral.status == ReferralStatus.PENDING
+    ).first()
+
+    if referral:
+        # Get the referrer and credit their bonus
+        referrer = db.query(models.User).filter(
+            models.User.id == referral.referrer_id
+        ).first()
+
+        if referrer:
+            referrer.credits = (referrer.credits or 0) + referral.bonus_amount
+            referral.status = ReferralStatus.COMPLETED
+            referral.completed_at = func.now()
+            referral_bonus_credited = True
+
+    db.commit()
+    db.refresh(player)
+
+    message = f"Player {player.username} approved successfully"
+    if referral_bonus_credited:
+        message += f". Referral bonus of {REFERRAL_BONUS_CREDITS} credits credited to referrer."
+
+    return {
+        "message": message,
+        "player": player
+    }
+
+
+@router.patch("/reject-player/{player_id}")
+def reject_player(
+    player_id: int,
+    client: models.User = Depends(get_client_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Reject a pending player registration.
+    This deletes the player account and marks any referral as expired.
+    """
+    # Find the player
+    player = db.query(models.User).filter(
+        models.User.id == player_id,
+        models.User.user_type == UserType.PLAYER
+    ).first()
+
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+
+    # Check if this client can reject this player
+    if player.created_by_client_id != client.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only reject players who registered under your account"
+        )
+
+    if player.is_approved:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot reject an already approved player. Use deactivation instead."
+        )
+
+    # Mark any pending referral as expired
+    referral = db.query(models.Referral).filter(
+        models.Referral.referred_id == player.id,
+        models.Referral.status == ReferralStatus.PENDING
+    ).first()
+
+    if referral:
+        referral.status = ReferralStatus.EXPIRED
+
+    # Delete the player account
+    username = player.username
+    db.delete(player)
+    db.commit()
+
+    return {"message": f"Player registration for {username} has been rejected"}

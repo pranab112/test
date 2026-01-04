@@ -91,3 +91,6 @@ class User(Base):
     is_suspended = Column(Boolean, default=False)  # Account suspension status
     suspension_reason = Column(String(500), nullable=True)
     suspended_until = Column(DateTime(timezone=True), nullable=True)
+
+    # Referral system
+    referral_code = Column(String(12), unique=True, index=True, nullable=True)  # Unique code for referring others

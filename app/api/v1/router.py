@@ -23,7 +23,8 @@ from app.api.v1 import (
     offers,
     two_factor,
     contact,
-    tickets
+    tickets,
+    referrals
 )
 
 # Create main API v1 router
@@ -50,3 +51,4 @@ api_router.include_router(offers.router, tags=["offers"])
 api_router.include_router(two_factor.router, tags=["two-factor-auth"])
 api_router.include_router(contact.router, tags=["contact"])
 api_router.include_router(tickets.router, tags=["support-tickets"])
+api_router.include_router(referrals.router, tags=["referrals"])

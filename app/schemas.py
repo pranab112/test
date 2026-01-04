@@ -14,6 +14,7 @@ class UserCreate(UserBase):
     password: str
     company_name: Optional[str] = None  # For clients
     client_identifier: Optional[str] = None  # For players - username or company of their client
+    referral_code: Optional[str] = None  # Optional referral code from another user
 
 class PlayerCreateByClient(BaseModel):
     username: str
