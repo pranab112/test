@@ -41,7 +41,7 @@ class OfferClaim(Base):
     id = Column(Integer, primary_key=True, index=True)
     offer_id = Column(Integer, ForeignKey("platform_offers.id"), nullable=False)
     player_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    client_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # Client they claim with
+    client_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # Client they claim with (optional)
 
     status = Column(Enum(OfferClaimStatus), default=OfferClaimStatus.PENDING)
     bonus_amount = Column(Integer, nullable=False)  # Amount at time of claim
@@ -59,7 +59,7 @@ class OfferClaim(Base):
     client = relationship("User", foreign_keys=[client_id], backref="received_claims")
     processor = relationship("User", foreign_keys=[processed_by])
 
-    # Constraints - one claim per offer per player per client
+    # Constraints - one claim per offer per player
     __table_args__ = (
-        UniqueConstraint('offer_id', 'player_id', 'client_id', name='unique_offer_claim'),
+        UniqueConstraint('offer_id', 'player_id', name='unique_offer_claim_per_player'),
     )

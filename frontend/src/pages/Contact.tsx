@@ -7,7 +7,7 @@ import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import { ROUTES } from '@/config/routes.config';
 import toast from 'react-hot-toast';
-import api from '@/api/client';
+import { api } from '@/api/client';
 
 const contactSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),

@@ -73,12 +73,12 @@ export function FriendsSection() {
     }
   };
 
-  const handleSendRequest = async (userId: number, username: string) => {
+  const handleSendRequest = async (userIdString: string, odId: number, username: string) => {
     try {
-      await friendsApi.sendFriendRequest(userId);
+      await friendsApi.sendFriendRequest(userIdString);
       toast.success(`Friend request sent to ${username}`);
       // Remove from search results
-      setSearchResults(prev => prev.filter(u => u.id !== userId));
+      setSearchResults(prev => prev.filter(u => u.id !== odId));
     } catch (error: any) {
       toast.error(error.detail || 'Failed to send friend request');
       console.error(error);
@@ -417,7 +417,7 @@ export function FriendsSection() {
                     </div>
                   </div>
                   <Button
-                    onClick={() => handleSendRequest(user.id, user.username)}
+                    onClick={() => handleSendRequest(user.user_id, user.id, user.username)}
                     variant="primary"
                   >
                     <MdPersonAdd size={16} className="mr-1" />

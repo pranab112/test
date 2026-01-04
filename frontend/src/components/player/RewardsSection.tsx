@@ -7,8 +7,10 @@ import { Avatar } from '@/components/common/Avatar';
 import toast from 'react-hot-toast';
 import { FaGift, FaMedal } from 'react-icons/fa';
 import { MdCheckCircle, MdRefresh, MdEmail, MdPerson, MdPayment, MdGroup, MdEvent } from 'react-icons/md';
-import { offersApi, type PlatformOffer, type OfferClaim, type OfferType } from '@/api/endpoints/offers.api';
+import { offersApi, type PlatformOffer, type OfferClaim, type OfferType, type BalanceResponse } from '@/api/endpoints/offers.api';
 import { friendsApi, type Friend } from '@/api/endpoints/friends.api';
+import { Input } from '@/components/common/Input';
+import { FaPaperPlane, FaWallet } from 'react-icons/fa';
 
 export function RewardsSection() {
   const [loading, setLoading] = useState(true);
@@ -20,10 +22,16 @@ export function RewardsSection() {
   const [claiming, setClaiming] = useState(false);
   const [filter, setFilter] = useState<'all' | 'available' | 'claimed'>('all');
 
-  // For claiming - need to select a client
+  // For claiming - client is now optional (admin approves)
   const [clients, setClients] = useState<Friend[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
   const [loadingClients, setLoadingClients] = useState(false);
+
+  // Credit balance and transfer
+  const [balance, setBalance] = useState<BalanceResponse | null>(null);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferAmount, setTransferAmount] = useState<string>('');
+  const [transferring, setTransferring] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -32,12 +40,14 @@ export function RewardsSection() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [offersData, claimsData] = await Promise.all([
+      const [offersData, claimsData, balanceData] = await Promise.all([
         offersApi.getAvailableOffers(),
         offersApi.getMyClaims(),
+        offersApi.getMyBalance(),
       ]);
       setAvailableOffers(offersData);
       setMyClaims(claimsData);
+      setBalance(balanceData);
     } catch (error) {
       console.error('Failed to load rewards data:', error);
       toast.error('Failed to load rewards');
@@ -74,8 +84,8 @@ export function RewardsSection() {
   };
 
   const handleClaimReward = async () => {
-    if (!selectedOffer || !selectedClientId) {
-      toast.error('Please select a client to claim with');
+    if (!selectedOffer) {
+      toast.error('No offer selected');
       return;
     }
 
@@ -83,17 +93,59 @@ export function RewardsSection() {
     try {
       await offersApi.claimOffer({
         offer_id: selectedOffer.id,
-        client_id: selectedClientId,
+        client_id: selectedClientId || undefined,  // Optional now
       });
-      toast.success(`Claim request sent for "${selectedOffer.title}"! The client will review your request.`);
+      toast.success(`Claim request sent for "${selectedOffer.title}"! Admin will review your request.`);
       setShowClaimModal(false);
       setShowDetailsModal(false);
+      setSelectedClientId(null);
       await loadData();
     } catch (error: any) {
       toast.error(error.detail || 'Failed to claim reward');
     } finally {
       setClaiming(false);
     }
+  };
+
+  // Credit transfer function
+  const handleTransferCredits = async () => {
+    if (!selectedClientId) {
+      toast.error('Please select a client to transfer to');
+      return;
+    }
+    const amount = parseInt(transferAmount);
+    if (!amount || amount <= 0) {
+      toast.error('Please enter a valid amount');
+      return;
+    }
+    if (balance && amount > balance.credits) {
+      toast.error('Insufficient credits');
+      return;
+    }
+
+    setTransferring(true);
+    try {
+      const result = await offersApi.transferCredits({
+        client_id: selectedClientId,
+        amount: amount,
+      });
+      toast.success(`Transferred ${result.credits_transferred} credits ($${result.dollar_value}) successfully!`);
+      setShowTransferModal(false);
+      setTransferAmount('');
+      setSelectedClientId(null);
+      await loadData();  // Refresh balance
+    } catch (error: any) {
+      toast.error(error.detail || 'Failed to transfer credits');
+    } finally {
+      setTransferring(false);
+    }
+  };
+
+  const openTransferModal = async () => {
+    setSelectedClientId(null);
+    setTransferAmount('');
+    await loadClients();
+    setShowTransferModal(true);
   };
 
   const getTypeIcon = (type: OfferType) => {
@@ -370,13 +422,34 @@ export function RewardsSection() {
         </div>
       </div>
 
+      {/* Credit Balance Card */}
+      <div className="bg-gradient-to-r from-green-900/40 to-emerald-900/40 border-2 border-green-700 rounded-lg p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <FaWallet className="text-5xl text-green-500" />
+            <div>
+              <p className="text-sm text-gray-400">Your Credit Balance</p>
+              <p className="text-4xl font-bold text-green-400">
+                {balance?.credits.toLocaleString() || 0} credits
+              </p>
+              <p className="text-lg text-gray-300">
+                = ${balance?.dollar_value.toFixed(2) || '0.00'} <span className="text-sm text-gray-500">({balance?.rate || '100 credits = $1'})</span>
+              </p>
+            </div>
+          </div>
+          <Button onClick={openTransferModal} className="flex items-center gap-2">
+            <FaPaperPlane /> Transfer to Client
+          </Button>
+        </div>
+      </div>
+
       {/* Stats Banner */}
       <div className="bg-gradient-to-r from-gold-900/40 to-yellow-900/40 border-2 border-gold-700 rounded-lg p-6">
         <div className="flex items-center gap-6">
           <FaGift className="text-6xl text-gold-500" />
           <div className="flex-1">
             <h3 className="text-2xl font-bold text-gold-500 mb-2">Earn More Rewards!</h3>
-            <p className="text-gray-300 mb-3">Complete tasks and achievements to unlock exclusive platform rewards.</p>
+            <p className="text-gray-300 mb-3">Complete tasks and claim offers. Admin will approve and credits will be added to your balance.</p>
             <div className="flex gap-6">
               <div>
                 <p className="text-sm text-gray-400">Available</p>
@@ -478,7 +551,7 @@ export function RewardsSection() {
         </Modal>
       )}
 
-      {/* Claim Modal - Select Client */}
+      {/* Claim Modal - Simplified (Admin approves now) */}
       {showClaimModal && selectedOffer && (
         <Modal
           isOpen={showClaimModal}
@@ -487,7 +560,7 @@ export function RewardsSection() {
             setSelectedOffer(null);
             setSelectedClientId(null);
           }}
-          title="Select Client to Claim With"
+          title="Claim Reward"
           size="lg"
         >
           <div className="space-y-4">
@@ -496,15 +569,104 @@ export function RewardsSection() {
                 <div className="text-3xl">{getTypeIcon(selectedOffer.offer_type)}</div>
                 <div>
                   <h3 className="font-bold text-white">{selectedOffer.title}</h3>
-                  <p className="text-gold-500 font-bold">${selectedOffer.bonus_amount} bonus</p>
+                  <p className="text-gold-500 font-bold">{selectedOffer.bonus_amount} credits bonus</p>
+                  <p className="text-sm text-gray-400">= ${(selectedOffer.bonus_amount / 100).toFixed(2)}</p>
                 </div>
+              </div>
+            </div>
+
+            <div className="bg-dark-400 rounded-lg p-4">
+              <p className="text-gray-300 mb-2">
+                <strong>How it works:</strong>
+              </p>
+              <ol className="text-sm text-gray-400 space-y-1 list-decimal list-inside">
+                <li>You submit a claim request</li>
+                <li>Admin reviews and approves your claim</li>
+                <li>Credits are added to your balance</li>
+              </ol>
+            </div>
+
+            {selectedOffer.requirement_description && (
+              <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-4">
+                <p className="text-sm text-yellow-400">
+                  <strong>Requirement:</strong> {selectedOffer.requirement_description}
+                </p>
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-4">
+              <Button
+                onClick={handleClaimReward}
+                loading={claiming}
+                variant="primary"
+                fullWidth
+              >
+                Submit Claim Request (+{selectedOffer.bonus_amount} credits)
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowClaimModal(false);
+                  setSelectedClientId(null);
+                }}
+                variant="secondary"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Credit Transfer Modal */}
+      {showTransferModal && (
+        <Modal
+          isOpen={showTransferModal}
+          onClose={() => {
+            setShowTransferModal(false);
+            setSelectedClientId(null);
+            setTransferAmount('');
+          }}
+          title="Transfer Credits to Client"
+          size="lg"
+        >
+          <div className="space-y-4">
+            <div className="bg-dark-300 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <FaWallet className="text-3xl text-green-500" />
+                  <div>
+                    <p className="text-sm text-gray-400">Your Balance</p>
+                    <p className="text-2xl font-bold text-green-400">
+                      {balance?.credits.toLocaleString() || 0} credits
+                    </p>
+                  </div>
+                </div>
+                <p className="text-gray-400">= ${balance?.dollar_value.toFixed(2) || '0.00'}</p>
               </div>
             </div>
 
             <div>
               <p className="text-gray-400 mb-3">
-                Select a client to claim this reward with. The client will review and approve your claim.
+                Transfer credits to a client for gaming. This is a one-way transaction.
               </p>
+              <p className="text-sm text-gold-500 mb-4">Rate: 100 credits = $1</p>
+
+              <Input
+                label="Amount (in credits)"
+                type="number"
+                value={transferAmount}
+                onChange={(e) => setTransferAmount(e.target.value)}
+                placeholder="e.g., 500"
+              />
+              {transferAmount && parseInt(transferAmount) > 0 && (
+                <p className="text-sm text-gray-400 mt-1">
+                  = ${(parseInt(transferAmount) / 100).toFixed(2)}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <p className="text-sm text-gray-400 mb-2">Select Client to Transfer To:</p>
 
               {loadingClients ? (
                 <div className="text-center py-8 text-gold-500">Loading clients...</div>
@@ -513,11 +675,11 @@ export function RewardsSection() {
                   <MdGroup className="text-5xl text-gray-500 mx-auto mb-3" />
                   <p className="text-gray-400">No connected clients found</p>
                   <p className="text-sm text-gray-500 mt-1">
-                    Add clients as friends to claim rewards with them
+                    Add clients as friends to transfer credits
                   </p>
                 </div>
               ) : (
-                <div className="space-y-2 max-h-64 overflow-y-auto">
+                <div className="space-y-2 max-h-48 overflow-y-auto">
                   {clients.map(client => (
                     <button
                       key={client.id}
@@ -525,7 +687,7 @@ export function RewardsSection() {
                       onClick={() => setSelectedClientId(client.id)}
                       className={`w-full p-4 rounded-lg flex items-center gap-3 transition-all ${
                         selectedClientId === client.id
-                          ? 'bg-gold-600/20 border-2 border-gold-500'
+                          ? 'bg-green-600/20 border-2 border-green-500'
                           : 'bg-dark-400 hover:bg-dark-300 border-2 border-transparent'
                       }`}
                     >
@@ -537,10 +699,10 @@ export function RewardsSection() {
                       />
                       <div className="text-left flex-1">
                         <p className="text-white font-medium">{client.username}</p>
-                        <p className="text-sm text-gray-400">{client.full_name}</p>
+                        <p className="text-sm text-gray-400">{client.company_name || client.full_name}</p>
                       </div>
                       {selectedClientId === client.id && (
-                        <MdCheckCircle className="text-gold-500 text-2xl" />
+                        <MdCheckCircle className="text-green-500 text-2xl" />
                       )}
                     </button>
                   ))}
@@ -550,18 +712,20 @@ export function RewardsSection() {
 
             <div className="flex gap-3 pt-4">
               <Button
-                onClick={handleClaimReward}
-                loading={claiming}
-                disabled={!selectedClientId || clients.length === 0}
+                onClick={handleTransferCredits}
+                loading={transferring}
+                disabled={!selectedClientId || !transferAmount || parseInt(transferAmount) <= 0 || clients.length === 0}
                 variant="primary"
                 fullWidth
               >
-                Submit Claim Request
+                <FaPaperPlane className="mr-2" />
+                Transfer {transferAmount || '0'} Credits
               </Button>
               <Button
                 onClick={() => {
-                  setShowClaimModal(false);
+                  setShowTransferModal(false);
                   setSelectedClientId(null);
+                  setTransferAmount('');
                 }}
                 variant="secondary"
               >

@@ -1,25 +1,58 @@
 import { useState, useEffect } from 'react';
 import { DataTable } from '@/components/common/DataTable';
-import { Badge } from '@/components/common/Badge';
-import { Modal } from '@/components/common/Modal';
 import toast from 'react-hot-toast';
-import { adminApi, type AdminReport as Report } from '@/api/endpoints';
+import { MdSearch, MdWarning, MdCheck, MdClose, MdFilterList } from 'react-icons/md';
+import { adminApi, type ReportStatus } from '@/api/endpoints';
+import { type Report } from '@/api/endpoints/reports.api';
+
+const STATUS_COLORS: Record<ReportStatus, string> = {
+  pending: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50',
+  investigating: 'bg-blue-500/20 text-blue-400 border-blue-500/50',
+  warning: 'bg-orange-500/20 text-orange-400 border-orange-500/50',
+  resolved: 'bg-purple-500/20 text-purple-400 border-purple-500/50',
+  valid: 'bg-green-500/20 text-green-400 border-green-500/50',
+  invalid: 'bg-gray-500/20 text-gray-400 border-gray-500/50',
+  malicious: 'bg-red-500/20 text-red-400 border-red-500/50',
+};
 
 export function ReportsSection() {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<ReportStatus | ''>('');
+  const [counts, setCounts] = useState({
+    pending: 0,
+    investigating: 0,
+    warning: 0,
+    resolved: 0,
+    valid: 0,
+    invalid: 0,
+    malicious: 0,
+  });
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [adminNotes, setAdminNotes] = useState('');
+  const [actionTaken, setActionTaken] = useState('');
 
   useEffect(() => {
     loadReports();
-  }, []);
+  }, [statusFilter]);
 
   const loadReports = async () => {
     setLoading(true);
     try {
-      const data = await adminApi.getReports({ limit: 100 });
+      const params: any = { limit: 100 };
+      if (statusFilter) params.status_filter = statusFilter;
+      const data = await adminApi.getPendingReports(params);
       setReports(data.reports);
+      setCounts({
+        pending: data.pending_count,
+        investigating: data.investigating_count,
+        warning: data.warning_count || 0,
+        resolved: data.resolved_count || 0,
+        valid: data.valid_count,
+        invalid: data.invalid_count,
+        malicious: data.malicious_count,
+      });
     } catch (error) {
       toast.error('Failed to load reports');
       console.error(error);
@@ -28,42 +61,70 @@ export function ReportsSection() {
     }
   };
 
-  const handleUpdateStatus = async (reportId: number, status: string, notes?: string) => {
+  const handleInvestigate = async (action: 'investigating' | 'valid' | 'invalid' | 'malicious') => {
+    if (!selectedReport) return;
+
     try {
-      await adminApi.updateReportStatus(reportId, status, notes);
-      toast.success('Report status updated');
+      await adminApi.investigateReport(
+        selectedReport.id,
+        action,
+        adminNotes || undefined,
+        action === 'valid' ? actionTaken || undefined : undefined
+      );
+
+      const messages: Record<string, string> = {
+        investigating: 'Report marked as under investigation',
+        valid: 'Report marked as valid',
+        invalid: 'Report marked as invalid',
+        malicious: 'Report marked as malicious (reporter penalized)',
+      };
+
+      toast.success(messages[action]);
       setShowModal(false);
       setSelectedReport(null);
+      setAdminNotes('');
+      setActionTaken('');
       loadReports();
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Failed to update report status');
+      toast.error(error.response?.data?.detail || 'Failed to update report');
     }
+  };
+
+  const openInvestigationModal = (report: Report) => {
+    setSelectedReport(report);
+    setAdminNotes('');
+    setActionTaken('');
+    setShowModal(true);
   };
 
   const columns = [
     {
       key: 'reporter',
       label: 'Reporter',
-      render: (report: Report) => report.reporter?.username || 'Unknown',
+      render: (report: Report) => report.reporter_username,
     },
     {
       key: 'reported_user',
       label: 'Reported User',
-      render: (report: Report) => report.reported_user?.username || 'Unknown',
+      render: (report: Report) => report.reported_user_username,
     },
-    { key: 'reason', label: 'Reason', width: '30%' },
+    {
+      key: 'reason',
+      label: 'Reason',
+      width: '25%',
+      render: (report: Report) => (
+        <div className="truncate max-w-xs" title={report.reason}>
+          {report.reason}
+        </div>
+      ),
+    },
     {
       key: 'status',
       label: 'Status',
       render: (report: Report) => (
-        <Badge
-          variant={
-            report.status === 'pending' ? 'warning' :
-            report.status === 'resolved' ? 'success' : 'default'
-          }
-        >
+        <span className={`px-2 py-1 rounded-full text-xs border ${STATUS_COLORS[report.status]}`}>
           {report.status.toUpperCase()}
-        </Badge>
+        </span>
       ),
     },
     {
@@ -76,13 +137,11 @@ export function ReportsSection() {
       label: 'Actions',
       render: (report: Report) => (
         <button
-          onClick={() => {
-            setSelectedReport(report);
-            setShowModal(true);
-          }}
-          className="bg-gold-600 hover:bg-gold-700 text-dark-700 px-3 py-1 rounded text-sm font-medium transition-colors"
+          onClick={() => openInvestigationModal(report)}
+          className="bg-gold-600 hover:bg-gold-700 text-dark-700 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-1"
         >
-          Review
+          <MdSearch size={14} />
+          Investigate
         </button>
       ),
     },
@@ -91,8 +150,49 @@ export function ReportsSection() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gold-500 mb-2">Reports</h1>
-        <p className="text-gray-400">Review user reports and violations</p>
+        <h1 className="text-3xl font-bold text-gold-500 mb-2">Report Investigation</h1>
+        <p className="text-gray-400">Investigate user reports and take action against fake reporters</p>
+      </div>
+
+      {/* Status Stats */}
+      <div className="grid grid-cols-5 gap-4">
+        <div className="bg-gray-800 p-4 rounded-lg border border-yellow-500/30">
+          <div className="text-2xl font-bold text-yellow-400">{counts.pending}</div>
+          <div className="text-gray-400 text-sm">Pending</div>
+        </div>
+        <div className="bg-gray-800 p-4 rounded-lg border border-blue-500/30">
+          <div className="text-2xl font-bold text-blue-400">{counts.investigating}</div>
+          <div className="text-gray-400 text-sm">Investigating</div>
+        </div>
+        <div className="bg-gray-800 p-4 rounded-lg border border-green-500/30">
+          <div className="text-2xl font-bold text-green-400">{counts.valid}</div>
+          <div className="text-gray-400 text-sm">Valid</div>
+        </div>
+        <div className="bg-gray-800 p-4 rounded-lg border border-gray-500/30">
+          <div className="text-2xl font-bold text-gray-400">{counts.invalid}</div>
+          <div className="text-gray-400 text-sm">Invalid</div>
+        </div>
+        <div className="bg-gray-800 p-4 rounded-lg border border-red-500/30">
+          <div className="text-2xl font-bold text-red-400">{counts.malicious}</div>
+          <div className="text-gray-400 text-sm">Malicious</div>
+        </div>
+      </div>
+
+      {/* Filter */}
+      <div className="flex items-center gap-4">
+        <MdFilterList className="text-gold-500" size={20} />
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as ReportStatus | '')}
+          className="bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-lg focus:border-gold-500 focus:outline-none"
+        >
+          <option value="">All Reports</option>
+          <option value="pending">Pending</option>
+          <option value="investigating">Investigating</option>
+          <option value="valid">Valid</option>
+          <option value="invalid">Invalid</option>
+          <option value="malicious">Malicious</option>
+        </select>
       </div>
 
       {loading ? (
@@ -105,62 +205,115 @@ export function ReportsSection() {
         />
       )}
 
-      {selectedReport && (
-        <Modal
-          isOpen={showModal}
-          onClose={() => {
-            setShowModal(false);
-            setSelectedReport(null);
-          }}
-          title="Review Report"
-        >
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Reporter</label>
-              <p className="text-white">{selectedReport.reporter?.username}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Reported User</label>
-              <p className="text-white">{selectedReport.reported_user?.username}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Reason</label>
-              <p className="text-white">{selectedReport.reason}</p>
-            </div>
-            {selectedReport.description && (
+      {/* Investigation Modal */}
+      {showModal && selectedReport && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-gray-900 rounded-lg p-6 max-w-2xl w-full mx-4 border border-gray-700 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-bold text-gold-500 mb-4">Investigate Report</h3>
+
+            <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
-                <p className="text-white">{selectedReport.description}</p>
+                <span className="text-gray-400 text-sm">Reporter:</span>
+                <p className="text-white font-medium">{selectedReport.reporter_username}</p>
+              </div>
+              <div>
+                <span className="text-gray-400 text-sm">Reported User:</span>
+                <p className="text-white font-medium">{selectedReport.reported_user_username}</p>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <span className="text-gray-400 text-sm">Reason:</span>
+              <p className="text-white mt-1 bg-gray-800 p-3 rounded">{selectedReport.reason}</p>
+            </div>
+
+            {selectedReport.evidence && (
+              <div className="mb-4">
+                <span className="text-gray-400 text-sm">Evidence:</span>
+                <p className="text-white mt-1 bg-gray-800 p-3 rounded">{selectedReport.evidence}</p>
               </div>
             )}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Current Status</label>
-              <Badge variant={selectedReport.status === 'pending' ? 'warning' : 'success'}>
-                {selectedReport.status.toUpperCase()}
-              </Badge>
+
+            <div className="mb-4">
+              <span className="text-gray-400 text-sm flex items-center gap-2">
+                Current Status:
+                <span className={`px-2 py-1 rounded-full text-xs border ${STATUS_COLORS[selectedReport.status]}`}>
+                  {selectedReport.status.toUpperCase()}
+                </span>
+              </span>
             </div>
-            <div className="flex gap-2 pt-4">
+
+            <div className="mb-4">
+              <label className="text-gray-400 text-sm block mb-2">Admin Notes:</label>
+              <textarea
+                value={adminNotes}
+                onChange={(e) => setAdminNotes(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-lg focus:border-gold-500 focus:outline-none"
+                rows={3}
+                placeholder="Investigation notes..."
+              />
+            </div>
+
+            <div className="mb-4">
+              <label className="text-gray-400 text-sm block mb-2">Action Taken (if report is valid):</label>
+              <input
+                type="text"
+                value={actionTaken}
+                onChange={(e) => setActionTaken(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-lg focus:border-gold-500 focus:outline-none"
+                placeholder="e.g., Warning issued, Account suspended, etc."
+              />
+            </div>
+
+            <div className="bg-gray-800 p-4 rounded-lg mb-4">
+              <h4 className="text-sm font-medium text-gray-300 mb-3">Choose Investigation Result:</h4>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => handleInvestigate('investigating')}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  <MdSearch size={18} />
+                  Under Investigation
+                </button>
+                <button
+                  onClick={() => handleInvestigate('valid')}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  <MdCheck size={18} />
+                  Valid Report
+                </button>
+                <button
+                  onClick={() => handleInvestigate('invalid')}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  <MdClose size={18} />
+                  Invalid Report
+                </button>
+                <button
+                  onClick={() => handleInvestigate('malicious')}
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                  title="Marks reporter as making false reports - may lead to suspension"
+                >
+                  <MdWarning size={18} />
+                  Malicious Report
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-3">
+                <MdWarning className="inline mr-1" />
+                Marking as "Malicious" will penalize the reporter. After 3 malicious reports, their account will be suspended.
+              </p>
+            </div>
+
+            <div className="flex justify-end">
               <button
-                onClick={() => handleUpdateStatus(selectedReport.id, 'reviewed')}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                onClick={() => setShowModal(false)}
+                className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
               >
-                Mark as Reviewed
-              </button>
-              <button
-                onClick={() => handleUpdateStatus(selectedReport.id, 'resolved', 'Resolved by admin')}
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-              >
-                Mark as Resolved
-              </button>
-              <button
-                onClick={() => handleUpdateStatus(selectedReport.id, 'dismissed', 'Report dismissed')}
-                className="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-              >
-                Dismiss
+                Cancel
               </button>
             </div>
           </div>
-        </Modal>
+        </div>
       )}
     </div>
   );

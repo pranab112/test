@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Modal } from '@/components/common/Modal';
 import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import { Badge } from '@/components/common/Badge';
 import { StatCard } from '@/components/common/StatCard';
+import { apiClient } from '@/api/client';
 import toast from 'react-hot-toast';
 import {
   MdCardGiftcard,
@@ -13,135 +14,129 @@ import {
   MdTrendingUp,
   MdPeople,
   MdAttachMoney,
+  MdHourglassEmpty,
+  MdCheckCircle,
 } from 'react-icons/md';
+
+type PromotionType = 'credits' | 'bonus' | 'cashback' | 'free_spins' | 'deposit_bonus' | 'game_points' | 'replay' | 'next_load_bonus';
 
 interface Promotion {
   id: number;
   title: string;
   description: string;
-  promotionType: 'credits' | 'bonus' | 'cashback' | 'free_spins';
+  promotion_type: PromotionType;
   value: number;
-  status: 'active' | 'expired' | 'cancelled';
-  startDate: string;
-  endDate: string;
-  totalClaims: number;
-  maxClaims: number;
-  creditsUsed: number;
-  creditsTotal: number;
+  status: 'active' | 'expired' | 'depleted' | 'cancelled';
+  start_date: string;
+  end_date: string;
+  claims_count: number;
+  max_claims_per_player: number;
+  total_budget?: number;
+  used_budget: number;
+  min_player_level: number;
+  terms?: string;
+  wagering_requirement: number;
+}
+
+interface PendingClaim {
+  claim_id: number;
+  promotion_id: number;
+  promotion_title: string;
+  promotion_type: string;
+  value: number;
+  player_id: number;
+  player_username: string;
+  player_level: number;
+  player_avatar?: string;
+  claimed_at: string;
+  message_id?: number;
 }
 
 export function PromotionsSection() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedPromotion, setSelectedPromotion] = useState<Promotion | null>(null);
-  const [activeTab, setActiveTab] = useState<'active' | 'expired' | 'all'>('active');
+  const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'all'>('active');
   const [loading, setLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [pendingClaims, setPendingClaims] = useState<PendingClaim[]>([]);
 
   // Form state
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    promotionType: 'credits' as Promotion['promotionType'],
+    promotion_type: 'credits' as PromotionType,
     value: '',
-    endDate: '',
-    maxClaims: '',
-    creditsTotal: '',
+    end_date: '',
+    max_claims_per_player: '1',
+    total_budget: '',
+    min_player_level: '1',
+    terms: '',
+    wagering_requirement: '1',
   });
 
-  // TODO: Replace with API call
-  const mockPromotions: Promotion[] = [
-    {
-      id: 1,
-      title: 'Welcome Bonus - 100 Credits',
-      description: 'Get 100 free credits when you sign up!',
-      promotionType: 'credits',
-      value: 100,
-      status: 'active',
-      startDate: '2025-01-01',
-      endDate: '2025-12-31',
-      totalClaims: 45,
-      maxClaims: 100,
-      creditsUsed: 4500,
-      creditsTotal: 10000,
-    },
-    {
-      id: 2,
-      title: 'Weekend Bonus - 50% Extra',
-      description: '50% bonus on all deposits this weekend',
-      promotionType: 'bonus',
-      value: 50,
-      status: 'active',
-      startDate: '2025-12-20',
-      endDate: '2025-12-26',
-      totalClaims: 23,
-      maxClaims: 50,
-      creditsUsed: 2300,
-      creditsTotal: 5000,
-    },
-    {
-      id: 3,
-      title: 'Holiday Special - Free Spins',
-      description: '20 free spins on selected games',
-      promotionType: 'free_spins',
-      value: 20,
-      status: 'active',
-      startDate: '2025-12-15',
-      endDate: '2025-12-30',
-      totalClaims: 67,
-      maxClaims: 200,
-      creditsUsed: 1340,
-      creditsTotal: 4000,
-    },
-    {
-      id: 4,
-      title: 'Black Friday Cashback',
-      description: '10% cashback on all losses',
-      promotionType: 'cashback',
-      value: 10,
-      status: 'expired',
-      startDate: '2025-11-25',
-      endDate: '2025-11-30',
-      totalClaims: 89,
-      maxClaims: 100,
-      creditsUsed: 8900,
-      creditsTotal: 10000,
-    },
-  ];
+  // Fetch data on mount
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  const [promotions, setPromotions] = useState(mockPromotions);
+  const fetchData = async () => {
+    try {
+      setDataLoading(true);
+      const [promoResponse, pendingResponse] = await Promise.all([
+        apiClient.get('/promotions/my-promotions'),
+        apiClient.get('/promotions/pending-approvals'),
+      ]);
+      setPromotions(promoResponse as unknown as Promotion[]);
+      setPendingClaims(pendingResponse as unknown as PendingClaim[]);
+    } catch (error) {
+      console.error('Failed to fetch promotions:', error);
+      toast.error('Failed to load promotions');
+    } finally {
+      setDataLoading(false);
+    }
+  };
 
   const filteredPromotions = promotions.filter((promo) => {
     if (activeTab === 'all') return true;
+    if (activeTab === 'pending') return false; // Pending tab shows claims, not promotions
     return promo.status === activeTab;
   });
 
   const stats = {
     active: promotions.filter((p) => p.status === 'active').length,
-    totalClaims: promotions.reduce((sum, p) => sum + p.totalClaims, 0),
-    creditsUsed: promotions.reduce((sum, p) => sum + p.creditsUsed, 0),
-    claimRate: (
-      (promotions.reduce((sum, p) => sum + p.totalClaims, 0) /
-        promotions.reduce((sum, p) => sum + p.maxClaims, 0)) *
-      100
-    ).toFixed(1),
+    totalClaims: promotions.reduce((sum, p) => sum + p.claims_count, 0),
+    creditsUsed: promotions.reduce((sum, p) => sum + p.used_budget, 0),
+    pendingApprovals: pendingClaims.length,
   };
 
   const handleCreatePromotion = async () => {
-    if (!formData.title || !formData.value || !formData.endDate) {
+    if (!formData.title || !formData.value || !formData.end_date) {
       toast.error('Please fill in all required fields');
       return;
     }
 
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // await clientApi.createPromotion(formData);
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await apiClient.post('/promotions/create', {
+        title: formData.title,
+        description: formData.description,
+        promotion_type: formData.promotion_type,
+        value: parseInt(formData.value),
+        end_date: formData.end_date,
+        max_claims_per_player: parseInt(formData.max_claims_per_player) || 1,
+        total_budget: formData.total_budget ? parseInt(formData.total_budget) : null,
+        min_player_level: parseInt(formData.min_player_level) || 1,
+        terms: formData.terms || null,
+        wagering_requirement: parseInt(formData.wagering_requirement) || 1,
+      });
       toast.success('Promotion created successfully');
       setShowCreateModal(false);
       resetForm();
-    } catch (error) {
-      toast.error('Failed to create promotion');
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to create promotion');
       console.error(error);
     } finally {
       setLoading(false);
@@ -153,15 +148,14 @@ export function PromotionsSection() {
 
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // await clientApi.updatePromotion(selectedPromotion.id, formData);
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // Note: Backend doesn't have update endpoint yet, this is a placeholder
       toast.success('Promotion updated successfully');
       setShowEditModal(false);
       setSelectedPromotion(null);
       resetForm();
-    } catch (error) {
-      toast.error('Failed to update promotion');
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to update promotion');
       console.error(error);
     } finally {
       setLoading(false);
@@ -174,16 +168,32 @@ export function PromotionsSection() {
     }
 
     try {
-      // TODO: Replace with actual API call
-      // await clientApi.cancelPromotion(promotionId);
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      await apiClient.put(`/promotions/${promotionId}/cancel`);
       toast.success('Promotion cancelled');
-      setPromotions((prev) =>
-        prev.map((p) => (p.id === promotionId ? { ...p, status: 'cancelled' as const } : p))
-      );
-    } catch (error) {
-      toast.error('Failed to cancel promotion');
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to cancel promotion');
       console.error(error);
+    }
+  };
+
+  const handleApproveClaim = async (claimId: number) => {
+    try {
+      await apiClient.post(`/promotions/approve-claim/${claimId}`);
+      toast.success('Claim approved');
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to approve claim');
+    }
+  };
+
+  const handleRejectClaim = async (claimId: number) => {
+    try {
+      await apiClient.post(`/promotions/reject-claim/${claimId}`, { reason: '' });
+      toast.success('Claim rejected');
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to reject claim');
     }
   };
 
@@ -192,11 +202,14 @@ export function PromotionsSection() {
     setFormData({
       title: promotion.title,
       description: promotion.description,
-      promotionType: promotion.promotionType,
+      promotion_type: promotion.promotion_type,
       value: promotion.value.toString(),
-      endDate: promotion.endDate,
-      maxClaims: promotion.maxClaims.toString(),
-      creditsTotal: promotion.creditsTotal.toString(),
+      end_date: promotion.end_date.split('T')[0],
+      max_claims_per_player: promotion.max_claims_per_player.toString(),
+      total_budget: promotion.total_budget?.toString() || '',
+      min_player_level: promotion.min_player_level.toString(),
+      terms: promotion.terms || '',
+      wagering_requirement: promotion.wagering_requirement.toString(),
     });
     setShowEditModal(true);
   };
@@ -205,24 +218,54 @@ export function PromotionsSection() {
     setFormData({
       title: '',
       description: '',
-      promotionType: 'credits',
+      promotion_type: 'credits',
       value: '',
-      endDate: '',
-      maxClaims: '',
-      creditsTotal: '',
+      end_date: '',
+      max_claims_per_player: '1',
+      total_budget: '',
+      min_player_level: '1',
+      terms: '',
+      wagering_requirement: '1',
     });
   };
 
   const getProgressPercentage = (current: number, total: number) => {
+    if (!total) return 0;
     return Math.min((current / total) * 100, 100);
   };
 
-  const promotionTypeColors = {
+  const promotionTypeColors: Record<string, string> = {
     credits: 'bg-blue-600',
     bonus: 'bg-green-600',
     cashback: 'bg-purple-600',
     free_spins: 'bg-gold-600',
+    deposit_bonus: 'bg-emerald-600',
+    game_points: 'bg-cyan-600',
+    replay: 'bg-pink-600',
+    next_load_bonus: 'bg-orange-600',
   };
+
+  const getPromotionTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      bonus: 'Bonus',
+      cashback: 'Cashback',
+      free_spins: 'Free Spins',
+      credits: 'Credits',
+      deposit_bonus: 'Deposit Bonus',
+      game_points: 'Game Points',
+      replay: 'Replay',
+      next_load_bonus: 'Next Load Bonus',
+    };
+    return labels[type] || type;
+  };
+
+  if (dataLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gold-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -249,152 +292,223 @@ export function PromotionsSection() {
           color="gold"
         />
         <StatCard
+          title="Pending Approvals"
+          value={stats.pendingApprovals}
+          icon={<MdHourglassEmpty />}
+          color="yellow"
+        />
+        <StatCard
           title="Total Claims"
           value={stats.totalClaims}
           icon={<MdPeople />}
           color="blue"
         />
         <StatCard
-          title="Credits Used"
-          value={stats.creditsUsed.toLocaleString()}
+          title="Budget Used"
+          value={`$${stats.creditsUsed.toLocaleString()}`}
           icon={<MdAttachMoney />}
           color="green"
         />
-        <StatCard
-          title="Claim Rate"
-          value={`${stats.claimRate}%`}
-          icon={<MdTrendingUp />}
-          color="purple"
-        />
       </div>
+
+      {/* Pending Claims Alert */}
+      {pendingClaims.length > 0 && (
+        <div className="bg-yellow-900/30 border-2 border-yellow-500 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <MdHourglassEmpty className="text-2xl text-yellow-500 animate-pulse" />
+            <div className="flex-1">
+              <p className="text-yellow-400 font-bold">
+                {pendingClaims.length} claim{pendingClaims.length > 1 ? 's' : ''} waiting for approval
+              </p>
+              <p className="text-sm text-gray-400">
+                Review and approve player promotion claims
+              </p>
+            </div>
+            <button
+              onClick={() => setActiveTab('pending')}
+              className="bg-yellow-600 hover:bg-yellow-700 text-dark-700 px-4 py-2 rounded-lg font-medium transition-colors"
+            >
+              Review Claims
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Tab Filters */}
       <div className="flex gap-2 border-b border-gold-700">
-        {(['active', 'expired', 'all'] as const).map((tab) => (
+        {(['active', 'pending', 'all'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-6 py-3 font-medium capitalize transition-colors ${
+            className={`px-6 py-3 font-medium capitalize transition-colors relative ${
               activeTab === tab
                 ? 'text-gold-500 border-b-2 border-gold-500'
                 : 'text-gray-400 hover:text-gold-500'
             }`}
           >
-            {tab}
+            {tab === 'pending' ? 'Pending Approvals' : tab}
+            {tab === 'pending' && pendingClaims.length > 0 && (
+              <span className="absolute -top-1 -right-1 bg-yellow-500 text-dark-700 text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                {pendingClaims.length}
+              </span>
+            )}
           </button>
         ))}
       </div>
 
-      {/* Promotions List */}
+      {/* Content based on active tab */}
       <div className="space-y-4">
-        {filteredPromotions.length === 0 ? (
-          <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-12 text-center">
-            <MdCardGiftcard className="text-6xl text-gray-500 mx-auto mb-4" />
-            <p className="text-gray-400">No promotions found</p>
-          </div>
-        ) : (
-          filteredPromotions.map((promo) => (
-            <div
-              key={promo.id}
-              className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6 hover:shadow-gold transition-all"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-xl font-bold text-white">{promo.title}</h3>
-                    <Badge
-                      variant={
-                        promo.status === 'active'
-                          ? 'success'
-                          : promo.status === 'expired'
-                          ? 'default'
-                          : 'error'
-                      }
-                      dot={promo.status === 'active'}
-                    >
-                      {promo.status.toUpperCase()}
-                    </Badge>
-                    <Badge variant="info">{promo.promotionType.replace('_', ' ').toUpperCase()}</Badge>
+        {activeTab === 'pending' ? (
+          // Pending Claims List
+          pendingClaims.length === 0 ? (
+            <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-12 text-center">
+              <MdCheckCircle className="text-6xl text-green-500 mx-auto mb-4" />
+              <p className="text-gray-400">No pending claims to review</p>
+            </div>
+          ) : (
+            pendingClaims.map((claim) => (
+              <div
+                key={claim.claim_id}
+                className="bg-dark-200 border-2 border-yellow-500 rounded-lg p-6 hover:shadow-gold transition-all"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="text-xl font-bold text-white">{claim.promotion_title}</h3>
+                      <Badge variant="warning">Pending Approval</Badge>
+                      <Badge variant="info">{getPromotionTypeLabel(claim.promotion_type)}</Badge>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-gray-400">
+                      <span>
+                        Player: <span className="text-white font-medium">{claim.player_username}</span>
+                      </span>
+                      <span>
+                        Level: <span className="text-white font-medium">{claim.player_level}</span>
+                      </span>
+                      <span>
+                        Value: <span className="text-gold-500 font-bold">${claim.value}</span>
+                      </span>
+                      <span>
+                        Claimed: <span className="text-white">{new Date(claim.claimed_at).toLocaleDateString()}</span>
+                      </span>
+                    </div>
                   </div>
-                  <p className="text-gray-400">{promo.description}</p>
-                </div>
-                {promo.status === 'active' && (
                   <div className="flex gap-2">
                     <button
-                      onClick={() => openEditModal(promo)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-1"
+                      onClick={() => handleApproveClaim(claim.claim_id)}
+                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-1"
                     >
-                      <MdEdit size={16} />
-                      Edit
+                      <MdCheckCircle size={16} />
+                      Approve
                     </button>
                     <button
-                      onClick={() => handleCancelPromotion(promo.id, promo.title)}
+                      onClick={() => handleRejectClaim(claim.claim_id)}
                       className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-1"
                     >
                       <MdCancel size={16} />
-                      Cancel
+                      Reject
                     </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )
+        ) : (
+          // Promotions List
+          filteredPromotions.length === 0 ? (
+            <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-12 text-center">
+              <MdCardGiftcard className="text-6xl text-gray-500 mx-auto mb-4" />
+              <p className="text-gray-400">No promotions found</p>
+            </div>
+          ) : (
+            filteredPromotions.map((promo) => (
+              <div
+                key={promo.id}
+                className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6 hover:shadow-gold transition-all"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="text-xl font-bold text-white">{promo.title}</h3>
+                      <Badge
+                        variant={
+                          promo.status === 'active'
+                            ? 'success'
+                            : promo.status === 'expired'
+                            ? 'default'
+                            : 'error'
+                        }
+                        dot={promo.status === 'active'}
+                      >
+                        {promo.status.toUpperCase()}
+                      </Badge>
+                      <Badge variant="info">{getPromotionTypeLabel(promo.promotion_type)}</Badge>
+                    </div>
+                    <p className="text-gray-400">{promo.description}</p>
+                  </div>
+                  {promo.status === 'active' && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => openEditModal(promo)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-1"
+                      >
+                        <MdEdit size={16} />
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleCancelPromotion(promo.id, promo.title)}
+                        className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-1"
+                      >
+                        <MdCancel size={16} />
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-4 gap-4 mb-4">
+                  <div>
+                    <p className="text-sm text-gray-400 mb-1">Value</p>
+                    <p className="text-white font-bold">${promo.value}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400 mb-1">Claims</p>
+                    <p className="text-white font-bold">{promo.claims_count}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400 mb-1">Min Level</p>
+                    <p className="text-white font-bold">Level {promo.min_player_level}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400 mb-1">End Date</p>
+                    <p className="text-white font-bold">
+                      {new Date(promo.end_date).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Progress Bar */}
+                {promo.total_budget && (
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-gray-400">Budget Used</span>
+                      <span className="text-white font-medium">
+                        ${promo.used_budget.toLocaleString()} / ${promo.total_budget.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="w-full bg-dark-400 rounded-full h-2">
+                      <div
+                        className={`${promotionTypeColors[promo.promotion_type] || 'bg-gold-600'} h-2 rounded-full transition-all`}
+                        style={{
+                          width: `${getProgressPercentage(promo.used_budget, promo.total_budget)}%`,
+                        }}
+                      />
+                    </div>
                   </div>
                 )}
               </div>
-
-              <div className="grid grid-cols-3 gap-4 mb-4">
-                <div>
-                  <p className="text-sm text-gray-400 mb-1">Value</p>
-                  <p className="text-white font-bold">{promo.value}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-400 mb-1">Claims</p>
-                  <p className="text-white font-bold">
-                    {promo.totalClaims} / {promo.maxClaims}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-400 mb-1">End Date</p>
-                  <p className="text-white font-bold">
-                    {new Date(promo.endDate).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-
-              {/* Progress Bars */}
-              <div className="space-y-3">
-                <div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-gray-400">Claims Progress</span>
-                    <span className="text-white font-medium">
-                      {getProgressPercentage(promo.totalClaims, promo.maxClaims).toFixed(0)}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-dark-400 rounded-full h-2">
-                    <div
-                      className="bg-gold-600 h-2 rounded-full transition-all"
-                      style={{
-                        width: `${getProgressPercentage(promo.totalClaims, promo.maxClaims)}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-gray-400">Credits Used</span>
-                    <span className="text-white font-medium">
-                      {promo.creditsUsed.toLocaleString()} / {promo.creditsTotal.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="w-full bg-dark-400 rounded-full h-2">
-                    <div
-                      className={`${promotionTypeColors[promo.promotionType]} h-2 rounded-full transition-all`}
-                      style={{
-                        width: `${getProgressPercentage(promo.creditsUsed, promo.creditsTotal)}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))
+            ))
+          )
         )}
       </div>
 
@@ -429,11 +543,11 @@ export function PromotionsSection() {
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">Promotion Type</label>
             <select
-              value={formData.promotionType}
+              value={formData.promotion_type}
               onChange={(e) =>
                 setFormData({
                   ...formData,
-                  promotionType: e.target.value as Promotion['promotionType'],
+                  promotion_type: e.target.value as PromotionType,
                 })
               }
               className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500"
@@ -442,6 +556,10 @@ export function PromotionsSection() {
               <option value="bonus">Bonus</option>
               <option value="cashback">Cashback</option>
               <option value="free_spins">Free Spins</option>
+              <option value="deposit_bonus">Deposit Bonus</option>
+              <option value="game_points">Game Points</option>
+              <option value="replay">Replay</option>
+              <option value="next_load_bonus">Next Load Bonus</option>
             </select>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -453,27 +571,59 @@ export function PromotionsSection() {
               placeholder="Enter value..."
             />
             <Input
-              label="Max Claims"
+              label="Max Claims Per Player"
               type="number"
-              value={formData.maxClaims}
-              onChange={(e) => setFormData({ ...formData, maxClaims: e.target.value })}
-              placeholder="Enter max claims..."
+              value={formData.max_claims_per_player}
+              onChange={(e) => setFormData({ ...formData, max_claims_per_player: e.target.value })}
+              placeholder="1"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="End Date"
               type="date"
-              value={formData.endDate}
-              onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+              value={formData.end_date}
+              onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
             />
             <Input
-              label="Total Credits"
+              label="Total Budget (optional)"
               type="number"
-              value={formData.creditsTotal}
-              onChange={(e) => setFormData({ ...formData, creditsTotal: e.target.value })}
-              placeholder="Enter total credits..."
+              value={formData.total_budget}
+              onChange={(e) => setFormData({ ...formData, total_budget: e.target.value })}
+              placeholder="Leave empty for unlimited"
             />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Minimum Player Level"
+              type="number"
+              value={formData.min_player_level}
+              onChange={(e) => setFormData({ ...formData, min_player_level: e.target.value })}
+              placeholder="1"
+            />
+            <Input
+              label="Wagering Requirement (multiplier)"
+              type="number"
+              value={formData.wagering_requirement}
+              onChange={(e) => setFormData({ ...formData, wagering_requirement: e.target.value })}
+              placeholder="1"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Terms & Conditions (optional)</label>
+            <textarea
+              value={formData.terms}
+              onChange={(e) => setFormData({ ...formData, terms: e.target.value })}
+              placeholder="Enter terms and conditions..."
+              rows={2}
+              className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-gold-500"
+            />
+          </div>
+          <div className="bg-blue-900/30 border border-blue-500 rounded-lg p-3">
+            <p className="text-sm text-blue-300">
+              <strong>Note:</strong> This is a manual promotion. When players claim it, you will need to approve/reject
+              their claims. Any rewards must be sent manually outside this platform.
+            </p>
           </div>
           <div className="flex gap-3 pt-4">
             <Button
@@ -528,17 +678,17 @@ export function PromotionsSection() {
               onChange={(e) => setFormData({ ...formData, value: e.target.value })}
             />
             <Input
-              label="Max Claims"
+              label="Max Claims Per Player"
               type="number"
-              value={formData.maxClaims}
-              onChange={(e) => setFormData({ ...formData, maxClaims: e.target.value })}
+              value={formData.max_claims_per_player}
+              onChange={(e) => setFormData({ ...formData, max_claims_per_player: e.target.value })}
             />
           </div>
           <Input
             label="End Date"
             type="date"
-            value={formData.endDate}
-            onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+            value={formData.end_date}
+            onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
           />
           <div className="flex gap-3 pt-4">
             <Button

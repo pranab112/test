@@ -14,7 +14,7 @@ interface Promotion {
   client_name: string;
   client_company?: string;
   client_id: number;
-  promotion_type: 'bonus' | 'cashback' | 'credits' | 'free_spins' | 'deposit_bonus';
+  promotion_type: 'bonus' | 'cashback' | 'credits' | 'free_spins' | 'deposit_bonus' | 'game_points' | 'replay' | 'next_load_bonus';
   value: number;
   can_claim: boolean;
   already_claimed: boolean;
@@ -120,6 +120,9 @@ export function PromotionsSection() {
       case 'credits': return 'warning';
       case 'free_spins': return 'info';
       case 'deposit_bonus': return 'success';
+      case 'game_points': return 'info';
+      case 'replay': return 'purple';
+      case 'next_load_bonus': return 'success';
       default: return 'default';
     }
   };
@@ -131,6 +134,9 @@ export function PromotionsSection() {
       case 'credits': return 'Credits';
       case 'free_spins': return 'Free Spins';
       case 'deposit_bonus': return 'Deposit Bonus';
+      case 'game_points': return 'Game Points';
+      case 'replay': return 'Replay';
+      case 'next_load_bonus': return 'Next Load Bonus';
       default: return type;
     }
   };

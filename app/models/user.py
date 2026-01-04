@@ -84,3 +84,10 @@ class User(Base):
 
     # Track which client created this player
     created_by_client_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+    # Moderation tracking
+    malicious_reports_count = Column(Integer, default=0)  # Count of false/malicious reports made by this user
+    is_trusted_reviewer = Column(Boolean, default=True)  # Can be set to False if user makes fake reviews
+    is_suspended = Column(Boolean, default=False)  # Account suspension status
+    suspension_reason = Column(String(500), nullable=True)
+    suspended_until = Column(DateTime(timezone=True), nullable=True)

@@ -79,6 +79,9 @@ export default function PromotionMessage({ content, isOwn, messageId: _messageId
       free_spins: 'Free Spins',
       credits: 'Credits',
       deposit_bonus: 'Deposit Bonus',
+      game_points: 'Game Points',
+      replay: 'Replay',
+      next_load_bonus: 'Next Load Bonus',
     };
     return labels[type] || type;
   };

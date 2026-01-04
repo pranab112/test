@@ -160,10 +160,12 @@ async def get_available_promotions(
         return []
 
     # Get active promotions from connected clients
+    # Use UTC now for comparison (database stores naive datetimes)
+    now_utc = datetime.utcnow()
     query = db.query(models.Promotion).filter(
         models.Promotion.client_id.in_(client_ids),
         models.Promotion.status == PromotionStatus.ACTIVE,
-        models.Promotion.end_date > datetime.utcnow()
+        models.Promotion.end_date > now_utc
     )
 
     if promotion_type:
@@ -213,7 +215,7 @@ async def claim_promotion(
             message="Promotion not found or inactive"
         )
 
-    # Check if promotion has expired
+    # Check if promotion has expired (database stores naive datetimes)
     if promotion.end_date < datetime.utcnow():
         promotion.status = PromotionStatus.EXPIRED
         db.commit()
@@ -483,11 +485,15 @@ def _format_promotion_response(promotion: models.Promotion, current_user: models
         ).count()
 
         already_claimed = existing_claim > 0
+        # Make end_date timezone-aware if it isn't
+        end_date = promotion.end_date
+        if end_date.tzinfo is None:
+            end_date = end_date.replace(tzinfo=timezone.utc)
         can_claim = (
             not already_claimed and
             existing_claim < promotion.max_claims_per_player and
             promotion.status == PromotionStatus.ACTIVE and
-            promotion.end_date > datetime.now(timezone.utc) and
+            end_date > datetime.now(timezone.utc) and
             current_user.player_level >= promotion.min_player_level
         )
 

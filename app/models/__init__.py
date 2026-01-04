@@ -10,9 +10,13 @@ from app.models.enums import (
     PromotionStatus,
     ClaimStatus,
     ReportStatus,
+    ReviewStatus,
     OfferType,
     OfferStatus,
-    OfferClaimStatus
+    OfferClaimStatus,
+    TicketStatus,
+    TicketPriority,
+    TicketCategory
 )
 
 # Import models - order matters for relationships
@@ -26,6 +30,7 @@ from app.models.wallet import PlayerWallet
 from app.models.payment import PaymentMethod, ClientPaymentMethod
 from app.models.report import Report
 from app.models.offer import PlatformOffer, OfferClaim
+from app.models.ticket import Ticket, TicketMessage
 
 __all__ = [
     # Base
@@ -38,9 +43,13 @@ __all__ = [
     "PromotionStatus",
     "ClaimStatus",
     "ReportStatus",
+    "ReviewStatus",
     "OfferType",
     "OfferStatus",
     "OfferClaimStatus",
+    "TicketStatus",
+    "TicketPriority",
+    "TicketCategory",
     # Models
     "User",
     "friends_association",
@@ -58,4 +67,6 @@ __all__ = [
     "Report",
     "PlatformOffer",
     "OfferClaim",
+    "Ticket",
+    "TicketMessage",
 ]

@@ -1,5 +1,7 @@
 import { apiClient } from '../client';
 
+export type ReviewStatus = 'pending' | 'approved' | 'rejected' | 'disputed';
+
 export interface Review {
   id: number;
   reviewer_id: number;
@@ -7,6 +9,11 @@ export interface Review {
   rating: number;
   title?: string;
   comment: string;
+  status: ReviewStatus;
+  admin_notes?: string;
+  moderated_by?: number;
+  moderated_at?: string;
+  appeal_ticket_id?: number;
   created_at: string;
   updated_at?: string;
   reviewer?: {
@@ -108,6 +115,32 @@ export const reviewsApi = {
   // Check if can review user
   canReviewUser: async (userId: number): Promise<{ can_review: boolean; reason?: string; existing_review_id?: number }> => {
     const response = await apiClient.get(`/reviews/can-review/${userId}`);
+    return response as any;
+  },
+
+  // Get my pending reviews (reviews I wrote awaiting approval)
+  getMyPendingReviews: async (): Promise<ReviewListResponse> => {
+    const response = await apiClient.get('/reviews/my-pending');
+    return response as any;
+  },
+
+  // Get my rejected reviews (reviews I wrote that were rejected)
+  getMyRejectedReviews: async (): Promise<ReviewListResponse> => {
+    const response = await apiClient.get('/reviews/my-rejected');
+    return response as any;
+  },
+
+  // Appeal a review (for reviews received that you want to dispute)
+  appealReview: async (reviewId: number, reason: string): Promise<{
+    message: string;
+    ticket_number: string;
+    ticket_id: number;
+    review_id: number;
+  }> => {
+    const response = await apiClient.post('/reviews/appeal', {
+      review_id: reviewId,
+      reason,
+    });
     return response as any;
   },
 };
