@@ -5,7 +5,7 @@ import { Badge } from '@/components/common/Badge';
 import { Avatar } from '@/components/common/Avatar';
 import { Modal } from '@/components/common/Modal';
 import { authApi, settingsApi, referralsApi } from '@/api/endpoints';
-import type { ReferralCodeResponse, ReferralStats, ReferredUser, ReferralListResponse } from '@/api/endpoints';
+import type { ReferralStats, ReferredUser } from '@/api/endpoints';
 import { useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
 import {
@@ -101,7 +101,7 @@ export function SettingsSection() {
         username: user.username || '',
         fullName: user.full_name || '',
         email: user.email || '',
-        phone: user.phone || '',
+        phone: '',
       });
       setProfilePicture(user.profile_picture);
       setEmailVerified(user.is_email_verified || false);
@@ -163,7 +163,6 @@ export function SettingsSection() {
     try {
       await settingsApi.updateProfile({
         full_name: profileData.fullName,
-        phone: profileData.phone,
       });
 
       // Update local user state
@@ -171,7 +170,6 @@ export function SettingsSection() {
         const updatedUser = {
           ...user,
           full_name: profileData.fullName,
-          phone: profileData.phone,
         };
         setUser(updatedUser);
         localStorage.setItem('user', JSON.stringify(updatedUser));
@@ -469,7 +467,7 @@ export function SettingsSection() {
       case 'pending':
         return <Badge variant="warning">Pending</Badge>;
       case 'expired':
-        return <Badge variant="danger">Expired</Badge>;
+        return <Badge variant="error">Expired</Badge>;
       default:
         return <Badge variant="default">{status}</Badge>;
     }
@@ -500,7 +498,7 @@ export function SettingsSection() {
             <div className="flex gap-4 flex-wrap">
               <div>
                 <p className="text-sm text-gray-400">Level</p>
-                <Badge variant="purple" size="lg">Level {user?.level || 1}</Badge>
+                <Badge variant="purple" size="lg">Level {user?.player_level || 1}</Badge>
               </div>
               <div>
                 <p className="text-sm text-gray-400">Credits</p>

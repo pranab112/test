@@ -11,7 +11,6 @@ import {
   MdAdd,
   MdEdit,
   MdCancel,
-  MdTrendingUp,
   MdPeople,
   MdAttachMoney,
   MdHourglassEmpty,
@@ -295,7 +294,7 @@ export function PromotionsSection() {
           title="Pending Approvals"
           value={stats.pendingApprovals}
           icon={<MdHourglassEmpty />}
-          color="yellow"
+          color="warning"
         />
         <StatCard
           title="Total Claims"

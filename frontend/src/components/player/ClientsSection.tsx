@@ -19,7 +19,7 @@ interface ClientWithDetails extends FriendDetails {
 }
 
 export function ClientsSection() {
-  const { onSectionChange } = useDashboard();
+  const { setActiveSection } = useDashboard();
   const [clients, setClients] = useState<ClientWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedClient, setSelectedClient] = useState<ClientWithDetails | null>(null);
@@ -74,7 +74,7 @@ export function ClientsSection() {
   const handleViewPromotions = (client: ClientWithDetails) => {
     // Navigate to promotions section with client filter
     toast.success(`Viewing promotions from ${client.full_name || client.username}`);
-    onSectionChange('promotions');
+    setActiveSection('promotions');
   };
 
   const columns = [
@@ -192,7 +192,7 @@ export function ClientsSection() {
             <p className="text-gray-400 mb-2">No client friends yet</p>
             <p className="text-sm text-gray-500">Add clients as friends to see them here</p>
             <Button
-              onClick={() => onSectionChange('friends')}
+              onClick={() => setActiveSection('friends')}
               className="mt-4"
             >
               Find Clients

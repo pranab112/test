@@ -71,7 +71,7 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
   const [typingIndicators, setTypingIndicators] = useState<Map<string, TypingIndicator[]>>(new Map());
   const [onlineUsers, setOnlineUsers] = useState<Map<number, OnlineStatus>>(new Map());
   const [unreadCounts, setUnreadCounts] = useState<Map<string, number>>(new Map());
-  const typingTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const typingTimeouts = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   // Get room ID for direct messages
   const getRoomId = useCallback((otherUserId: number): string => {
