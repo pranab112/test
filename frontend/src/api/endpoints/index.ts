@@ -105,3 +105,13 @@ export {
   type ClaimOfferRequest,
   type ProcessClaimRequest,
 } from './offers.api';
+
+// Referrals API
+export {
+  referralsApi,
+  type ReferralCodeResponse,
+  type ReferralStats,
+  type ReferredUser,
+  type ReferralListResponse,
+  type ReferralBonusInfo,
+} from './referrals.api';

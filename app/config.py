@@ -29,6 +29,21 @@ class Settings(BaseSettings):
     # Encryption key for credentials
     CREDENTIAL_ENCRYPTION_KEY: Optional[str] = None
 
+    # SMTP Email Configuration
+    SMTP_HOST: str = "smtp.hostinger.com"
+    SMTP_PORT: int = 465
+    SMTP_ENCRYPTION: str = "ssl"  # ssl or tls
+    SMTP_USERNAME: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    SMTP_FROM_EMAIL: str = "support@goldenace.fun"
+    SMTP_FROM_NAME: str = "Golden Ace"
+
+    # Base URL for links in emails
+    BASE_URL: str = "http://127.0.0.1:8000"
+
+    # Contact form email
+    CONTACT_EMAIL: Optional[str] = None
+
     # Allow unknown/extra environment variables (e.g., placeholders in .env) to be ignored
     model_config = ConfigDict(extra="ignore", env_file=".env", case_sensitive=False)
 
@@ -80,5 +95,10 @@ class Settings(BaseSettings):
     def allowed_headers(self) -> List[str]:
         """Allowed headers for CORS"""
         return ["*"]  # Can be restricted further if needed
+
+    @property
+    def smtp_configured(self) -> bool:
+        """Check if SMTP is properly configured"""
+        return bool(self.SMTP_HOST and self.SMTP_USERNAME and self.SMTP_PASSWORD)
 
 settings = Settings()

@@ -5,8 +5,12 @@ from typing import List, Optional
 from app import models, schemas, auth
 from app.database import get_db
 from app.models import UserType, ReferralStatus, REFERRAL_BONUS_CREDITS
+from app.services import send_referral_bonus_email
 import random
 import string
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/client", tags=["client"])
 
@@ -448,6 +452,18 @@ def approve_player(
             referral.status = ReferralStatus.COMPLETED
             referral.completed_at = func.now()
             referral_bonus_credited = True
+
+            # Send email notification to referrer about bonus
+            try:
+                if referrer.email:
+                    send_referral_bonus_email(
+                        to_email=referrer.email,
+                        username=referrer.username,
+                        referred_username=player.username,
+                        bonus_amount=referral.bonus_amount
+                    )
+            except Exception as e:
+                logger.error(f"Failed to send referral bonus email: {e}")
 
     db.commit()
     db.refresh(player)

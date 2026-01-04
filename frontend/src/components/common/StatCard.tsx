@@ -26,17 +26,19 @@ export function StatCard({ title, value, icon, trend, color = 'gold', onClick }:
   };
 
   const Component = onClick ? 'button' : 'div';
+  const colorClass = colorClasses[color] || colorClasses['gold'];
+  const [borderClass, bgClass, textClass] = colorClass.split(' ');
 
   return (
     <Component
       onClick={onClick}
-      className={`bg-dark-200 border-2 ${colorClasses[color].split(' ')[0]} ${colorClasses[color].split(' ')[1]} rounded-lg p-6 hover:shadow-gold transition-all ${onClick ? 'cursor-pointer hover:scale-105' : ''}`}
+      className={`bg-dark-200 border-2 ${borderClass} ${bgClass} rounded-lg p-6 hover:shadow-gold transition-all ${onClick ? 'cursor-pointer hover:scale-105' : ''}`}
     >
       <div className="flex items-start justify-between mb-4">
         <div className="text-gray-400 text-sm font-medium uppercase tracking-wide">
           {title}
         </div>
-        <div className={`${colorClasses[color].split(' ')[2]} text-2xl`}>
+        <div className={`${textClass} text-2xl`}>
           {icon}
         </div>
       </div>
