@@ -6,7 +6,7 @@ import { Modal } from '@/components/common/Modal';
 import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import toast from 'react-hot-toast';
-import { FaUserPlus, FaUsers, FaBan, FaKey, FaEllipsisV } from 'react-icons/fa';
+import { FaUserPlus, FaUsers, FaEllipsisV } from 'react-icons/fa';
 import { MdBlock, MdLockReset } from 'react-icons/md';
 import { clientApi, type Player, type PlayerCreateRequest, type BulkPlayerCreate } from '@/api/endpoints';
 import { apiClient } from '@/api/client';

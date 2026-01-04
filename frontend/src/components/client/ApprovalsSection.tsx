@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { DataTable } from '@/components/common/DataTable';
-import { Badge } from '@/components/common/Badge';
 import { Avatar } from '@/components/common/Avatar';
 import { Button } from '@/components/common/Button';
 import { StatCard } from '@/components/common/StatCard';
