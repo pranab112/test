@@ -81,12 +81,18 @@ export const friendsApi = {
     return response as any;
   },
 
-  // Search users for friend requests (use users endpoint)
+  // Search users for friend requests (uses friends/search which filters by role)
   searchUsers: async (query: string): Promise<Friend[]> => {
-    const response = await apiClient.get('/users/search', {
+    const response = await apiClient.get('/friends/search', {
       params: { q: query },
     });
-    // API returns { users: [...] }, extract the array
-    return (response as any)?.users || [];
+    // API returns an array directly
+    return response as any || [];
+  },
+
+  // Send friend request by numeric user ID
+  sendFriendRequestById: async (userId: number): Promise<{ message: string }> => {
+    const response = await apiClient.post(`/friends/send/${userId}`);
+    return response as any;
   },
 };

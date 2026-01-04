@@ -5,10 +5,12 @@ import { Button } from '@/components/common/Button';
 import { Avatar } from '@/components/common/Avatar';
 import { Badge } from '@/components/common/Badge';
 import toast from 'react-hot-toast';
-import { MdPersonAdd, MdMessage, MdPersonRemove, MdCheck, MdClose, MdSearch, MdRefresh, MdFlag } from 'react-icons/md';
+import { MdPersonAdd, MdMessage, MdPersonRemove, MdCheck, MdClose, MdSearch, MdRefresh, MdFlag, MdSend, MdInbox } from 'react-icons/md';
 import { friendsApi, type FriendDetails, type FriendRequest } from '@/api/endpoints';
 import { reportsApi } from '@/api/endpoints/reports.api';
 import { formatDistanceToNow } from 'date-fns';
+
+type FriendsTab = 'friends' | 'received' | 'sent';
 
 export function FriendsSection() {
   const [showAddFriendModal, setShowAddFriendModal] = useState(false);
@@ -17,8 +19,11 @@ export function FriendsSection() {
   const [searching, setSearching] = useState(false);
   const [loading, setLoading] = useState(true);
   const [friends, setFriends] = useState<FriendDetails[]>([]);
-  const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
+  const [receivedRequests, setReceivedRequests] = useState<FriendRequest[]>([]);
+  const [sentRequests, setSentRequests] = useState<FriendRequest[]>([]);
   const [processingRequests, setProcessingRequests] = useState<Set<number>>(new Set());
+  const [sendingRequests, setSendingRequests] = useState<Set<number>>(new Set());
+  const [activeTab, setActiveTab] = useState<FriendsTab>('friends');
 
   // Report modal state
   const [showReportModal, setShowReportModal] = useState(false);
@@ -34,12 +39,14 @@ export function FriendsSection() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [friendsData, requestsData] = await Promise.all([
+      const [friendsData, receivedData, sentData] = await Promise.all([
         friendsApi.getFriends(),
         friendsApi.getPendingRequests(),
+        friendsApi.getSentRequests(),
       ]);
       setFriends(friendsData);
-      setFriendRequests(requestsData);
+      setReceivedRequests(receivedData);
+      setSentRequests(sentData.filter(r => r.status === 'pending'));
     } catch (error) {
       console.error('Failed to load friends data:', error);
       toast.error('Failed to load friends');
@@ -57,13 +64,19 @@ export function FriendsSection() {
     setSearching(true);
     try {
       const results = await friendsApi.searchUsers(searchQuery);
-      // Filter out existing friends
+      // Filter out existing friends and pending requests
       const friendIds = new Set(friends.map(f => f.id));
-      const filtered = results.filter(u => !friendIds.has(u.id));
+      const sentRequestIds = new Set(sentRequests.map(r => r.receiver_id));
+      const receivedRequestIds = new Set(receivedRequests.map(r => r.requester_id));
+      const filtered = results.filter(u =>
+        !friendIds.has(u.id) &&
+        !sentRequestIds.has(u.id) &&
+        !receivedRequestIds.has(u.id)
+      );
       setSearchResults(filtered);
 
       if (filtered.length === 0) {
-        toast('No users found or they are already your friends', { icon: '🔍' });
+        toast('No users found or they are already your friends/have pending requests', { icon: '🔍' });
       }
     } catch (error) {
       console.error('Search failed:', error);
@@ -73,15 +86,24 @@ export function FriendsSection() {
     }
   };
 
-  const handleSendRequest = async (userIdString: string, odId: number, username: string) => {
+  const handleSendRequest = async (userId: number, username: string) => {
+    setSendingRequests(prev => new Set(prev).add(userId));
     try {
-      await friendsApi.sendFriendRequest(userIdString);
+      await friendsApi.sendFriendRequestById(userId);
       toast.success(`Friend request sent to ${username}`);
       // Remove from search results
-      setSearchResults(prev => prev.filter(u => u.id !== odId));
+      setSearchResults(prev => prev.filter(u => u.id !== userId));
+      // Refresh to update sent requests
+      await loadData();
     } catch (error: any) {
-      toast.error(error.detail || 'Failed to send friend request');
+      toast.error(error.detail || error.message || 'Failed to send friend request');
       console.error(error);
+    } finally {
+      setSendingRequests(prev => {
+        const next = new Set(prev);
+        next.delete(userId);
+        return next;
+      });
     }
   };
 
@@ -109,7 +131,7 @@ export function FriendsSection() {
     try {
       await friendsApi.rejectRequest(requestId);
       toast.success(`Declined friend request from ${username}`);
-      setFriendRequests(prev => prev.filter(req => req.id !== requestId));
+      setReceivedRequests(prev => prev.filter(req => req.id !== requestId));
     } catch (error: any) {
       toast.error(error.detail || 'Failed to decline friend request');
       console.error(error);
@@ -225,140 +247,255 @@ export function FriendsSection() {
         </div>
       </div>
 
-      {/* Friend Requests Panel */}
-      {friendRequests.length > 0 && (
+      {/* Tabs */}
+      <div className="flex gap-2 border-b border-dark-400 pb-2">
+        <button
+          type="button"
+          onClick={() => setActiveTab('friends')}
+          className={`px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 ${
+            activeTab === 'friends'
+              ? 'bg-gold-600 text-dark-700'
+              : 'bg-dark-300 text-gray-400 hover:bg-dark-400'
+          }`}
+        >
+          <MdPersonAdd size={18} />
+          My Friends
+          {friends.length > 0 && (
+            <span className="bg-dark-700 text-gold-500 px-2 py-0.5 rounded-full text-xs">
+              {friends.length}
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('received')}
+          className={`px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 ${
+            activeTab === 'received'
+              ? 'bg-gold-600 text-dark-700'
+              : 'bg-dark-300 text-gray-400 hover:bg-dark-400'
+          }`}
+        >
+          <MdInbox size={18} />
+          Received
+          {receivedRequests.length > 0 && (
+            <span className="bg-red-600 text-white px-2 py-0.5 rounded-full text-xs">
+              {receivedRequests.length}
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('sent')}
+          className={`px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 ${
+            activeTab === 'sent'
+              ? 'bg-gold-600 text-dark-700'
+              : 'bg-dark-300 text-gray-400 hover:bg-dark-400'
+          }`}
+        >
+          <MdSend size={18} />
+          Sent
+          {sentRequests.length > 0 && (
+            <span className="bg-blue-600 text-white px-2 py-0.5 rounded-full text-xs">
+              {sentRequests.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* My Friends Tab */}
+      {activeTab === 'friends' && (
         <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
           <h2 className="text-xl font-bold text-gold-500 mb-4">
-            Friend Requests ({friendRequests.length})
+            My Friends ({friends.length})
           </h2>
-          <div className="space-y-3">
-            {friendRequests.map((request) => {
-              const requester = request.requester;
-              const isProcessing = processingRequests.has(request.id);
-              return (
+          {friends.length === 0 ? (
+            <div className="text-center py-12">
+              <MdPersonAdd className="text-6xl text-gray-500 mx-auto mb-4" />
+              <p className="text-gray-400">No friends yet. Start connecting!</p>
+              <button
+                type="button"
+                onClick={() => setShowAddFriendModal(true)}
+                className="mt-4 bg-gold-600 hover:bg-gold-700 text-dark-700 px-6 py-2 rounded-lg font-medium transition-colors"
+              >
+                Find Players
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {friends.map((friend) => (
                 <div
-                  key={request.id}
-                  className="bg-dark-300 p-4 rounded-lg flex items-center justify-between hover:bg-dark-400 transition-colors"
+                  key={friend.id}
+                  className="bg-dark-300 p-4 rounded-lg hover:bg-dark-400 transition-colors"
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-start gap-3 mb-3">
                     <Avatar
-                      name={requester?.full_name || requester?.username || 'Unknown'}
+                      name={friend.full_name || friend.username}
                       size="lg"
-                      src={requester?.profile_picture}
+                      online={friend.is_online}
+                      src={friend.profile_picture}
                     />
-                    <div>
-                      <p className="text-white font-medium">{requester?.username || 'Unknown User'}</p>
-                      <p className="text-sm text-gray-400">
-                        {requester?.full_name} • {formatTime(request.created_at)}
-                      </p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-medium truncate">{friend.username}</p>
+                      <p className="text-sm text-gray-400 truncate">{friend.full_name}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        {friend.is_online ? (
+                          <Badge variant="success" size="sm" dot>
+                            Online
+                          </Badge>
+                        ) : (
+                          <Badge variant="default" size="sm">
+                            Offline
+                          </Badge>
+                        )}
+                        <span className="text-xs text-gray-500">{friend.user_type}</span>
+                      </div>
                     </div>
                   </div>
                   <div className="flex gap-2">
                     <button
                       type="button"
-                      onClick={() => handleAcceptRequest(request.id, requester?.username || 'User')}
-                      disabled={isProcessing}
-                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 disabled:opacity-50"
+                      onClick={() => handleMessageFriend(friend.id, friend.username)}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1"
                     >
-                      <MdCheck size={18} />
-                      Accept
+                      <MdMessage size={16} />
+                      Message
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleRejectRequest(request.id, requester?.username || 'User')}
-                      disabled={isProcessing}
-                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 disabled:opacity-50"
+                      onClick={() => openReportModal(friend)}
+                      className="bg-yellow-600/20 hover:bg-yellow-600 text-yellow-500 hover:text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                      title="Report user"
                     >
-                      <MdClose size={18} />
-                      Decline
+                      <MdFlag size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveFriend(friend.id, friend.username)}
+                      className="bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                      title="Remove friend"
+                    >
+                      <MdPersonRemove size={16} />
                     </button>
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {/* My Friends List */}
-      <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-        <h2 className="text-xl font-bold text-gold-500 mb-4">
-          My Friends ({friends.length})
-        </h2>
-        {friends.length === 0 ? (
-          <div className="text-center py-12">
-            <MdPersonAdd className="text-6xl text-gray-500 mx-auto mb-4" />
-            <p className="text-gray-400">No friends yet. Start connecting!</p>
-            <button
-              type="button"
-              onClick={() => setShowAddFriendModal(true)}
-              className="mt-4 bg-gold-600 hover:bg-gold-700 text-dark-700 px-6 py-2 rounded-lg font-medium transition-colors"
-            >
-              Find Friends
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {friends.map((friend) => (
-              <div
-                key={friend.id}
-                className="bg-dark-300 p-4 rounded-lg hover:bg-dark-400 transition-colors"
-              >
-                <div className="flex items-start gap-3 mb-3">
-                  <Avatar
-                    name={friend.full_name || friend.username}
-                    size="lg"
-                    online={friend.is_online}
-                    src={friend.profile_picture}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white font-medium truncate">{friend.username}</p>
-                    <p className="text-sm text-gray-400 truncate">{friend.full_name}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      {friend.is_online ? (
-                        <Badge variant="success" size="sm" dot>
-                          Online
-                        </Badge>
-                      ) : (
-                        <Badge variant="default" size="sm">
-                          Offline
-                        </Badge>
-                      )}
-                      <span className="text-xs text-gray-500">{friend.user_type}</span>
+      {/* Received Requests Tab */}
+      {activeTab === 'received' && (
+        <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
+          <h2 className="text-xl font-bold text-gold-500 mb-4">
+            Received Requests ({receivedRequests.length})
+          </h2>
+          {receivedRequests.length === 0 ? (
+            <div className="text-center py-12">
+              <MdInbox className="text-6xl text-gray-500 mx-auto mb-4" />
+              <p className="text-gray-400">No pending friend requests</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {receivedRequests.map((request) => {
+                const requester = request.requester;
+                const isProcessing = processingRequests.has(request.id);
+                return (
+                  <div
+                    key={request.id}
+                    className="bg-dark-300 p-4 rounded-lg flex items-center justify-between hover:bg-dark-400 transition-colors"
+                  >
+                    <div className="flex items-center gap-4">
+                      <Avatar
+                        name={requester?.full_name || requester?.username || 'Unknown'}
+                        size="lg"
+                        src={requester?.profile_picture}
+                      />
+                      <div>
+                        <p className="text-white font-medium">{requester?.username || 'Unknown User'}</p>
+                        <p className="text-sm text-gray-400">
+                          {requester?.full_name} • {formatTime(request.created_at)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleAcceptRequest(request.id, requester?.username || 'User')}
+                        disabled={isProcessing}
+                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 disabled:opacity-50"
+                      >
+                        <MdCheck size={18} />
+                        Accept
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRejectRequest(request.id, requester?.username || 'User')}
+                        disabled={isProcessing}
+                        className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 disabled:opacity-50"
+                      >
+                        <MdClose size={18} />
+                        Decline
+                      </button>
                     </div>
                   </div>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleMessageFriend(friend.id, friend.username)}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1"
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Sent Requests Tab */}
+      {activeTab === 'sent' && (
+        <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
+          <h2 className="text-xl font-bold text-gold-500 mb-4">
+            Sent Requests ({sentRequests.length})
+          </h2>
+          {sentRequests.length === 0 ? (
+            <div className="text-center py-12">
+              <MdSend className="text-6xl text-gray-500 mx-auto mb-4" />
+              <p className="text-gray-400">No pending sent requests</p>
+              <button
+                type="button"
+                onClick={() => setShowAddFriendModal(true)}
+                className="mt-4 bg-gold-600 hover:bg-gold-700 text-dark-700 px-6 py-2 rounded-lg font-medium transition-colors"
+              >
+                Find Players
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {sentRequests.map((request) => {
+                const receiver = request.receiver;
+                return (
+                  <div
+                    key={request.id}
+                    className="bg-dark-300 p-4 rounded-lg flex items-center justify-between hover:bg-dark-400 transition-colors"
                   >
-                    <MdMessage size={16} />
-                    Message
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openReportModal(friend)}
-                    className="bg-yellow-600/20 hover:bg-yellow-600 text-yellow-500 hover:text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-                    title="Report user"
-                  >
-                    <MdFlag size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveFriend(friend.id, friend.username)}
-                    className="bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-                    title="Remove friend"
-                  >
-                    <MdPersonRemove size={16} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+                    <div className="flex items-center gap-4">
+                      <Avatar
+                        name={receiver?.full_name || receiver?.username || 'Unknown'}
+                        size="lg"
+                        src={receiver?.profile_picture}
+                      />
+                      <div>
+                        <p className="text-white font-medium">{receiver?.username || 'Unknown User'}</p>
+                        <p className="text-sm text-gray-400">
+                          {receiver?.full_name} • Sent {formatTime(request.created_at)}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant="warning" size="sm">
+                      Pending
+                    </Badge>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Add Friend Modal */}
       <Modal
@@ -368,12 +505,12 @@ export function FriendsSection() {
           setSearchQuery('');
           setSearchResults([]);
         }}
-        title="Add Friend"
+        title="Find Players"
         size="lg"
       >
         <div className="space-y-4">
           <p className="text-gray-400">
-            Search for users by username to send them a friend request.
+            Search for players by username to send them a friend request.
           </p>
 
           <div className="flex gap-2">
@@ -417,11 +554,18 @@ export function FriendsSection() {
                     </div>
                   </div>
                   <Button
-                    onClick={() => handleSendRequest(user.user_id, user.id, user.username)}
+                    onClick={() => handleSendRequest(user.id, user.username)}
                     variant="primary"
+                    disabled={sendingRequests.has(user.id)}
                   >
-                    <MdPersonAdd size={16} className="mr-1" />
-                    Add
+                    {sendingRequests.has(user.id) ? (
+                      'Sending...'
+                    ) : (
+                      <>
+                        <MdPersonAdd size={16} className="mr-1" />
+                        Add
+                      </>
+                    )}
                   </Button>
                 </div>
               ))}

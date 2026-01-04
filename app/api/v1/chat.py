@@ -120,10 +120,11 @@ async def send_image_message(
     request: Request,
     receiver_id: int = Form(...),
     file: UploadFile = File(...),
+    content: str = Form(None),  # Optional caption for the image
     current_user: models.User = Depends(auth.get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Send an image message to a friend"""
+    """Send an image message to a friend with optional caption"""
 
     # Check if they are friends
     if not check_friendship(current_user.id, receiver_id, db):
@@ -181,11 +182,12 @@ async def send_image_message(
         file_url = f"/uploads/images/{unique_filename}"
         logger.warning(f"Image saved locally (ephemeral): {file_url}")
 
-    # Create message
+    # Create message with optional caption
     message = models.Message(
         sender_id=current_user.id,
         receiver_id=receiver_id,
         message_type=models.MessageType.IMAGE,
+        content=content.strip() if content else None,  # Caption text
         file_url=file_url,
         file_name=file.filename
     )

@@ -1,5 +1,7 @@
+import { useState, useRef, useEffect } from 'react';
 import { ChatMessage as ChatMessageType } from '@/services/websocket.service';
 import PromotionMessage from './PromotionMessage';
+import { MdPlayArrow, MdPause, MdMic, MdImage, MdDownload, MdZoomOutMap } from 'react-icons/md';
 
 interface ChatMessageProps {
   message: ChatMessageType;
@@ -8,6 +10,65 @@ interface ChatMessageProps {
 }
 
 export default function ChatMessage({ message, isOwn, showAvatar = true }: ChatMessageProps) {
+  // Voice message state
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(message.duration || 0);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  // Image lightbox state
+  const [showLightbox, setShowLightbox] = useState(false);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const handleLoadedMetadata = () => setDuration(audio.duration);
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+    };
+
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('ended', handleEnded);
+
+    return () => {
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, []);
+
+  const togglePlayPause = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (isPlaying) {
+      audio.pause();
+    } else {
+      audio.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const audio = audioRef.current;
+    if (!audio || !duration) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const percentage = x / rect.width;
+    audio.currentTime = percentage * duration;
+  };
+
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -52,37 +113,150 @@ export default function ChatMessage({ message, isOwn, showAvatar = true }: ChatM
     switch (message.message_type) {
       case 'image':
         return (
-          <div className="relative">
-            <img
-              src={message.file_url}
-              alt={message.file_name || 'Image'}
-              className="max-w-xs rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-              onClick={() => window.open(message.file_url, '_blank')}
-            />
-          </div>
+          <>
+            <div className="relative group">
+              <img
+                src={message.file_url}
+                alt={message.file_name || 'Image'}
+                className="max-w-[280px] max-h-[300px] rounded-lg cursor-pointer object-cover shadow-lg transition-transform hover:scale-[1.02]"
+                onClick={() => setShowLightbox(true)}
+              />
+              {/* Image overlay with actions */}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100">
+                <button
+                  type="button"
+                  onClick={() => setShowLightbox(true)}
+                  className="p-2 bg-white/20 backdrop-blur-sm rounded-full mx-1 hover:bg-white/30 transition-colors"
+                  title="View full size"
+                >
+                  <MdZoomOutMap className="w-5 h-5 text-white" />
+                </button>
+                <a
+                  href={message.file_url}
+                  download={message.file_name || 'image'}
+                  className="p-2 bg-white/20 backdrop-blur-sm rounded-full mx-1 hover:bg-white/30 transition-colors"
+                  title="Download"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MdDownload className="w-5 h-5 text-white" />
+                </a>
+              </div>
+              {/* Image icon indicator */}
+              <div className="absolute bottom-2 left-2 bg-black/50 backdrop-blur-sm rounded-full p-1">
+                <MdImage className="w-4 h-4 text-white/80" />
+              </div>
+            </div>
+            {/* Caption if any */}
+            {message.content && (
+              <p className="text-white mt-2 text-sm">{message.content}</p>
+            )}
+            {/* Lightbox */}
+            {showLightbox && (
+              <div
+                className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+                onClick={() => setShowLightbox(false)}
+              >
+                <div className="relative max-w-full max-h-full">
+                  <img
+                    src={message.file_url}
+                    alt={message.file_name || 'Image'}
+                    className="max-w-full max-h-[90vh] object-contain rounded-lg"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowLightbox(false)}
+                    className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+                  >
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                    <a
+                      href={message.file_url}
+                      download={message.file_name || 'image'}
+                      className="px-4 py-2 bg-gold-500 hover:bg-gold-600 text-dark-700 rounded-lg font-medium flex items-center gap-2 transition-colors"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <MdDownload className="w-5 h-5" />
+                      Download
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         );
 
       case 'voice':
+        const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
         return (
-          <div className="flex items-center space-x-3 min-w-[200px]">
+          <div className={`flex items-center gap-3 min-w-[240px] p-2 rounded-xl ${
+            isOwn ? 'bg-yellow-600/20' : 'bg-dark-400/50'
+          }`}>
+            {/* Play/Pause button */}
             <button
               type="button"
-              title="Play voice message"
-              className="p-2 bg-yellow-500/20 rounded-full hover:bg-yellow-500/30 transition-colors"
+              onClick={togglePlayPause}
+              className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                isOwn
+                  ? 'bg-yellow-500 hover:bg-yellow-400 text-dark-700'
+                  : 'bg-gold-500 hover:bg-gold-400 text-dark-700'
+              } shadow-lg`}
+              title={isPlaying ? 'Pause' : 'Play'}
             >
-              <svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
-              </svg>
+              {isPlaying ? (
+                <MdPause className="w-6 h-6" />
+              ) : (
+                <MdPlayArrow className="w-6 h-6 ml-0.5" />
+              )}
             </button>
+
+            {/* Waveform / Progress */}
             <div className="flex-1">
-              <div className="h-1 bg-gray-600 rounded-full">
-                <div className="h-1 bg-yellow-500 rounded-full w-0"></div>
+              {/* Progress bar with waveform effect */}
+              <div
+                className="relative h-8 cursor-pointer group"
+                onClick={handleProgressClick}
+              >
+                {/* Waveform bars background */}
+                <div className="absolute inset-0 flex items-center gap-[2px]">
+                  {[...Array(24)].map((_, i) => {
+                    const height = 20 + Math.sin(i * 0.8) * 15 + Math.random() * 10;
+                    const isActive = (i / 24) * 100 <= progress;
+                    return (
+                      <div
+                        key={i}
+                        className={`flex-1 rounded-full transition-colors ${
+                          isActive
+                            ? isOwn ? 'bg-yellow-500' : 'bg-gold-500'
+                            : 'bg-gray-500/40'
+                        }`}
+                        style={{ height: `${height}%` }}
+                      />
+                    );
+                  })}
+                </div>
               </div>
-              <p className="text-xs text-gray-400 mt-1">
-                {message.duration ? `${Math.floor(message.duration / 60)}:${(message.duration % 60).toString().padStart(2, '0')}` : '0:00'}
-              </p>
+
+              {/* Time display */}
+              <div className="flex justify-between items-center mt-1">
+                <span className={`text-xs font-medium ${isOwn ? 'text-yellow-200' : 'text-gray-300'}`}>
+                  {formatDuration(currentTime)}
+                </span>
+                <span className={`text-xs ${isOwn ? 'text-yellow-200/70' : 'text-gray-400'}`}>
+                  {formatDuration(duration)}
+                </span>
+              </div>
             </div>
-            <audio src={message.file_url} className="hidden" />
+
+            {/* Mic icon */}
+            <div className={`flex-shrink-0 ${isOwn ? 'text-yellow-300' : 'text-gold-400'}`}>
+              <MdMic className="w-5 h-5" />
+            </div>
+
+            {/* Hidden audio element */}
+            <audio ref={audioRef} src={message.file_url} preload="metadata" />
           </div>
         );
 

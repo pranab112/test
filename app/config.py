@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     # Contact form email
     CONTACT_EMAIL: Optional[str] = None
 
+    # App/Frontend URL for referral links, etc.
+    APP_URL: str = "http://localhost:5173"
+
     # Allow unknown/extra environment variables (e.g., placeholders in .env) to be ignored
     model_config = ConfigDict(extra="ignore", env_file=".env", case_sensitive=False)
 

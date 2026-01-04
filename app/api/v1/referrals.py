@@ -36,10 +36,13 @@ def generate_referral_code(length: int = 8) -> str:
 
 
 def get_referral_link(referral_code: str) -> str:
-    """Generate the full referral link"""
-    # Use frontend URL from settings if available, otherwise use a placeholder
-    base_url = getattr(settings, 'FRONTEND_URL', 'https://app.example.com')
-    return f"{base_url}/register?ref={referral_code}"
+    """Generate the full referral link using APP_URL from settings"""
+    # Use APP_URL from env/settings - this should be the frontend URL
+    app_url = settings.APP_URL.rstrip('/')
+    # Ensure https:// prefix if it's a domain without protocol
+    if not app_url.startswith('http://') and not app_url.startswith('https://'):
+        app_url = f"https://{app_url}"
+    return f"{app_url}/register?ref={referral_code}"
 
 
 @router.get("/my-code", response_model=ReferralCodeResponse)

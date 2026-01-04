@@ -68,11 +68,14 @@ export const chatApi = {
     return response as any;
   },
 
-  // Send image message
-  sendImageMessage: async (receiverId: number, file: File): Promise<MessageResponse> => {
+  // Send image message with optional caption
+  sendImageMessage: async (receiverId: number, file: File, caption?: string): Promise<MessageResponse> => {
     const formData = new FormData();
     formData.append('receiver_id', receiverId.toString());
     formData.append('file', file);
+    if (caption?.trim()) {
+      formData.append('content', caption.trim());
+    }
 
     // Don't set Content-Type header manually - axios will set it with proper boundary for FormData
     const response = await apiClient.post('/chat/send/image', formData);
