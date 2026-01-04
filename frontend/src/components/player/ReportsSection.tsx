@@ -59,17 +59,11 @@ export function ReportsSection() {
     reason: '',
   });
 
-  // Load reports on mount
+  // Load reports and friends on mount
   useEffect(() => {
     loadReports();
+    loadFriends(); // Pre-load friends so dropdown works immediately
   }, []);
-
-  // Load friends when report_client tab is selected
-  useEffect(() => {
-    if (activeTab === 'report_client' && friends.length === 0) {
-      loadFriends();
-    }
-  }, [activeTab]);
 
   const loadReports = async () => {
     setLoadingReports(true);

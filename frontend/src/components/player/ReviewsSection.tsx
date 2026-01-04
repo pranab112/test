@@ -53,17 +53,11 @@ export function ReviewsSection() {
     comment: '',
   });
 
-  // Load reviews on mount
+  // Load reviews and friends on mount
   useEffect(() => {
     loadReviews();
+    loadFriends(); // Pre-load friends so dropdown works immediately
   }, []);
-
-  // Load friends when review_clients tab is selected
-  useEffect(() => {
-    if (activeTab === 'review_clients' && friends.length === 0) {
-      loadFriends();
-    }
-  }, [activeTab]);
 
   const loadReviews = async () => {
     setLoadingReviews(true);
