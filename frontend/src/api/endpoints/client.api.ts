@@ -105,6 +105,21 @@ export interface ClientGameUpdateRequest {
   is_active?: boolean;
 }
 
+// Player Payment Preferences (for client view)
+export interface PaymentMethodDetail {
+  method_id: number;
+  method_name: string;
+  method_display_name: string;
+  account_info?: string;
+}
+
+export interface PlayerPaymentPreferencesSummary {
+  player_id: number;
+  player_username: string;
+  receive_methods: PaymentMethodDetail[];
+  send_methods: PaymentMethodDetail[];
+}
+
 export const clientApi = {
   // Player Registration
   registerPlayer: async (player: PlayerCreateRequest): Promise<PlayerRegistrationResponse> => {
@@ -152,6 +167,12 @@ export const clientApi = {
 
   updateClientGame: async (clientGameId: number, data: ClientGameUpdateRequest): Promise<ClientGameWithDetails> => {
     const response = await apiClient.patch(`/games/my-games/${clientGameId}`, data);
+    return response as any;
+  },
+
+  // Player Payment Preferences
+  getPlayerPaymentPreferences: async (playerId: number): Promise<PlayerPaymentPreferencesSummary> => {
+    const response = await apiClient.get(`/payment-methods/player/${playerId}/preferences`);
     return response as any;
   },
 };

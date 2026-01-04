@@ -19,10 +19,13 @@ class PromotionCreate(BaseModel):
 class PromotionUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
+    value: Optional[int] = None
     max_claims_per_player: Optional[int] = None
     total_budget: Optional[int] = None
+    min_player_level: Optional[int] = None
     end_date: Optional[datetime] = None
     terms: Optional[str] = None
+    wagering_requirement: Optional[int] = None
     status: Optional[PromotionStatus] = None
 
 class PromotionResponse(BaseModel):

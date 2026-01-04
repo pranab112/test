@@ -28,7 +28,7 @@ from app.models.review import Review
 from app.models.promotion import Promotion, PromotionClaim
 from app.models.game import Game, ClientGame, GameCredentials
 from app.models.wallet import PlayerWallet
-from app.models.payment import PaymentMethod, ClientPaymentMethod
+from app.models.payment import PaymentMethod, ClientPaymentMethod, PlayerPaymentPreference
 from app.models.report import Report
 from app.models.offer import PlatformOffer, OfferClaim
 from app.models.ticket import Ticket, TicketMessage
@@ -67,6 +67,7 @@ __all__ = [
     "PlayerWallet",
     "PaymentMethod",
     "ClientPaymentMethod",
+    "PlayerPaymentPreference",
     "Report",
     "PlatformOffer",
     "OfferClaim",

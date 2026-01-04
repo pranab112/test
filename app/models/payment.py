@@ -34,3 +34,25 @@ class ClientPaymentMethod(Base):
     __table_args__ = (
         UniqueConstraint('client_id', 'payment_method_id', name='unique_client_payment_method'),
     )
+
+
+class PlayerPaymentPreference(Base):
+    """Player's preferred payment methods for receiving and sending"""
+    __tablename__ = "player_payment_preferences"
+
+    id = Column(Integer, primary_key=True, index=True)
+    player_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True)
+
+    # Payment method preferences (stores JSON array of payment method IDs)
+    receive_methods = Column(String, default='[]')  # JSON array of payment method IDs player can receive
+    send_methods = Column(String, default='[]')  # JSON array of payment method IDs player can send
+
+    # Additional details for each method (JSON with method_id -> account details)
+    receive_details = Column(String, default='{}')  # JSON: {"1": "player@paypal.com", "2": "bc1qxxx..."}
+    send_details = Column(String, default='{}')  # JSON: {"1": "player@paypal.com"}
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationship
+    player = relationship("User", backref="payment_preferences")

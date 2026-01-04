@@ -60,7 +60,11 @@ from app.schemas.payment import (
     PaymentMethodResponse,
     ClientPaymentMethodUpdate,
     ClientPaymentMethodResponse,
-    ClientPaymentMethodsResponse
+    ClientPaymentMethodsResponse,
+    PaymentMethodDetail,
+    PlayerPaymentPreferencesUpdate,
+    PlayerPaymentPreferencesResponse,
+    PlayerPaymentPreferencesSummary
 )
 from app.schemas.report import (
     ReportCreate,
@@ -177,6 +181,10 @@ __all__ = [
     "ClientPaymentMethodUpdate",
     "ClientPaymentMethodResponse",
     "ClientPaymentMethodsResponse",
+    "PaymentMethodDetail",
+    "PlayerPaymentPreferencesUpdate",
+    "PlayerPaymentPreferencesResponse",
+    "PlayerPaymentPreferencesSummary",
     # Report
     "ReportCreate",
     "ReportUpdate",

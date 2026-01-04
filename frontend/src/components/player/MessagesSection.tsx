@@ -3,7 +3,7 @@ import { Avatar } from '@/components/common/Avatar';
 import { Badge } from '@/components/common/Badge';
 import { Button } from '@/components/common/Button';
 import toast from 'react-hot-toast';
-import { MdMessage, MdSend, MdContentCopy, MdVisibility, MdVisibilityOff, MdRefresh, MdImage, MdMic, MdClose } from 'react-icons/md';
+import { MdMessage, MdSend, MdContentCopy, MdVisibility, MdVisibilityOff, MdRefresh, MdImage, MdMic, MdClose, MdSettings } from 'react-icons/md';
 import { FaKey } from 'react-icons/fa';
 import { useDashboard } from '@/contexts/DashboardContext';
 import { chatApi, type Conversation, type Message } from '@/api/endpoints/chat.api';
@@ -27,6 +27,11 @@ export function MessagesSection() {
   const [loadingCredentials, setLoadingCredentials] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const currentRoomRef = useRef<string | null>(null);
+
+  // Credentials modal state (per client)
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [selectedClientCredentials, setSelectedClientCredentials] = useState<GameCredential[]>([]);
+  const [loadingClientCredentials, setLoadingClientCredentials] = useState(false);
 
   // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -55,6 +60,22 @@ export function MessagesSection() {
       console.error('Failed to load credentials:', error);
     } finally {
       setLoadingCredentials(false);
+    }
+  };
+
+  const openClientCredentials = async (_clientId: number) => {
+    setShowCredentialsModal(true);
+    setLoadingClientCredentials(true);
+    try {
+      // Get credentials assigned by this client
+      // Currently fetches all credentials - can be filtered by client ID when API supports it
+      const allCredentials = await gameCredentialsApi.getMyCredentials();
+      setSelectedClientCredentials(allCredentials);
+    } catch (error) {
+      console.error('Failed to load client credentials:', error);
+      toast.error('Failed to load credentials');
+    } finally {
+      setLoadingClientCredentials(false);
     }
   };
 
@@ -539,22 +560,33 @@ export function MessagesSection() {
               <>
                 {/* Chat Header */}
                 <div className="p-4 bg-gradient-to-r from-dark-300 to-dark-200 border-b border-gold-700 flex-shrink-0">
-                  <div className="flex items-center gap-3">
-                    <Avatar
-                      name={selectedConversation.friend.full_name || selectedConversation.friend.username}
-                      size="sm"
-                      online={selectedConversation.friend.is_online}
-                      src={selectedConversation.friend.profile_picture}
-                    />
-                    <div>
-                      <p className="font-bold text-white">{selectedConversation.friend.username}</p>
-                      <p className="text-xs text-gray-400">
-                        {selectedConversation.friend.full_name}
-                        {selectedConversation.friend.is_online && (
-                          <span className="text-green-500 ml-2">● Online</span>
-                        )}
-                      </p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Avatar
+                        name={selectedConversation.friend.full_name || selectedConversation.friend.username}
+                        size="sm"
+                        online={selectedConversation.friend.is_online}
+                        src={selectedConversation.friend.profile_picture}
+                      />
+                      <div>
+                        <p className="font-bold text-white">{selectedConversation.friend.username}</p>
+                        <p className="text-xs text-gray-400">
+                          {selectedConversation.friend.full_name}
+                          {selectedConversation.friend.is_online && (
+                            <span className="text-green-500 ml-2">● Online</span>
+                          )}
+                        </p>
+                      </div>
                     </div>
+                    {/* Credentials/Settings button */}
+                    <button
+                      type="button"
+                      onClick={() => openClientCredentials(selectedConversation.friend.id)}
+                      className="bg-dark-400 hover:bg-dark-300 text-gold-500 p-2 rounded-lg transition-colors"
+                      title="View Game Credentials"
+                    >
+                      <MdSettings size={20} />
+                    </button>
                   </div>
                 </div>
 
@@ -722,6 +754,123 @@ export function MessagesSection() {
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Credentials Modal */}
+      {showCredentialsModal && selectedConversation && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-dark-200 border-2 border-gold-700 rounded-lg w-full max-w-lg max-h-[80vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="p-4 border-b border-gold-700 bg-gradient-to-r from-dark-300 to-dark-200 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Avatar
+                  name={selectedConversation.friend.full_name || selectedConversation.friend.username}
+                  size="sm"
+                  src={selectedConversation.friend.profile_picture}
+                />
+                <div>
+                  <h3 className="font-bold text-gold-500">
+                    Game Credentials
+                  </h3>
+                  <p className="text-xs text-gray-400">from {selectedConversation.friend.username}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCredentialsModal(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+                title="Close"
+              >
+                <MdClose size={24} />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-4 overflow-y-auto max-h-[calc(80vh-80px)]">
+              {loadingClientCredentials ? (
+                <div className="text-center py-8 text-gray-400">Loading credentials...</div>
+              ) : selectedClientCredentials.length === 0 ? (
+                <div className="text-center py-8">
+                  <FaKey className="text-4xl text-gray-600 mx-auto mb-2" />
+                  <p className="text-gray-400">No credentials available</p>
+                  <p className="text-sm text-gray-500">Your client hasn't set up any game credentials for you yet</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {selectedClientCredentials.map((cred) => (
+                    <CredentialCard key={cred.id} credential={cred} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Full credential card for modal
+function CredentialCard({ credential }: { credential: GameCredential }) {
+  const [showPassword, setShowPassword] = useState(false);
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copied`);
+  };
+
+  return (
+    <div className="bg-dark-300 border-2 border-gold-700 rounded-lg p-4">
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <h3 className="font-bold text-gold-500">{credential.game_name}</h3>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        {/* Username */}
+        <div className="bg-dark-200 rounded-lg p-2">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs text-gray-400">Username</span>
+            <button
+              type="button"
+              onClick={() => copyToClipboard(credential.game_username, 'Username')}
+              className="text-gold-500 hover:text-gold-400 transition-colors"
+              title="Copy username"
+            >
+              <MdContentCopy size={14} />
+            </button>
+          </div>
+          <p className="text-white font-mono text-sm truncate">{credential.game_username}</p>
+        </div>
+
+        {/* Password */}
+        <div className="bg-dark-200 rounded-lg p-2">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs text-gray-400">Password</span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="text-gold-500 hover:text-gold-400 transition-colors"
+                title={showPassword ? 'Hide' : 'Show'}
+              >
+                {showPassword ? <MdVisibilityOff size={14} /> : <MdVisibility size={14} />}
+              </button>
+              <button
+                type="button"
+                onClick={() => copyToClipboard(credential.game_password, 'Password')}
+                className="text-gold-500 hover:text-gold-400 transition-colors"
+                title="Copy password"
+              >
+                <MdContentCopy size={14} />
+              </button>
+            </div>
+          </div>
+          <p className="text-white font-mono text-sm truncate">
+            {showPassword ? credential.game_password : '••••••••'}
+          </p>
         </div>
       </div>
     </div>
