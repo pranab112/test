@@ -1,0 +1,214 @@
+// User Types
+export enum UserType {
+  CLIENT = 'client',
+  PLAYER = 'player',
+  ADMIN = 'admin',
+}
+
+// Auth Types
+export interface LoginRequest {
+  username: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  email: string;
+  username: string;
+  password: string;
+  full_name?: string;
+  user_type: UserType;
+  company_name?: string;
+}
+
+export interface TokenResponse {
+  access_token: string;
+  token_type: string;
+  user_type: UserType;
+}
+
+export interface User {
+  id: number;
+  user_id: string;
+  email?: string;
+  username: string;
+  full_name?: string;
+  user_type: UserType;
+  is_active: boolean;
+  created_at: string;
+  company_name?: string;
+  player_level?: number;
+  credits?: number;
+  profile_picture?: string;
+  is_online?: boolean;
+  last_seen?: string;
+  is_email_verified?: boolean;
+  secondary_email?: string;
+  two_factor_enabled?: boolean;
+  bio?: string;
+}
+
+// Game Types
+export interface Game {
+  id: number;
+  name: string;
+  display_name: string;
+  icon_url: string | null;
+  category: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface ClientGame {
+  id: number;
+  client_id: number;
+  game_id: number;
+  is_active: boolean;
+  game_link?: string;
+  custom_image_url?: string;
+  created_at: string;
+  updated_at?: string;
+  game?: Game;
+}
+
+// Offer Types
+export type OfferType =
+  | 'email_verification'
+  | 'profile_completion'
+  | 'first_deposit'
+  | 'referral'
+  | 'loyalty'
+  | 'special_event';
+
+export type OfferStatus = 'active' | 'inactive' | 'expired';
+export type OfferClaimStatus = 'pending' | 'approved' | 'rejected' | 'completed';
+
+export interface PlatformOffer {
+  id: number;
+  title: string;
+  description: string;
+  offer_type: OfferType;
+  bonus_amount: number;
+  requirement_description?: string;
+  max_claims?: number;
+  max_claims_per_player: number;
+  status: OfferStatus;
+  start_date: string;
+  end_date?: string;
+  created_at: string;
+  total_claims?: number;
+}
+
+export interface OfferClaim {
+  id: number;
+  offer_id: number;
+  player_id: number;
+  client_id: number;
+  status: OfferClaimStatus;
+  bonus_amount: number;
+  verification_data?: string;
+  claimed_at: string;
+  processed_at?: string;
+  offer_title?: string;
+  client_name?: string;
+  player_name?: string;
+}
+
+// Friend Types
+export interface Friend {
+  id: number;
+  username: string;
+  full_name: string;
+  email?: string;
+  user_type: string;
+  profile_picture?: string;
+  is_online: boolean;
+  player_level?: number;
+  credits?: number;
+  created_at: string;
+}
+
+export interface FriendRequest {
+  id: number;
+  requester_id: number;
+  receiver_id: number;
+  status: 'pending' | 'accepted' | 'rejected';
+  created_at: string;
+  requester?: {
+    id: number;
+    username: string;
+    full_name: string;
+    profile_picture?: string;
+  };
+  receiver?: {
+    id: number;
+    username: string;
+    full_name: string;
+    profile_picture?: string;
+  };
+}
+
+// Chat Types
+export interface Message {
+  id: number;
+  sender_id: number;
+  receiver_id: number;
+  message_type: 'text' | 'image' | 'voice' | 'promotion';
+  content?: string;
+  file_url?: string;
+  file_name?: string;
+  duration?: number;
+  is_read: boolean;
+  created_at: string;
+  sender?: {
+    id: number;
+    username: string;
+    full_name?: string;
+    profile_picture?: string;
+  };
+}
+
+export interface Conversation {
+  friend: Friend;
+  last_message?: Message;
+  unread_count: number;
+}
+
+export interface MessageListResponse {
+  messages: Message[];
+  unread_count: number;
+}
+
+// Promotion Types
+export interface Promotion {
+  id: number;
+  title: string;
+  description: string;
+  image_url?: string;
+  start_date: string;
+  end_date?: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+// Client Dashboard Types
+export interface DashboardStats {
+  total_players: number;
+  active_players: number;
+  total_games: number;
+  pending_claims: number;
+}
+
+// API Response Types
+export interface ApiError {
+  success: false;
+  error: {
+    code: string;
+    message: string;
+  };
+}
+
+export interface ApiSuccess<T> {
+  success: true;
+  data: T;
+}
