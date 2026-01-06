@@ -147,7 +147,17 @@ export function PromotionsSection() {
 
     setLoading(true);
     try {
-      // Note: Backend doesn't have update endpoint yet, this is a placeholder
+      await apiClient.put(`/promotions/${selectedPromotion.id}/update`, {
+        title: formData.title,
+        description: formData.description,
+        value: parseInt(formData.value),
+        max_claims_per_player: parseInt(formData.max_claims_per_player) || 1,
+        total_budget: formData.total_budget ? parseInt(formData.total_budget) : null,
+        min_player_level: parseInt(formData.min_player_level) || 1,
+        end_date: formData.end_date,
+        terms: formData.terms || null,
+        wagering_requirement: parseInt(formData.wagering_requirement) || 1,
+      });
       toast.success('Promotion updated successfully');
       setShowEditModal(false);
       setSelectedPromotion(null);
@@ -618,10 +628,13 @@ export function PromotionsSection() {
               className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-gold-500"
             />
           </div>
-          <div className="bg-blue-900/30 border border-blue-500 rounded-lg p-3">
+          <div className="bg-blue-900/30 border border-blue-500 rounded-lg p-3 space-y-2">
             <p className="text-sm text-blue-300">
               <strong>Note:</strong> This is a manual promotion. When players claim it, you will need to approve/reject
-              their claims. Any rewards must be sent manually outside this platform.
+              their claims. Credits will be deducted from your balance when you approve claims.
+            </p>
+            <p className="text-sm text-yellow-300">
+              <strong>Budget:</strong> If left empty, budget will be set to your current credit balance. Budget cannot exceed your credits.
             </p>
           </div>
           <div className="flex gap-3 pt-4">
@@ -683,12 +696,52 @@ export function PromotionsSection() {
               onChange={(e) => setFormData({ ...formData, max_claims_per_player: e.target.value })}
             />
           </div>
-          <Input
-            label="End Date"
-            type="date"
-            value={formData.end_date}
-            onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="End Date"
+              type="date"
+              value={formData.end_date}
+              onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+            />
+            <Input
+              label="Total Budget"
+              type="number"
+              value={formData.total_budget}
+              onChange={(e) => setFormData({ ...formData, total_budget: e.target.value })}
+              placeholder="Leave empty to use your credits"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Minimum Player Level"
+              type="number"
+              value={formData.min_player_level}
+              onChange={(e) => setFormData({ ...formData, min_player_level: e.target.value })}
+              placeholder="1"
+            />
+            <Input
+              label="Wagering Requirement (multiplier)"
+              type="number"
+              value={formData.wagering_requirement}
+              onChange={(e) => setFormData({ ...formData, wagering_requirement: e.target.value })}
+              placeholder="1"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Terms & Conditions (optional)</label>
+            <textarea
+              value={formData.terms}
+              onChange={(e) => setFormData({ ...formData, terms: e.target.value })}
+              placeholder="Enter terms and conditions..."
+              rows={2}
+              className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-gold-500"
+            />
+          </div>
+          <div className="bg-yellow-900/30 border border-yellow-500 rounded-lg p-3">
+            <p className="text-sm text-yellow-300">
+              <strong>Note:</strong> Budget will be capped to your current credit balance. Credits will be deducted when claims are approved.
+            </p>
+          </div>
           <div className="flex gap-3 pt-4">
             <Button
               variant="secondary"

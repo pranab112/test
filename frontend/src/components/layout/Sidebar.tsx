@@ -47,6 +47,7 @@ export function Sidebar({ activeSection, onSectionChange, isMobile = false }: Si
       return [
         { id: 'dashboard', label: 'Dashboard', icon: MdDashboard },
         { id: 'players', label: 'Players', icon: MdPeople },
+        { id: 'approvals', label: 'Approvals', icon: MdCheckCircle },
         { id: 'games', label: 'Games Library', icon: FaGamepad },
         { id: 'promotions', label: 'Promotions', icon: MdCardGiftcard },
         { id: 'analytics', label: 'Analytics', icon: FaChartLine },

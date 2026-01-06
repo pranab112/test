@@ -525,3 +525,77 @@ def reject_player(
     db.commit()
 
     return {"message": f"Player registration for {username} has been rejected"}
+
+
+@router.patch("/block-player/{player_id}")
+def block_player(
+    player_id: int,
+    client: models.User = Depends(get_client_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Block/unblock a player. Blocked players cannot access the platform.
+    """
+    player = db.query(models.User).filter(
+        models.User.id == player_id,
+        models.User.user_type == UserType.PLAYER
+    ).first()
+
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+
+    # Check if this client can block this player
+    if player.created_by_client_id != client.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only block players who are registered under your account"
+        )
+
+    # Toggle the is_active status (block/unblock)
+    player.is_active = not player.is_active
+    action = "unblocked" if player.is_active else "blocked"
+
+    db.commit()
+    db.refresh(player)
+
+    return {
+        "message": f"Player {player.username} has been {action}",
+        "is_active": player.is_active
+    }
+
+
+@router.post("/reset-player-password/{player_id}")
+def reset_player_password(
+    player_id: int,
+    new_password: Optional[str] = None,
+    client: models.User = Depends(get_client_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Reset a player's password. If no password provided, generates username@135.
+    """
+    player = db.query(models.User).filter(
+        models.User.id == player_id,
+        models.User.user_type == UserType.PLAYER
+    ).first()
+
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+
+    # Check if this client can reset this player's password
+    if player.created_by_client_id != client.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only reset passwords for players registered under your account"
+        )
+
+    # Generate password as username@135 if not provided
+    password = new_password if new_password else f"{player.username}@135"
+    player.hashed_password = auth.get_password_hash(password)
+
+    db.commit()
+
+    return {
+        "message": f"Password reset for {player.username}",
+        "temp_password": password if not new_password else None
+    }

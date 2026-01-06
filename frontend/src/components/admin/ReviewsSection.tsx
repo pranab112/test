@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { DataTable } from '@/components/common/DataTable';
 import toast from 'react-hot-toast';
 import { MdStar, MdCheck, MdClose, MdInfo, MdFilterList } from 'react-icons/md';
-import { adminApi, type Review, type ReviewStatus } from '@/api/endpoints';
+import { adminApi, type AdminReview, type ReviewStatus } from '@/api/endpoints';
 
 const STATUS_COLORS: Record<ReviewStatus, string> = {
   pending: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50',
@@ -12,7 +12,7 @@ const STATUS_COLORS: Record<ReviewStatus, string> = {
 };
 
 export function ReviewsSection() {
-  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviews, setReviews] = useState<AdminReview[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<ReviewStatus | ''>('');
   const [counts, setCounts] = useState({
@@ -21,7 +21,7 @@ export function ReviewsSection() {
     rejected: 0,
     disputed: 0,
   });
-  const [selectedReview, setSelectedReview] = useState<Review | null>(null);
+  const [selectedReview, setSelectedReview] = useState<AdminReview | null>(null);
   const [moderationNotes, setModerationNotes] = useState('');
   const [showModal, setShowModal] = useState(false);
 
@@ -65,7 +65,7 @@ export function ReviewsSection() {
     }
   };
 
-  const openModerationModal = (review: Review) => {
+  const openModerationModal = (review: AdminReview) => {
     setSelectedReview(review);
     setModerationNotes('');
     setShowModal(true);
@@ -75,17 +75,17 @@ export function ReviewsSection() {
     {
       key: 'reviewer',
       label: 'Reviewer',
-      render: (review: Review) => review.reviewer?.username || 'Unknown',
+      render: (review: AdminReview) => review.reviewer?.username || 'Unknown',
     },
     {
       key: 'reviewee',
       label: 'Reviewee',
-      render: (review: Review) => review.reviewee?.username || 'Unknown',
+      render: (review: AdminReview) => review.reviewee?.username || 'Unknown',
     },
     {
       key: 'rating',
       label: 'Rating',
-      render: (review: Review) => (
+      render: (review: AdminReview) => (
         <div className="flex items-center gap-1">
           <MdStar className="text-gold-500" />
           <span className="font-medium">{review.rating}/5</span>
@@ -96,7 +96,7 @@ export function ReviewsSection() {
     {
       key: 'status',
       label: 'Status',
-      render: (review: Review) => (
+      render: (review: AdminReview) => (
         <span className={`px-2 py-1 rounded-full text-xs border ${STATUS_COLORS[review.status]}`}>
           {review.status.toUpperCase()}
         </span>
@@ -105,12 +105,12 @@ export function ReviewsSection() {
     {
       key: 'created_at',
       label: 'Date',
-      render: (review: Review) => new Date(review.created_at).toLocaleDateString(),
+      render: (review: AdminReview) => new Date(review.created_at).toLocaleDateString(),
     },
     {
       key: 'actions',
       label: 'Actions',
-      render: (review: Review) => (
+      render: (review: AdminReview) => (
         <div className="flex gap-2">
           {review.status === 'pending' && (
             <>

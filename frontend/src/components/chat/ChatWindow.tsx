@@ -38,7 +38,7 @@ export default function ChatWindow({ friend, onClose }: ChatWindowProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const roomId = getRoomId(friend.id);
   const isOnline = onlineUsers.get(friend.id)?.is_online ?? friend.is_online ?? false;

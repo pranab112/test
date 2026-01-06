@@ -2,15 +2,22 @@ import { useState, useEffect } from 'react';
 import { StatCard } from '@/components/common/StatCard';
 import toast from 'react-hot-toast';
 import {
-  MdPeople, MdCardGiftcard, MdGroup
+  MdPeople, MdCardGiftcard, MdGroup, MdAttachMoney
 } from 'react-icons/md';
 import { FaChartLine, FaUserPlus } from 'react-icons/fa';
 import { clientApi, type PlayerStats, type ActivityItem } from '@/api/endpoints';
+import { apiClient } from '@/api/client';
+
+interface BalanceInfo {
+  credits: number;
+  dollar_value: number;
+}
 
 export function DashboardSection() {
   const [stats, setStats] = useState<PlayerStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
+  const [balance, setBalance] = useState<BalanceInfo>({ credits: 0, dollar_value: 0 });
 
   useEffect(() => {
     loadDashboardData();
@@ -21,12 +28,14 @@ export function DashboardSection() {
 
   const loadDashboardData = async () => {
     try {
-      const [statsData, activityData] = await Promise.all([
+      const [statsData, activityData, balanceData] = await Promise.all([
         clientApi.getPlayerStats(),
         clientApi.getRecentActivity(),
+        apiClient.get('/offers/my-balance') as Promise<BalanceInfo>,
       ]);
       setStats(statsData);
       setRecentActivity(activityData.activities || []);
+      setBalance(balanceData);
     } catch (error: any) {
       toast.error('Failed to load dashboard data');
       console.error(error);
@@ -49,40 +58,41 @@ export function DashboardSection() {
 
   const statCards = [
     {
+      title: 'My Credits',
+      value: balance.credits.toLocaleString(),
+      icon: <MdCardGiftcard />,
+      color: 'gold' as const,
+      subtitle: `$${balance.dollar_value.toFixed(2)}`,
+    },
+    {
+      title: 'My Balance (USD)',
+      value: `$${balance.dollar_value.toFixed(2)}`,
+      icon: <MdAttachMoney />,
+      color: 'green' as const,
+    },
+    {
       title: 'Total Players',
       value: stats.total_players.toString(),
       icon: <MdPeople />,
-      color: 'gold' as const,
+      color: 'blue' as const,
     },
     {
       title: 'Active Players',
       value: stats.active_players.toString(),
       icon: <FaUserPlus />,
-      color: 'green' as const,
+      color: 'purple' as const,
     },
     {
       title: 'Online Players',
       value: stats.online_players.toString(),
       icon: <MdGroup />,
-      color: 'blue' as const,
-    },
-    {
-      title: 'Total Credits',
-      value: stats.total_credits.toLocaleString(),
-      icon: <MdCardGiftcard />,
-      color: 'purple' as const,
+      color: 'gold' as const,
     },
     {
       title: 'Avg Player Level',
       value: stats.avg_level.toFixed(1),
       icon: <FaChartLine />,
-      color: 'gold' as const,
-    },
-    {
-      title: 'Avg Credits',
-      value: Math.round(stats.avg_credits).toLocaleString(),
-      icon: <MdCardGiftcard />,
-      color: 'green' as const,
+      color: 'blue' as const,
     },
   ];
 

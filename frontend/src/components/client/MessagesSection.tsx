@@ -21,6 +21,7 @@ import { FaKey, FaUser, FaGamepad, FaLink } from 'react-icons/fa';
 import { chatApi, type Conversation, type Message } from '@/api/endpoints';
 import { gamesApi, type ClientGame } from '@/api/endpoints/games.api';
 import { gameCredentialsApi, type GameCredential } from '@/api/endpoints/gameCredentials.api';
+import { gameCredentialsApi, type GameCredential } from '@/api/endpoints/gameCredentials.api';
 import { useAuth } from '@/contexts/AuthContext';
 import { getFileUrl } from '@/config/api.config';
 
@@ -46,8 +47,8 @@ export function MessagesSection() {
   const [editingCredential, setEditingCredential] = useState<GameCredential | null>(null);
   const [credentialForm, setCredentialForm] = useState({
     game_id: 0,
-    username: '',
-    password: '',
+    game_username: '',
+    game_password: '',
   });
   const [savingCredential, setSavingCredential] = useState(false);
 
@@ -56,7 +57,7 @@ export function MessagesSection() {
   const [recordingDuration, setRecordingDuration] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const recordingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Image attachment state
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -339,8 +340,8 @@ export function MessagesSection() {
     setEditingCredential(null);
     setCredentialForm({
       game_id: clientGames.length > 0 ? clientGames[0].game_id : 0,
-      username: '',
-      password: '',
+      game_username: '',
+      game_password: '',
     });
     setShowCredentialForm(true);
   };
@@ -357,7 +358,7 @@ export function MessagesSection() {
 
   const handleSaveCredential = async () => {
     if (!selectedConversation) return;
-    if (!credentialForm.game_id || !credentialForm.username || !credentialForm.password) {
+    if (!credentialForm.game_id || !credentialForm.game_username || !credentialForm.game_password) {
       toast.error('Please fill in all fields');
       return;
     }
@@ -367,8 +368,8 @@ export function MessagesSection() {
       if (editingCredential) {
         // Update existing
         const updated = await gameCredentialsApi.updateCredential(editingCredential.id, {
-          username: credentialForm.username,
-          password: credentialForm.password,
+          game_username: credentialForm.game_username,
+          game_password: credentialForm.game_password,
         });
         setPlayerCredentials(prev =>
           prev.map(c => c.id === editingCredential.id ? updated : c)
@@ -379,8 +380,8 @@ export function MessagesSection() {
         const created = await gameCredentialsApi.createCredential({
           player_id: selectedConversation.friend.id,
           game_id: credentialForm.game_id,
-          username: credentialForm.username,
-          password: credentialForm.password,
+          game_username: credentialForm.game_username,
+          game_password: credentialForm.game_password,
         });
         setPlayerCredentials(prev => [...prev, created]);
         toast.success('Credential created');
@@ -819,8 +820,8 @@ export function MessagesSection() {
                 </label>
                 <input
                   type="text"
-                  value={credentialForm.username}
-                  onChange={(e) => setCredentialForm(prev => ({ ...prev, username: e.target.value }))}
+                  value={credentialForm.game_username}
+                  onChange={(e) => setCredentialForm(prev => ({ ...prev, game_username: e.target.value }))}
                   placeholder="Enter username"
                   className="w-full bg-dark-300 border-2 border-gold-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-gold-500"
                 />
@@ -834,8 +835,8 @@ export function MessagesSection() {
                 </label>
                 <input
                   type="text"
-                  value={credentialForm.password}
-                  onChange={(e) => setCredentialForm(prev => ({ ...prev, password: e.target.value }))}
+                  value={credentialForm.game_password}
+                  onChange={(e) => setCredentialForm(prev => ({ ...prev, game_password: e.target.value }))}
                   placeholder="Enter password"
                   className="w-full bg-dark-300 border-2 border-gold-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-gold-500"
                 />
@@ -851,7 +852,7 @@ export function MessagesSection() {
                 </Button>
                 <Button
                   onClick={handleSaveCredential}
-                  disabled={savingCredential || !credentialForm.game_id || !credentialForm.username || !credentialForm.password}
+                  disabled={savingCredential || !credentialForm.game_id || !credentialForm.game_username || !credentialForm.game_password}
                   loading={savingCredential}
                   variant="primary"
                   fullWidth
@@ -890,16 +891,6 @@ function PlayerCredentialCard({
       <div className="flex items-start justify-between mb-3">
         <div>
           <h3 className="font-bold text-gold-500">{gameName}</h3>
-          {credential.login_url && (
-            <a
-              href={credential.login_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-blue-400 hover:underline flex items-center gap-1"
-            >
-              <FaLink /> {credential.login_url}
-            </a>
-          )}
         </div>
         <div className="flex items-center gap-2">
           <button

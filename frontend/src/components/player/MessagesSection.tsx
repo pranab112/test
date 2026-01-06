@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Avatar } from '@/components/common/Avatar';
 import { Badge } from '@/components/common/Badge';
 import { Button } from '@/components/common/Button';
@@ -28,12 +29,17 @@ export function MessagesSection() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const currentRoomRef = useRef<string | null>(null);
 
+  // Credentials modal state (per client)
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [selectedClientCredentials, setSelectedClientCredentials] = useState<GameCredential[]>([]);
+  const [loadingClientCredentials, setLoadingClientCredentials] = useState(false);
+
   // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const recordingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Image attachment state
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -55,6 +61,22 @@ export function MessagesSection() {
       console.error('Failed to load credentials:', error);
     } finally {
       setLoadingCredentials(false);
+    }
+  };
+
+  const openClientCredentials = async (_clientId: number) => {
+    setShowCredentialsModal(true);
+    setLoadingClientCredentials(true);
+    try {
+      // Get credentials assigned by this client
+      // Currently fetches all credentials - can be filtered by client ID when API supports it
+      const allCredentials = await gameCredentialsApi.getMyCredentials();
+      setSelectedClientCredentials(allCredentials);
+    } catch (error) {
+      console.error('Failed to load client credentials:', error);
+      toast.error('Failed to load credentials');
+    } finally {
+      setLoadingClientCredentials(false);
     }
   };
 
@@ -539,22 +561,33 @@ export function MessagesSection() {
               <>
                 {/* Chat Header */}
                 <div className="p-4 bg-gradient-to-r from-dark-300 to-dark-200 border-b border-gold-700 flex-shrink-0">
-                  <div className="flex items-center gap-3">
-                    <Avatar
-                      name={selectedConversation.friend.full_name || selectedConversation.friend.username}
-                      size="sm"
-                      online={selectedConversation.friend.is_online}
-                      src={selectedConversation.friend.profile_picture}
-                    />
-                    <div>
-                      <p className="font-bold text-white">{selectedConversation.friend.username}</p>
-                      <p className="text-xs text-gray-400">
-                        {selectedConversation.friend.full_name}
-                        {selectedConversation.friend.is_online && (
-                          <span className="text-green-500 ml-2">● Online</span>
-                        )}
-                      </p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Avatar
+                        name={selectedConversation.friend.full_name || selectedConversation.friend.username}
+                        size="sm"
+                        online={selectedConversation.friend.is_online}
+                        src={selectedConversation.friend.profile_picture}
+                      />
+                      <div>
+                        <p className="font-bold text-white">{selectedConversation.friend.username}</p>
+                        <p className="text-xs text-gray-400">
+                          {selectedConversation.friend.full_name}
+                          {selectedConversation.friend.is_online && (
+                            <span className="text-green-500 ml-2">● Online</span>
+                          )}
+                        </p>
+                      </div>
                     </div>
+                    {/* Credentials/Settings button */}
+                    <button
+                      type="button"
+                      onClick={() => openClientCredentials(selectedConversation.friend.id)}
+                      className="bg-dark-400 hover:bg-dark-300 text-gold-500 p-2 rounded-lg transition-colors"
+                      title="View Game Credentials"
+                    >
+                      <MdSettings size={20} />
+                    </button>
                   </div>
                 </div>
 

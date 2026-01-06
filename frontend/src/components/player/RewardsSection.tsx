@@ -699,7 +699,7 @@ export function RewardsSection() {
                       />
                       <div className="text-left flex-1">
                         <p className="text-white font-medium">{client.username}</p>
-                        <p className="text-sm text-gray-400">{client.company_name || client.full_name}</p>
+                        <p className="text-sm text-gray-400">{client.full_name}</p>
                       </div>
                       {selectedClientId === client.id && (
                         <MdCheckCircle className="text-green-500 text-2xl" />

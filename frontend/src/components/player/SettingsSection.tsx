@@ -20,10 +20,11 @@ import {
   MdDelete,
   MdWarning,
   MdCheck,
+  MdPayment,
 } from 'react-icons/md';
-import { FaSave, FaGift, FaUsers, FaClock, FaCheckCircle } from 'react-icons/fa';
+import { FaSave, FaGift, FaUsers, FaClock, FaCheckCircle, FaCreditCard } from 'react-icons/fa';
 
-type SettingsTab = 'profile' | 'security' | 'notifications' | 'referrals';
+type SettingsTab = 'profile' | 'security' | 'notifications' | 'referrals' | 'payments';
 
 export function SettingsSection() {
   const { user, setUser } = useAuth();
@@ -86,6 +87,16 @@ export function SettingsSection() {
   const [referralList, setReferralList] = useState<ReferredUser[]>([]);
   const [loadingReferrals, setLoadingReferrals] = useState(false);
 
+  // Payment preferences state
+  const [allPaymentMethods, setAllPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [paymentPreferences, setPaymentPreferences] = useState<PlayerPaymentPreferences | null>(null);
+  const [loadingPayments, setLoadingPayments] = useState(false);
+  const [savingPayments, setSavingPayments] = useState(false);
+  const [selectedReceiveMethods, setSelectedReceiveMethods] = useState<number[]>([]);
+  const [selectedSendMethods, setSelectedSendMethods] = useState<number[]>([]);
+  const [receiveDetails, setReceiveDetails] = useState<Record<string, string>>({});
+  const [sendDetails, setSendDetails] = useState<Record<string, string>>({});
+
   // Load initial data
   useEffect(() => {
     loadUserData();
@@ -101,7 +112,7 @@ export function SettingsSection() {
         username: user.username || '',
         fullName: user.full_name || '',
         email: user.email || '',
-        phone: user.phone || '',
+        phone: '',
       });
       setProfilePicture(user.profile_picture);
       setEmailVerified(user.is_email_verified || false);
@@ -158,12 +169,81 @@ export function SettingsSection() {
     }
   };
 
+  const loadPaymentData = async () => {
+    setLoadingPayments(true);
+    try {
+      const [methods, prefs] = await Promise.all([
+        settingsApi.getAllPaymentMethods(),
+        settingsApi.getMyPaymentPreferences(),
+      ]);
+
+      setAllPaymentMethods(methods);
+      setPaymentPreferences(prefs);
+
+      // Set selected methods from preferences
+      setSelectedReceiveMethods(prefs.receive_methods.map(m => m.method_id));
+      setSelectedSendMethods(prefs.send_methods.map(m => m.method_id));
+
+      // Set details from preferences
+      const recDetails: Record<string, string> = {};
+      prefs.receive_methods.forEach(m => {
+        if (m.account_info) recDetails[m.method_id.toString()] = m.account_info;
+      });
+      setReceiveDetails(recDetails);
+
+      const sndDetails: Record<string, string> = {};
+      prefs.send_methods.forEach(m => {
+        if (m.account_info) sndDetails[m.method_id.toString()] = m.account_info;
+      });
+      setSendDetails(sndDetails);
+    } catch (error) {
+      console.error('Failed to load payment data:', error);
+    } finally {
+      setLoadingPayments(false);
+    }
+  };
+
+  const handleSavePaymentPreferences = async () => {
+    setSavingPayments(true);
+    try {
+      const result = await settingsApi.updateMyPaymentPreferences({
+        receive_methods: selectedReceiveMethods,
+        send_methods: selectedSendMethods,
+        receive_details: receiveDetails,
+        send_details: sendDetails,
+      });
+
+      setPaymentPreferences(result);
+      toast.success('Payment preferences saved!');
+    } catch (error: any) {
+      toast.error(error?.detail || 'Failed to save payment preferences');
+      console.error(error);
+    } finally {
+      setSavingPayments(false);
+    }
+  };
+
+  const toggleReceiveMethod = (methodId: number) => {
+    setSelectedReceiveMethods(prev =>
+      prev.includes(methodId)
+        ? prev.filter(id => id !== methodId)
+        : [...prev, methodId]
+    );
+  };
+
+  const toggleSendMethod = (methodId: number) => {
+    setSelectedSendMethods(prev =>
+      prev.includes(methodId)
+        ? prev.filter(id => id !== methodId)
+        : [...prev, methodId]
+    );
+  };
+
   const handleSaveProfile = async () => {
     setLoading(true);
     try {
       await settingsApi.updateProfile({
         full_name: profileData.fullName,
-        phone: profileData.phone,
       });
 
       // Update local user state
@@ -171,7 +251,6 @@ export function SettingsSection() {
         const updatedUser = {
           ...user,
           full_name: profileData.fullName,
-          phone: profileData.phone,
         };
         setUser(updatedUser);
         localStorage.setItem('user', JSON.stringify(updatedUser));
@@ -469,7 +548,7 @@ export function SettingsSection() {
       case 'pending':
         return <Badge variant="warning">Pending</Badge>;
       case 'expired':
-        return <Badge variant="danger">Expired</Badge>;
+        return <Badge variant="error">Expired</Badge>;
       default:
         return <Badge variant="default">{status}</Badge>;
     }
@@ -500,7 +579,7 @@ export function SettingsSection() {
             <div className="flex gap-4 flex-wrap">
               <div>
                 <p className="text-sm text-gray-400">Level</p>
-                <Badge variant="purple" size="lg">Level {user?.level || 1}</Badge>
+                <Badge variant="purple" size="lg">Level {user?.player_level || 1}</Badge>
               </div>
               <div>
                 <p className="text-sm text-gray-400">Credits</p>
@@ -571,6 +650,20 @@ export function SettingsSection() {
         >
           <MdShare className="inline mr-2 text-xl" />
           Referrals
+        </button>
+        <button
+          onClick={() => {
+            setActiveTab('payments');
+            if (!paymentPreferences) loadPaymentData();
+          }}
+          className={`px-4 py-3 font-medium transition-all border-b-2 whitespace-nowrap ${
+            activeTab === 'payments'
+              ? 'text-gold-500 border-gold-500'
+              : 'text-gray-400 border-transparent hover:text-gold-500'
+          }`}
+        >
+          <MdPayment className="inline mr-2 text-xl" />
+          Payment Methods
         </button>
       </div>
 
@@ -1052,6 +1145,162 @@ export function SettingsSection() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Payments Tab */}
+      {activeTab === 'payments' && (
+        <div className="space-y-6">
+          {/* Payment Methods Header */}
+          <div className="bg-gradient-to-r from-green-900/40 to-emerald-900/40 border-2 border-green-700 rounded-lg p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 bg-green-600 rounded-full">
+                <FaCreditCard className="text-white text-2xl" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">Payment Methods</h2>
+                <p className="text-gray-300">Set your preferred payment methods for receiving and sending funds</p>
+              </div>
+            </div>
+          </div>
+
+          {loadingPayments ? (
+            <div className="text-center py-12 text-gold-500">Loading payment methods...</div>
+          ) : (
+            <>
+              {/* Receive Methods */}
+              <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
+                <h3 className="text-lg font-bold text-gold-500 mb-4 flex items-center gap-2">
+                  <MdPayment className="text-green-500" />
+                  Payment Methods I Can Receive
+                </h3>
+                <p className="text-gray-400 text-sm mb-4">
+                  Select the payment methods you can receive payments through. Clients will see these options.
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {allPaymentMethods.map((method) => {
+                    const isSelected = selectedReceiveMethods.includes(method.id);
+                    return (
+                      <div
+                        key={method.id}
+                        className={`p-4 rounded-lg border-2 transition-all cursor-pointer ${
+                          isSelected
+                            ? 'border-green-500 bg-green-900/20'
+                            : 'border-dark-400 bg-dark-300 hover:border-gold-700'
+                        }`}
+                        onClick={() => toggleReceiveMethod(method.id)}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium text-white">{method.display_name}</span>
+                          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                            isSelected ? 'bg-green-500 border-green-500' : 'border-gray-500'
+                          }`}>
+                            {isSelected && <MdCheck className="text-white text-sm" />}
+                          </div>
+                        </div>
+
+                        {isSelected && (
+                          <input
+                            type="text"
+                            value={receiveDetails[method.id.toString()] || ''}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              setReceiveDetails(prev => ({
+                                ...prev,
+                                [method.id.toString()]: e.target.value
+                              }));
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            placeholder={`Your ${method.display_name} address/account...`}
+                            className="w-full mt-2 bg-dark-400 border border-gold-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-gold-500"
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {allPaymentMethods.length === 0 && (
+                  <div className="text-center py-8 text-gray-400">
+                    No payment methods available
+                  </div>
+                )}
+              </div>
+
+              {/* Send Methods */}
+              <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
+                <h3 className="text-lg font-bold text-gold-500 mb-4 flex items-center gap-2">
+                  <MdPayment className="text-blue-500" />
+                  Payment Methods I Can Send
+                </h3>
+                <p className="text-gray-400 text-sm mb-4">
+                  Select the payment methods you can send payments through.
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {allPaymentMethods.map((method) => {
+                    const isSelected = selectedSendMethods.includes(method.id);
+                    return (
+                      <div
+                        key={method.id}
+                        className={`p-4 rounded-lg border-2 transition-all cursor-pointer ${
+                          isSelected
+                            ? 'border-blue-500 bg-blue-900/20'
+                            : 'border-dark-400 bg-dark-300 hover:border-gold-700'
+                        }`}
+                        onClick={() => toggleSendMethod(method.id)}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium text-white">{method.display_name}</span>
+                          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                            isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-500'
+                          }`}>
+                            {isSelected && <MdCheck className="text-white text-sm" />}
+                          </div>
+                        </div>
+
+                        {isSelected && (
+                          <input
+                            type="text"
+                            value={sendDetails[method.id.toString()] || ''}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              setSendDetails(prev => ({
+                                ...prev,
+                                [method.id.toString()]: e.target.value
+                              }));
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            placeholder={`Your ${method.display_name} address/account...`}
+                            className="w-full mt-2 bg-dark-400 border border-gold-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-gold-500"
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {allPaymentMethods.length === 0 && (
+                  <div className="text-center py-8 text-gray-400">
+                    No payment methods available
+                  </div>
+                )}
+              </div>
+
+              {/* Save Button */}
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleSavePaymentPreferences}
+                  loading={savingPayments}
+                  variant="primary"
+                >
+                  <FaSave className="mr-2" />
+                  Save Payment Preferences
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       )}
 
