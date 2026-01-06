@@ -43,4 +43,6 @@ export interface User {
   secondary_email?: string;
   two_factor_enabled?: boolean;
   bio?: string;
+  phone?: string;
+  level?: number;
 }

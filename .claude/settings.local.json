@@ -81,7 +81,8 @@
       "Bash(railway domain:*)",
       "Bash(dir:*)",
       "Bash(npm run build:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []

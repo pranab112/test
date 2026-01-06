@@ -5,7 +5,7 @@ import { Badge } from '@/components/common/Badge';
 import { Avatar } from '@/components/common/Avatar';
 import { Modal } from '@/components/common/Modal';
 import { authApi, settingsApi, referralsApi } from '@/api/endpoints';
-import type { ReferralCodeResponse, ReferralStats, ReferredUser, ReferralListResponse } from '@/api/endpoints';
+import type { ReferralStats, ReferredUser } from '@/api/endpoints';
 import { useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
 import {

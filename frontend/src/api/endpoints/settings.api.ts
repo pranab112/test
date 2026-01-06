@@ -5,6 +5,7 @@ export interface ProfileUpdateRequest {
   full_name?: string;
   company_name?: string;
   bio?: string;
+  phone?: string;
 }
 
 export interface NotificationSettings {

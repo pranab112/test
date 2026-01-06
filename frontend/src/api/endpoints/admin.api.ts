@@ -113,8 +113,8 @@ export interface Review {
   reviewer_id: number;
   reviewee_id: number;
   rating: number;
-  title: string;
-  comment?: string;
+  title?: string;
+  comment: string;
   status: ReviewStatus;
   admin_notes?: string;
   moderated_by?: number;
@@ -123,12 +123,18 @@ export interface Review {
   created_at: string;
   updated_at?: string;
   reviewer?: {
+    id: number;
     username: string;
     full_name: string;
+    profile_picture?: string;
+    user_type: string;
   };
   reviewee?: {
+    id: number;
     username: string;
     full_name: string;
+    profile_picture?: string;
+    user_type: string;
   };
 }
 

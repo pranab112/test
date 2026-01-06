@@ -4,7 +4,6 @@ import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import { Avatar } from '@/components/common/Avatar';
 import { StatCard } from '@/components/common/StatCard';
-import { Badge } from '@/components/common/Badge';
 import toast from 'react-hot-toast';
 import { MdStar, MdStarBorder, MdEdit, MdDelete, MdRateReview, MdTrendingUp, MdRefresh, MdGavel, MdWarning, MdCheck, MdPending, MdClose } from 'react-icons/md';
 import { reviewsApi, type Review, type ReviewStatus } from '@/api/endpoints/reviews.api';
@@ -412,7 +411,7 @@ export function ReviewsSection() {
                       onClick={() => openWriteReviewForClient(friend)}
                       variant="primary"
                       fullWidth
-                      size="sm"
+                      className="py-2 text-sm"
                     >
                       <MdRateReview className="mr-1" />
                       Write Review

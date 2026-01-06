@@ -337,9 +337,20 @@ function LuckyDiceGame() {
   const [result, setResult] = useState<'win' | 'lose' | null>(null);
   const [winStreak, setWinStreak] = useState(0);
 
+  // Quick bet selection options - common betting values
+  const quickBetOptions = [2, 5, 7, 9, 12];
+
+  // Validate and set bet value
+  const handleBetChange = (value: number) => {
+    const validBet = Math.min(12, Math.max(2, value || 2));
+    setBet(validBet);
+  };
+
   const rollDice = () => {
+    // Validate bet before rolling
     if (bet < 2 || bet > 12) {
       toast.error('Bet must be between 2 and 12');
+      handleBetChange(7); // Reset to default valid value
       return;
     }
 
@@ -392,12 +403,33 @@ function LuckyDiceGame() {
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Your Bet (2-12)
           </label>
+
+          {/* Quick bet selection buttons */}
+          <div className="flex gap-2 mb-3 justify-center flex-wrap">
+            {quickBetOptions.map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => handleBetChange(value)}
+                disabled={rolling}
+                className={`px-4 py-2 rounded-lg font-bold transition-all ${
+                  bet === value
+                    ? 'bg-gold-500 text-dark-700 scale-105'
+                    : 'bg-dark-200 text-white hover:bg-dark-400 border border-gold-700'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
+
           <input
             type="number"
             min="2"
             max="12"
             value={bet}
-            onChange={(e) => setBet(parseInt(e.target.value) || 2)}
+            onChange={(e) => handleBetChange(parseInt(e.target.value))}
+            onBlur={(e) => handleBetChange(parseInt(e.target.value))}
             disabled={rolling}
             className="w-full bg-dark-200 border-2 border-gold-700 rounded-lg px-4 py-3 text-white text-center text-xl font-bold focus:outline-none focus:ring-2 focus:ring-gold-500"
           />
@@ -405,7 +437,7 @@ function LuckyDiceGame() {
 
         <Button
           onClick={rollDice}
-          disabled={rolling}
+          disabled={rolling || bet < 2 || bet > 12}
           fullWidth
           variant="primary"
         >
@@ -608,6 +640,7 @@ function MemoryMatchGame() {
   const [timer, setTimer] = useState(0);
   const [gameStarted, setGameStarted] = useState(false);
   const [gameWon, setGameWon] = useState(false);
+  const [timerStarted, setTimerStarted] = useState(false);
 
   const initializeGame = () => {
     const shuffled = [...cardSymbols, ...cardSymbols]
@@ -624,22 +657,37 @@ function MemoryMatchGame() {
     setTimer(0);
     setGameStarted(true);
     setGameWon(false);
+    setTimerStarted(false); // Timer starts on first move
   };
 
-  // Timer effect
-  useState(() => {
-    if (gameStarted && !gameWon) {
-      const interval = setInterval(() => {
+  // Timer effect - properly using useEffect with correct dependencies
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
+    // Only run timer when game has started, timer has been triggered by first move, and game is not won
+    if (timerStarted && !gameWon) {
+      interval = setInterval(() => {
         setTimer(prev => prev + 1);
       }, 1000);
-      return () => clearInterval(interval);
     }
-  });
+
+    // Cleanup function
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [timerStarted, gameWon]);
 
   const handleCardClick = (index: number) => {
     if (!gameStarted) return;
     if (cards[index].flipped || cards[index].matched) return;
     if (flippedIndices.length === 2) return;
+
+    // Start timer on first valid move
+    if (!timerStarted) {
+      setTimerStarted(true);
+    }
 
     const newCards = [...cards];
     newCards[index].flipped = true;
@@ -661,11 +709,10 @@ function MemoryMatchGame() {
           setCards(matchedCards);
           setFlippedIndices([]);
 
-          // Check if game is won
+          // Check if game is won - need to use functional update to get correct timer value
           if (matchedCards.every(card => card.matched)) {
             setGameWon(true);
             setGameStarted(false);
-            toast.success(`You won in ${moves + 1} moves and ${timer} seconds!`);
           }
         }, 500);
       } else {
@@ -680,6 +727,13 @@ function MemoryMatchGame() {
       }
     }
   };
+
+  // Effect to show win message with correct timer value
+  useEffect(() => {
+    if (gameWon) {
+      toast.success(`You won in ${moves} moves and ${timer} seconds!`);
+    }
+  }, [gameWon, moves, timer]);
 
   if (cards.length === 0) {
     return (

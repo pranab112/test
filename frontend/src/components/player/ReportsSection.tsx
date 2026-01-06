@@ -42,6 +42,7 @@ export function ReportsSection() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingReports, setLoadingReports] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   // Reports data
   const [reportsMade, setReportsMade] = useState<Report[]>([]);
@@ -59,9 +60,16 @@ export function ReportsSection() {
     reason: '',
   });
 
-  // Load reports on mount
+  // Load reports on mount and set up auto-refresh
   useEffect(() => {
     loadReports();
+
+    // Auto-refresh reports every 30 seconds to catch status updates
+    const refreshInterval = setInterval(() => {
+      loadReports();
+    }, 30000);
+
+    return () => clearInterval(refreshInterval);
   }, []);
 
   // Load friends when report_client tab is selected
@@ -71,7 +79,7 @@ export function ReportsSection() {
     }
   }, [activeTab]);
 
-  const loadReports = async () => {
+  const loadReports = async (showToast = false) => {
     setLoadingReports(true);
     try {
       const [reportsResponse, warningsResponse] = await Promise.all([
@@ -81,6 +89,11 @@ export function ReportsSection() {
       setReportsMade(reportsResponse.reports_made);
       setReportsReceived(reportsResponse.reports_received);
       setWarnings(warningsResponse);
+      setLastUpdated(new Date());
+
+      if (showToast) {
+        toast.success('Reports refreshed');
+      }
     } catch (error) {
       console.error('Failed to load reports:', error);
       toast.error('Failed to load reports');
@@ -123,10 +136,23 @@ export function ReportsSection() {
         reason: formData.reason,
       });
 
+      // Update local state with the new report
       setReportsMade(prev => [newReport, ...prev]);
-      toast.success('Report submitted successfully');
+
+      // Show success message with status info
+      toast.success(
+        'Report submitted successfully! Status: Pending. An admin will review your report shortly.',
+        { duration: 5000 }
+      );
+
       setShowReportModal(false);
       resetForm();
+
+      // Switch to "Made" tab to show the new report
+      setActiveTab('made');
+
+      // Refresh reports to ensure we have the latest data from server
+      await loadReports();
     } catch (error: any) {
       toast.error(error.detail || 'Failed to submit report');
       console.error(error);
@@ -332,13 +358,23 @@ export function ReportsSection() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gold-500 mb-2">Reports</h1>
-          <p className="text-gray-400">Manage reports and violations</p>
+          <p className="text-gray-400">
+            Manage reports and violations
+            {lastUpdated && (
+              <span className="text-xs text-gray-500 ml-2">
+                (Last updated: {lastUpdated.toLocaleTimeString()})
+              </span>
+            )}
+          </p>
         </div>
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={loadReports}
-            className="bg-dark-300 hover:bg-dark-400 text-gold-500 p-3 rounded-lg transition-colors"
+            onClick={() => loadReports(true)}
+            disabled={loadingReports}
+            className={`bg-dark-300 hover:bg-dark-400 text-gold-500 p-3 rounded-lg transition-colors ${
+              loadingReports ? 'animate-spin' : ''
+            }`}
             title="Refresh"
           >
             <MdRefresh size={20} />

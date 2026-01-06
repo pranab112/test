@@ -25,7 +25,7 @@ const STATUS_ICONS: Record<ReviewStatus, React.ReactNode> = {
 };
 
 export function ReviewsSection() {
-  const { user } = useAuth();
+  const { user: _user } = useAuth();
   const [activeTab, setActiveTab] = useState<'given' | 'received' | 'review_players'>('given');
   const [showWriteReviewModal, setShowWriteReviewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -408,7 +408,7 @@ export function ReviewsSection() {
                       onClick={() => openWriteReviewForPlayer(friend)}
                       variant="primary"
                       fullWidth
-                      size="sm"
+                      className="py-2 text-sm"
                     >
                       <MdRateReview className="mr-1" />
                       Write Review

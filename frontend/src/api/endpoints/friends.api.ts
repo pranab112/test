@@ -12,6 +12,7 @@ export interface Friend {
   player_level?: number;
   credits?: number;
   created_at: string;
+  company_name?: string;
 }
 
 // Alias for use in player ClientsSection

@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Avatar } from '@/components/common/Avatar';
 import { Badge } from '@/components/common/Badge';
 import { Button } from '@/components/common/Button';
 import toast from 'react-hot-toast';
-import { MdMessage, MdSend, MdContentCopy, MdVisibility, MdVisibilityOff, MdRefresh, MdImage, MdMic, MdStop, MdClose } from 'react-icons/md';
-import { FaKey, FaUser } from 'react-icons/fa';
+import { MdMessage, MdSend, MdContentCopy, MdVisibility, MdVisibilityOff, MdRefresh, MdImage, MdMic, MdClose } from 'react-icons/md';
+import { FaKey } from 'react-icons/fa';
 import { useDashboard } from '@/contexts/DashboardContext';
 import { chatApi, type Conversation, type Message } from '@/api/endpoints/chat.api';
 import { gameCredentialsApi, type GameCredential } from '@/api/endpoints/gameCredentials.api';
@@ -757,7 +757,7 @@ function CredentialCardCompact({ credential }: { credential: GameCredential }) {
         <span className="text-white font-mono truncate flex-1">{credential.username}</span>
         <button
           type="button"
-          onClick={() => copyToClipboard(credential.username, 'Username')}
+          onClick={() => copyToClipboard(credential.username || '', 'Username')}
           className="text-gold-500 hover:text-gold-400"
           title="Copy"
         >
@@ -779,7 +779,7 @@ function CredentialCardCompact({ credential }: { credential: GameCredential }) {
         </button>
         <button
           type="button"
-          onClick={() => copyToClipboard(credential.password, 'Password')}
+          onClick={() => copyToClipboard(credential.password || '', 'Password')}
           className="text-gold-500 hover:text-gold-400"
           title="Copy"
         >
@@ -790,111 +790,3 @@ function CredentialCardCompact({ credential }: { credential: GameCredential }) {
   );
 }
 
-function CredentialCard({ credential }: { credential: GameCredential }) {
-  const [showPassword, setShowPassword] = useState(false);
-
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success(`${label} copied to clipboard`);
-  };
-
-  return (
-    <div className="bg-dark-300 border-2 border-gold-700 rounded-lg p-4">
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <h3 className="font-bold text-gold-500 text-lg">{credential.game_name}</h3>
-          <p className="text-sm text-gray-400">From: {credential.client_name || 'Client'}</p>
-        </div>
-        <Badge variant="success">Active</Badge>
-      </div>
-
-      <div className="space-y-3">
-        {/* Username */}
-        <div className="bg-dark-200 rounded-lg p-3">
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-xs text-gray-400 font-medium flex items-center gap-1">
-              <FaUser className="text-gold-500" />
-              Username
-            </label>
-            <button
-              type="button"
-              onClick={() => copyToClipboard(credential.username, 'Username')}
-              className="text-gold-500 hover:text-gold-400 transition-colors"
-              title="Copy username"
-            >
-              <MdContentCopy />
-            </button>
-          </div>
-          <p className="text-white font-mono">{credential.username}</p>
-        </div>
-
-        {/* Password */}
-        <div className="bg-dark-200 rounded-lg p-3">
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-xs text-gray-400 font-medium flex items-center gap-1">
-              <FaKey className="text-gold-500" />
-              Password
-            </label>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="text-gold-500 hover:text-gold-400 transition-colors"
-                title={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? <MdVisibilityOff /> : <MdVisibility />}
-              </button>
-              <button
-                type="button"
-                onClick={() => copyToClipboard(credential.password, 'Password')}
-                className="text-gold-500 hover:text-gold-400 transition-colors"
-                title="Copy password"
-              >
-                <MdContentCopy />
-              </button>
-            </div>
-          </div>
-          <p className="text-white font-mono">
-            {showPassword ? credential.password : '••••••••••'}
-          </p>
-        </div>
-
-        {/* Login URL */}
-        {credential.login_url && (
-          <div className="bg-dark-200 rounded-lg p-3">
-            <label className="text-xs text-gray-400 font-medium mb-2 block">
-              Login URL
-            </label>
-            <div className="flex items-center gap-2">
-              <p className="text-blue-400 text-sm flex-1 truncate">{credential.login_url}</p>
-              <button
-                type="button"
-                onClick={() => copyToClipboard(credential.login_url!, 'URL')}
-                className="text-gold-500 hover:text-gold-400 transition-colors"
-                title="Copy URL"
-              >
-                <MdContentCopy />
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div className="pt-2">
-          <Button
-            onClick={() => {
-              if (credential.login_url) {
-                window.open(credential.login_url, '_blank');
-              } else {
-                toast.error('No login URL available');
-              }
-            }}
-            variant="primary"
-            fullWidth
-          >
-            Open Game
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}

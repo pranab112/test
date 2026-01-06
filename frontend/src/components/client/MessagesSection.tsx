@@ -16,12 +16,11 @@ import {
   MdVisibility,
   MdVisibilityOff,
   MdMic,
-  MdStop,
 } from 'react-icons/md';
 import { FaKey, FaUser, FaGamepad, FaLink } from 'react-icons/fa';
 import { chatApi, type Conversation, type Message } from '@/api/endpoints';
 import { gamesApi, type ClientGame } from '@/api/endpoints/games.api';
-import { gameCredentialsApi, type GameCredential, type CreateGameCredentialRequest } from '@/api/endpoints/gameCredentials.api';
+import { gameCredentialsApi, type GameCredential } from '@/api/endpoints/gameCredentials.api';
 import { useAuth } from '@/contexts/AuthContext';
 import { getFileUrl } from '@/config/api.config';
 
@@ -131,19 +130,6 @@ export function MessagesSection() {
       console.error(error);
     } finally {
       setSendingMessage(false);
-    }
-  };
-
-  const handleSendImage = async (file: File) => {
-    if (!selectedConversation) return;
-
-    try {
-      const message = await chatApi.sendImageMessage(selectedConversation.friend.id, file);
-      setMessages([...messages, message]);
-      toast.success('Image sent successfully');
-    } catch (error) {
-      toast.error('Failed to send image');
-      console.error(error);
     }
   };
 
@@ -363,8 +349,8 @@ export function MessagesSection() {
     setEditingCredential(credential);
     setCredentialForm({
       game_id: credential.game_id,
-      username: credential.username,
-      password: credential.password,
+      username: credential.game_username || credential.username || '',
+      password: credential.game_password || credential.password || '',
     });
     setShowCredentialForm(true);
   };
@@ -739,7 +725,7 @@ export function MessagesSection() {
                   <FaKey />
                   Game Credentials
                 </h4>
-                <Button onClick={openAddCredential} variant="primary" size="sm">
+                <Button onClick={openAddCredential} variant="primary" className="py-2 px-3 text-sm">
                   <MdAdd className="mr-1" /> Add Credential
                 </Button>
               </div>
@@ -942,14 +928,14 @@ function PlayerCredentialCard({
             <span className="text-xs text-gray-400">Username</span>
             <button
               type="button"
-              onClick={() => copyToClipboard(credential.username, 'Username')}
+              onClick={() => copyToClipboard(credential.game_username || credential.username || '', 'Username')}
               className="text-gold-500 hover:text-gold-400 transition-colors"
               title="Copy username"
             >
               <MdContentCopy size={14} />
             </button>
           </div>
-          <p className="text-white font-mono text-sm truncate">{credential.username}</p>
+          <p className="text-white font-mono text-sm truncate">{credential.game_username || credential.username}</p>
         </div>
 
         {/* Password */}
@@ -967,7 +953,7 @@ function PlayerCredentialCard({
               </button>
               <button
                 type="button"
-                onClick={() => copyToClipboard(credential.password, 'Password')}
+                onClick={() => copyToClipboard(credential.game_password || credential.password || '', 'Password')}
                 className="text-gold-500 hover:text-gold-400 transition-colors"
                 title="Copy password"
               >
@@ -976,7 +962,7 @@ function PlayerCredentialCard({
             </div>
           </div>
           <p className="text-white font-mono text-sm truncate">
-            {showPassword ? credential.password : '••••••••'}
+            {showPassword ? (credential.game_password || credential.password) : '••••••••'}
           </p>
         </div>
       </div>
