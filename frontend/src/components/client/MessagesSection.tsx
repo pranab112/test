@@ -21,7 +21,6 @@ import { FaKey, FaUser, FaGamepad, FaLink } from 'react-icons/fa';
 import { chatApi, type Conversation, type Message } from '@/api/endpoints';
 import { gamesApi, type ClientGame } from '@/api/endpoints/games.api';
 import { gameCredentialsApi, type GameCredential } from '@/api/endpoints/gameCredentials.api';
-import { gameCredentialsApi, type GameCredential } from '@/api/endpoints/gameCredentials.api';
 import { useAuth } from '@/contexts/AuthContext';
 import { getFileUrl } from '@/config/api.config';
 
@@ -350,8 +349,8 @@ export function MessagesSection() {
     setEditingCredential(credential);
     setCredentialForm({
       game_id: credential.game_id,
-      username: credential.game_username || credential.username || '',
-      password: credential.game_password || credential.password || '',
+      game_username: credential.game_username || credential.username || '',
+      game_password: credential.game_password || credential.password || '',
     });
     setShowCredentialForm(true);
   };

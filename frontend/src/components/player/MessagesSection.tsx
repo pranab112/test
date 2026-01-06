@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { useState, useEffect, useRef } from 'react';
 import { Avatar } from '@/components/common/Avatar';
 import { Badge } from '@/components/common/Badge';
 import { Button } from '@/components/common/Button';
 import toast from 'react-hot-toast';
-import { MdMessage, MdSend, MdContentCopy, MdVisibility, MdVisibilityOff, MdRefresh, MdImage, MdMic, MdClose } from 'react-icons/md';
+import { MdMessage, MdSend, MdContentCopy, MdVisibility, MdVisibilityOff, MdRefresh, MdImage, MdMic, MdClose, MdSettings } from 'react-icons/md';
 import { FaKey } from 'react-icons/fa';
 import { useDashboard } from '@/contexts/DashboardContext';
 import { chatApi, type Conversation, type Message } from '@/api/endpoints/chat.api';
@@ -30,9 +29,9 @@ export function MessagesSection() {
   const currentRoomRef = useRef<string | null>(null);
 
   // Credentials modal state (per client)
-  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
-  const [selectedClientCredentials, setSelectedClientCredentials] = useState<GameCredential[]>([]);
-  const [loadingClientCredentials, setLoadingClientCredentials] = useState(false);
+  const [, setShowCredentialsModal] = useState(false);
+  const [, setSelectedClientCredentials] = useState<GameCredential[]>([]);
+  const [, setLoadingClientCredentials] = useState(false);
 
   // Voice recording state
   const [isRecording, setIsRecording] = useState(false);

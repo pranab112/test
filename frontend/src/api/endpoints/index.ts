@@ -81,6 +81,8 @@ export {
   type TwoFactorSetupResponse,
   type EmailVerificationStatus,
   type ActiveSession,
+  type PaymentMethod,
+  type PlayerPaymentPreferences,
 } from './settings.api';
 
 // Game Credentials API
