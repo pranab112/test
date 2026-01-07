@@ -1,18 +1,12 @@
-# Multi-stage build for optimized production image
-FROM node:18-alpine AS builder
+# Build stage
+FROM node:18-alpine AS build
 
 WORKDIR /app
 
-# Copy package files
-COPY package.json package-lock.json ./
-
-# Install dependencies
+COPY package*.json ./
 RUN npm ci
 
-# Copy source files
 COPY . .
-
-# Build the application
 RUN npm run build
 
 # Production stage
@@ -20,14 +14,16 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Install serve globally
-RUN npm install -g serve@14.2.1
+# Install serve
+RUN npm install -g serve
 
-# Copy built files from builder
-COPY --from=builder /app/dist ./dist
+# Copy dist from build stage
+COPY --from=build /app/dist ./dist
 
-# Expose port (Railway will set $PORT)
+# Default to port 8080 if PORT env var not set
+ENV PORT=8080
+
 EXPOSE 8080
 
-# Start the application
-CMD ["sh", "-c", "serve -s dist -l $PORT"]
+# Use exec form to avoid shell issues
+CMD ["sh", "-c", "serve -s dist -p $PORT"]
