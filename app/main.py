@@ -14,48 +14,50 @@ setup_logging(log_level=settings.LOG_LEVEL if hasattr(settings, 'LOG_LEVEL') els
 logger = get_logger(__name__)
 
 # Run database migrations on startup
-def run_migrations():
-    """Run Alembic migrations to ensure database schema is up to date"""
-    try:
-        from alembic.config import Config
-        from alembic import command
-        from pathlib import Path
-        from sqlalchemy import inspect
-
-        # First, ensure all tables exist using create_all
-        # This is safe because create_all only creates tables that don't exist
-        Base.metadata.create_all(bind=engine)
-        logger.info("Database tables verified/created")
-
-        # Get absolute path to alembic.ini relative to this file
-        base_dir = Path(__file__).resolve().parent.parent
-        alembic_ini_path = base_dir / "alembic.ini"
-
-        if alembic_ini_path.exists():
-            try:
-                alembic_cfg = Config(str(alembic_ini_path))
-                # Stamp the database with the latest revision if alembic_version doesn't exist
-                # This prevents migration errors on existing databases
-                inspector = inspect(engine)
-                if not inspector.has_table('alembic_version'):
-                    logger.info("Stamping database with current alembic revision")
-                    command.stamp(alembic_cfg, "head")
-                else:
-                    command.upgrade(alembic_cfg, "head")
-                logger.info("Database migrations completed successfully")
-            except Exception as migration_error:
-                logger.warning(f"Migration error (tables already exist): {migration_error}")
-        else:
-            logger.warning(f"alembic.ini not found at {alembic_ini_path}")
-    except Exception as e:
-        logger.error(f"Database setup error: {e}")
-        # Last resort fallback
-        try:
-            Base.metadata.create_all(bind=engine)
-        except Exception:
-            pass
-
-run_migrations()
+# NOTE: Migrations are handled by scripts/start.sh on Railway
+# Commenting out to avoid duplicate migration runs which can cause hanging
+# def run_migrations():
+#     """Run Alembic migrations to ensure database schema is up to date"""
+#     try:
+#         from alembic.config import Config
+#         from alembic import command
+#         from pathlib import Path
+#         from sqlalchemy import inspect
+#
+#         # First, ensure all tables exist using create_all
+#         # This is safe because create_all only creates tables that don't exist
+#         Base.metadata.create_all(bind=engine)
+#         logger.info("Database tables verified/created")
+#
+#         # Get absolute path to alembic.ini relative to this file
+#         base_dir = Path(__file__).resolve().parent.parent
+#         alembic_ini_path = base_dir / "alembic.ini"
+#
+#         if alembic_ini_path.exists():
+#             try:
+#                 alembic_cfg = Config(str(alembic_ini_path))
+#                 # Stamp the database with the latest revision if alembic_version doesn't exist
+#                 # This prevents migration errors on existing databases
+#                 inspector = inspect(engine)
+#                 if not inspector.has_table('alembic_version'):
+#                     logger.info("Stamping database with current alembic revision")
+#                     command.stamp(alembic_cfg, "head")
+#                 else:
+#                     command.upgrade(alembic_cfg, "head")
+#                 logger.info("Database migrations completed successfully")
+#             except Exception as migration_error:
+#                 logger.warning(f"Migration error (tables already exist): {migration_error}")
+#         else:
+#             logger.warning(f"alembic.ini not found at {alembic_ini_path}")
+#     except Exception as e:
+#         logger.error(f"Database setup error: {e}")
+#         # Last resort fallback
+#         try:
+#             Base.metadata.create_all(bind=engine)
+#         except Exception:
+#             pass
+#
+# run_migrations()
 
 app = FastAPI(
     title="Casino Royal SaaS API",
