@@ -73,19 +73,19 @@ api.interceptors.response.use(
         detail: responseData,
         status: error.response?.status,
       };
-    } else if (responseData?.detail) {
+    } else if (typeof responseData === 'object' && responseData && 'detail' in responseData) {
       // FastAPI format: { "detail": "message" }
       normalizedError = {
-        message: responseData.detail,
-        detail: responseData.detail,
+        message: (responseData as any).detail,
+        detail: (responseData as any).detail,
         status: error.response?.status,
       };
-    } else if (responseData?.error?.message) {
+    } else if (typeof responseData === 'object' && responseData && 'error' in responseData && typeof (responseData as any).error === 'object' && (responseData as any).error && 'message' in (responseData as any).error) {
       // Custom format: { "error": { "message": "..." } }
       normalizedError = {
-        message: responseData.error.message,
-        detail: responseData.error.message,
-        code: responseData.error.code,
+        message: (responseData as any).error.message,
+        detail: (responseData as any).error.message,
+        code: (responseData as any).error.code,
         status: error.response?.status,
       };
     } else {

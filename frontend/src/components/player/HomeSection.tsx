@@ -389,7 +389,7 @@ function LuckyDiceGame({ credits, onBalanceUpdate }: { credits: number; onBalanc
     // Debounce: Prevent rapid clicking (500ms cooldown)
     const now = Date.now();
     if (now - lastBetTime.current < 500) {
-      toast.warning('Please wait before placing another bet');
+      toast.error('Please wait before placing another bet');
       return;
     }
 
@@ -718,7 +718,7 @@ function LuckySlotsGame({ credits, onBalanceUpdate }: { credits: number; onBalan
     // Debounce: Prevent rapid clicking (500ms cooldown)
     const now = Date.now();
     if (now - lastBetTime.current < 500) {
-      toast.warning('Please wait before placing another bet');
+      toast.error('Please wait before placing another bet');
       return;
     }
 
