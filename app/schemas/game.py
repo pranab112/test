@@ -77,3 +77,19 @@ class GameCredentialResponse(BaseModel):
 
 class GameCredentialListResponse(BaseModel):
     credentials: List[GameCredentialResponse]
+
+# Mini Game Betting Schemas
+class MiniGameBetRequest(BaseModel):
+    game_type: str  # 'dice' or 'slots'
+    bet_amount: int  # Amount of credits to bet
+    prediction: Optional[int] = None  # For dice: predicted sum (2-12)
+
+class MiniGameBetResponse(BaseModel):
+    success: bool
+    game_type: str
+    bet_amount: int
+    win_amount: int  # 0 if lost, positive if won
+    result: str  # 'win', 'lose', 'jackpot'
+    details: dict  # Game-specific details (dice values, slot symbols, etc.)
+    new_balance: int  # Updated credit balance
+    message: str

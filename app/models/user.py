@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Enum, Table
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Enum, Table, CheckConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.models.base import Base
@@ -14,6 +14,9 @@ friends_association = Table(
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (
+        CheckConstraint('credits >= 0', name='check_credits_non_negative'),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=True)  # Nullable for client-created players
@@ -57,7 +60,7 @@ class User(Base):
 
     # Player-specific fields
     player_level = Column(Integer, default=1)
-    credits = Column(Integer, default=1000)
+    credits = Column(Integer, default=1000, nullable=False)
 
     # Profile picture
     profile_picture = Column(String, nullable=True)

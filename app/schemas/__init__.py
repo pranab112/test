@@ -52,7 +52,9 @@ from app.schemas.game import (
     GameCredentialCreate,
     GameCredentialUpdate,
     GameCredentialResponse,
-    GameCredentialListResponse
+    GameCredentialListResponse,
+    MiniGameBetRequest,
+    MiniGameBetResponse
 )
 from app.schemas.payment import (
     PaymentMethodBase,
@@ -174,6 +176,8 @@ __all__ = [
     "GameCredentialUpdate",
     "GameCredentialResponse",
     "GameCredentialListResponse",
+    "MiniGameBetRequest",
+    "MiniGameBetResponse",
     # Payment
     "PaymentMethodBase",
     "PaymentMethodCreate",

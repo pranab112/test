@@ -194,4 +194,39 @@ export const gamesApi = {
       return [];
     }
   },
+
+  // Mini game betting
+  placeMiniGameBet: async (data: MiniGameBetRequest): Promise<MiniGameBetResponse> => {
+    try {
+      const response = await apiClient.post<never, MiniGameBetResponse>('/games/mini-game/bet', data);
+      return response;
+    } catch (error: any) {
+      console.error('Failed to place bet:', error);
+      throw error;
+    }
+  },
 };
+
+// Mini game betting interfaces
+export interface MiniGameBetRequest {
+  game_type: 'dice' | 'slots';
+  bet_amount: number;
+  prediction?: number; // For dice: 2-12
+}
+
+export interface MiniGameBetResponse {
+  success: boolean;
+  game_type: string;
+  bet_amount: number;
+  win_amount: number;
+  result: 'win' | 'lose' | 'jackpot';
+  details: {
+    dice1?: number;
+    dice2?: number;
+    total?: number;
+    prediction?: number;
+    reels?: string[];
+  };
+  new_balance: number;
+  message: string;
+}

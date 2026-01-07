@@ -59,7 +59,7 @@ def format_report_detail(report, reporter, reported_user):
     })
     return response
 
-@router.post("/", response_model=schemas.ReportResponse)
+@router.post("/")
 def create_report(
     report: schemas.ReportCreate,
     current_user: models.User = Depends(auth.get_current_active_user),
@@ -104,7 +104,12 @@ def create_report(
     db.commit()
     db.refresh(db_report)
 
-    return format_report_response(db_report, current_user, reported_user)
+    # Return report data with success message
+    report_data = format_report_response(db_report, current_user, reported_user)
+    return {
+        "message": "Your report has been submitted successfully. Our support team will review it and get back to you soon.",
+        "report": report_data
+    }
 
 @router.get("/my-reports", response_model=schemas.ReportListResponse)
 def get_my_reports(

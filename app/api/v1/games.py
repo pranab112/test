@@ -1,9 +1,27 @@
+import random
+import json
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from typing import List
 from app import models, schemas, auth
 from app.database import get_db
+from app.models.enums import GameType, BetResult
+from app.config import (
+    MIN_BET_AMOUNT,
+    MAX_BET_AMOUNT,
+    DICE_MULTIPLIERS,
+    DICE_MIN_PREDICTION,
+    DICE_MAX_PREDICTION,
+    SLOTS_SYMBOLS,
+    SLOTS_SYMBOL_MULTIPLIERS,
+    SLOTS_TWO_MATCH_MULTIPLIER
+)
+from app.core import get_logger, get_game_logger, log_error_with_context, log_game_transaction
+
+# Set up logger for this module
+logger = get_logger(__name__)
+game_logger = get_game_logger()
 
 router = APIRouter(prefix="/games", tags=["games"])
 
@@ -261,3 +279,275 @@ async def get_client_games(
     ).all()
 
     return [cg.game for cg in client_games]
+
+@router.post("/mini-game/bet", response_model=schemas.MiniGameBetResponse)
+async def place_mini_game_bet(
+    bet_request: schemas.MiniGameBetRequest,
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Place a bet on a mini game (dice or slots).
+    Players can bet credits and win/lose based on the game outcome.
+    Uses row-level locking to prevent race conditions with concurrent bets.
+    """
+    logger.info(
+        f"Bet request received | user_id={current_user.id} | "
+        f"game={bet_request.game_type} | bet={bet_request.bet_amount}"
+    )
+
+    if current_user.user_type != models.UserType.PLAYER:
+        logger.warning(f"Non-player attempted to play game | user_id={current_user.id} | type={current_user.user_type}")
+        raise HTTPException(status_code=403, detail="Only players can play mini games")
+
+    # Validate bet amount
+    if bet_request.bet_amount < MIN_BET_AMOUNT:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Minimum bet amount is {MIN_BET_AMOUNT} credits"
+        )
+
+    if bet_request.bet_amount > MAX_BET_AMOUNT:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Maximum bet amount is {MAX_BET_AMOUNT} credits"
+        )
+
+    # Get user with row-level lock to prevent concurrent bet race conditions
+    # This ensures that if two requests come in at the same time, they execute sequentially
+    locked_user = db.query(models.User).filter(
+        models.User.id == current_user.id
+    ).with_for_update().first()
+
+    if not locked_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Validate bet amount against locked user's current credits
+    if bet_request.bet_amount > locked_user.credits:
+        raise HTTPException(status_code=400, detail="Insufficient credits")
+
+    # Process based on game type (passing locked user)
+    if bet_request.game_type == "dice":
+        return process_dice_game(bet_request, locked_user, db)
+    elif bet_request.game_type == "slots":
+        return process_slots_game(bet_request, locked_user, db)
+    else:
+        raise HTTPException(status_code=400, detail="Invalid game type. Use 'dice' or 'slots'")
+
+
+def process_dice_game(bet_request: schemas.MiniGameBetRequest, user: models.User, db: Session):
+    """Process a dice game bet"""
+    # Validate prediction for dice
+    if bet_request.prediction is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Dice game requires a prediction ({DICE_MIN_PREDICTION}-{DICE_MAX_PREDICTION})"
+        )
+
+    if bet_request.prediction < DICE_MIN_PREDICTION or bet_request.prediction > DICE_MAX_PREDICTION:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Prediction must be between {DICE_MIN_PREDICTION} and {DICE_MAX_PREDICTION}"
+        )
+
+    try:
+        # Save balance before bet
+        balance_before = user.credits
+
+        # Roll the dice
+        dice1 = random.randint(1, 6)
+        dice2 = random.randint(1, 6)
+        total = dice1 + dice2
+
+        # Deduct bet amount first
+        user.credits -= bet_request.bet_amount
+
+        # Calculate winnings
+        win_amount = 0
+        result = "lose"
+        message = f"Rolled {total}. You bet on {bet_request.prediction}. "
+
+        if total == bet_request.prediction:
+            # Win! Payout based on probability from config
+            multiplier = DICE_MULTIPLIERS.get(bet_request.prediction, 6)
+            win_amount = int(bet_request.bet_amount * multiplier)
+            user.credits += win_amount
+            result = "win"
+            message += f"You won {win_amount} credits!"
+        else:
+            message += "Better luck next time!"
+
+        # Commit transaction
+        db.commit()
+        db.refresh(user)
+
+        # Create audit log entry (non-critical - don't fail bet if logging fails)
+        try:
+            bet_transaction = models.BetTransaction(
+                user_id=user.id,
+                game_type=GameType.LUCKY_DICE,
+                bet_amount=bet_request.bet_amount,
+                win_amount=win_amount,
+                result=BetResult.WIN if result == "win" else BetResult.LOSE,
+                balance_before=balance_before,
+                balance_after=user.credits,
+                game_data=json.dumps({
+                    "prediction": bet_request.prediction,
+                    "dice1": dice1,
+                    "dice2": dice2,
+                    "total": total,
+                    "multiplier": multiplier
+                })
+            )
+            db.add(bet_transaction)
+            db.commit()
+        except Exception as log_error:
+            # Log the error but don't fail the bet
+            logger.warning(f"Failed to log bet transaction | user_id={user.id} | error={str(log_error)}")
+            db.rollback()  # Rollback only the failed transaction log
+
+        # Log successful game transaction
+        log_game_transaction(
+            game_logger,
+            game_type="dice",
+            user_id=user.id,
+            bet_amount=bet_request.bet_amount,
+            result=result,
+            win_amount=win_amount,
+            balance_after=user.credits
+        )
+
+        return {
+            "success": True,
+            "game_type": "dice",
+            "bet_amount": bet_request.bet_amount,
+            "win_amount": win_amount,
+            "result": result,
+            "details": {
+                "dice1": dice1,
+                "dice2": dice2,
+                "total": total,
+                "prediction": bet_request.prediction
+            },
+            "new_balance": user.credits,
+            "message": message
+        }
+    except HTTPException:
+        # Re-raise HTTP exceptions without rollback (validation errors)
+        raise
+    except Exception as e:
+        # Rollback transaction on any error
+        db.rollback()
+        log_error_with_context(
+            logger,
+            e,
+            {"user_id": user.id, "game": "dice", "bet_amount": bet_request.bet_amount}
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process dice game: {str(e)}"
+        )
+
+
+def process_slots_game(bet_request: schemas.MiniGameBetRequest, user: models.User, db: Session):
+    """Process a slots game bet"""
+    try:
+        # Save balance before bet
+        balance_before = user.credits
+
+        # Spin the reels
+        reel1 = random.choice(SLOTS_SYMBOLS)
+        reel2 = random.choice(SLOTS_SYMBOLS)
+        reel3 = random.choice(SLOTS_SYMBOLS)
+
+        # Deduct bet amount first
+        user.credits -= bet_request.bet_amount
+
+        # Calculate winnings
+        win_amount = 0
+        result = "lose"
+        message = ""
+        multiplier = 0
+
+        if reel1 == reel2 == reel3:
+            # Jackpot! All three match
+            multiplier = SLOTS_SYMBOL_MULTIPLIERS.get(reel1, 10)
+            win_amount = bet_request.bet_amount * multiplier
+            user.credits += win_amount
+            result = "jackpot"
+            message = f"JACKPOT! Three {reel1}s! You won {win_amount} credits!"
+        elif reel1 == reel2 or reel2 == reel3 or reel1 == reel3:
+            # Two matching symbols
+            multiplier = SLOTS_TWO_MATCH_MULTIPLIER
+            win_amount = bet_request.bet_amount * multiplier
+            user.credits += win_amount
+            result = "win"
+            message = f"Two matching symbols! You won {win_amount} credits!"
+        else:
+            message = "No match. Try again!"
+
+        # Commit transaction
+        db.commit()
+        db.refresh(user)
+
+        # Create audit log entry (non-critical - don't fail bet if logging fails)
+        try:
+            bet_result = BetResult.JACKPOT if result == "jackpot" else (BetResult.WIN if result == "win" else BetResult.LOSE)
+            bet_transaction = models.BetTransaction(
+                user_id=user.id,
+                game_type=GameType.LUCKY_SLOTS,
+                bet_amount=bet_request.bet_amount,
+                win_amount=win_amount,
+                result=bet_result,
+                balance_before=balance_before,
+                balance_after=user.credits,
+                game_data=json.dumps({
+                    "symbols": [reel1, reel2, reel3],
+                    "multiplier": multiplier
+                })
+            )
+            db.add(bet_transaction)
+            db.commit()
+        except Exception as log_error:
+            # Log the error but don't fail the bet
+            logger.warning(f"Failed to log bet transaction | user_id={user.id} | error={str(log_error)}")
+            db.rollback()  # Rollback only the failed transaction log
+
+        # Log successful game transaction
+        log_game_transaction(
+            game_logger,
+            game_type="slots",
+            user_id=user.id,
+            bet_amount=bet_request.bet_amount,
+            result=result,
+            win_amount=win_amount,
+            balance_after=user.credits
+        )
+
+        return {
+            "success": True,
+            "game_type": "slots",
+            "bet_amount": bet_request.bet_amount,
+            "win_amount": win_amount,
+            "result": result,
+            "details": {
+                "reels": [reel1, reel2, reel3]
+            },
+            "new_balance": user.credits,
+            "message": message
+        }
+    except HTTPException:
+        # Re-raise HTTP exceptions without rollback (validation errors)
+        raise
+    except Exception as e:
+        # Rollback transaction on any error
+        db.rollback()
+        log_error_with_context(
+            logger,
+            e,
+            {"user_id": user.id, "game": "slots", "bet_amount": bet_request.bet_amount}
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process slots game: {str(e)}"
+        )

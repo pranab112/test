@@ -17,7 +17,9 @@ from app.models.enums import (
     TicketStatus,
     TicketPriority,
     TicketCategory,
-    ReferralStatus
+    ReferralStatus,
+    GameType,
+    BetResult
 )
 
 # Import models - order matters for relationships
@@ -33,6 +35,7 @@ from app.models.report import Report
 from app.models.offer import PlatformOffer, OfferClaim
 from app.models.ticket import Ticket, TicketMessage
 from app.models.referral import Referral, REFERRAL_BONUS_CREDITS
+from app.models.bet_transaction import BetTransaction
 
 __all__ = [
     # Base
@@ -53,6 +56,8 @@ __all__ = [
     "TicketPriority",
     "TicketCategory",
     "ReferralStatus",
+    "GameType",
+    "BetResult",
     # Models
     "User",
     "friends_association",
@@ -75,4 +80,5 @@ __all__ = [
     "TicketMessage",
     "Referral",
     "REFERRAL_BONUS_CREDITS",
+    "BetTransaction",
 ]

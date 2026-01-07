@@ -6,15 +6,12 @@ from app.models import Base  # Import from models package
 from app.api.v1.router import api_router  # Import v1 router
 from app.websocket import websocket_endpoint
 from app.config import settings
+from app.core import setup_logging, get_logger
 import os
-import logging
 
-# Setup logging based on environment
-logging.basicConfig(
-    level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+# Setup comprehensive logging
+setup_logging(log_level=settings.LOG_LEVEL if hasattr(settings, 'LOG_LEVEL') else "INFO")
+logger = get_logger(__name__)
 
 # Run database migrations on startup
 def run_migrations():

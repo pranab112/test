@@ -107,3 +107,14 @@ class ReferralStatus(str, enum.Enum):
     PENDING = "pending"  # Referred user registered but not yet approved
     COMPLETED = "completed"  # Referred user approved, bonus credited
     EXPIRED = "expired"  # Referred user never completed registration
+
+
+class GameType(str, enum.Enum):
+    LUCKY_DICE = "lucky_dice"
+    LUCKY_SLOTS = "lucky_slots"
+
+
+class BetResult(str, enum.Enum):
+    WIN = "win"
+    LOSE = "lose"
+    JACKPOT = "jackpot"

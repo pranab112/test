@@ -59,16 +59,45 @@ api.interceptors.response.use(
       window.location.href = redirectPath;
     }
 
-    // Handle other errors
-    const errorMessage = error.response?.data || {
-      success: false,
-      error: {
-        code: 'UNKNOWN_ERROR',
-        message: error.message || 'An unexpected error occurred',
-      },
-    };
+    // Handle other errors - normalize FastAPI error format
+    const responseData = error.response?.data;
 
-    return Promise.reject(errorMessage);
+    // FastAPI returns errors as { "detail": "message" }
+    // Normalize to { message: "...", detail: "..." } for consistency
+    let normalizedError;
+
+    if (typeof responseData === 'string') {
+      // Error is a plain string
+      normalizedError = {
+        message: responseData,
+        detail: responseData,
+        status: error.response?.status,
+      };
+    } else if (responseData?.detail) {
+      // FastAPI format: { "detail": "message" }
+      normalizedError = {
+        message: responseData.detail,
+        detail: responseData.detail,
+        status: error.response?.status,
+      };
+    } else if (responseData?.error?.message) {
+      // Custom format: { "error": { "message": "..." } }
+      normalizedError = {
+        message: responseData.error.message,
+        detail: responseData.error.message,
+        code: responseData.error.code,
+        status: error.response?.status,
+      };
+    } else {
+      // Unknown format - use axios error message
+      normalizedError = {
+        message: error.message || 'An unexpected error occurred',
+        detail: error.message || 'An unexpected error occurred',
+        status: error.response?.status,
+      };
+    }
+
+    return Promise.reject(normalizedError);
   }
 );
 
