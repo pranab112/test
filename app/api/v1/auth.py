@@ -113,10 +113,11 @@ def register(request: Request, user: schemas.UserCreate, db: Session = Depends(g
     db.refresh(db_user)
 
     # Handle referral code if provided
-    if user.referral_code:
+    referral_code = getattr(user, "referral_code", None)
+    if referral_code:
         # Find the referrer by their referral code
         referrer = db.query(models.User).filter(
-            models.User.referral_code == user.referral_code,
+            models.User.referral_code == referral_code,
             models.User.is_active == True
         ).first()
 
