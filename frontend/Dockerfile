@@ -14,11 +14,14 @@ RUN npm run build
 FROM node:18-alpine
 WORKDIR /app
 
-# Install serve globally
-RUN npm install -g serve@14.2.1
+# Install express for the simple server
+RUN npm install express@4.18.2
 
 # Copy built dist from build stage
 COPY --from=build /app/dist ./dist
+
+# Copy server.js
+COPY server.js ./
 
 # Set environment variable for PORT
 ENV PORT=8080
@@ -26,5 +29,5 @@ ENV PORT=8080
 # Expose port
 EXPOSE 8080
 
-# Start serve with inline shell command to handle $PORT properly
-CMD serve -s dist -p $PORT
+# Run Node server directly
+CMD ["node", "server.js"]
