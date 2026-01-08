@@ -430,7 +430,7 @@ async def get_analytics(
 
     # Avg rating from reviews
     avg_rating_result = db.query(func.avg(models.Review.rating)).filter(
-        models.Review.reviewed_id == current_user.id
+        models.Review.reviewee_id == current_user.id
     ).scalar()
     avg_rating = float(avg_rating_result) if avg_rating_result else 5.0
 
