@@ -101,7 +101,8 @@ export function RewardsSection() {
       setSelectedClientId(null);
       await loadData();
     } catch (error: any) {
-      toast.error(error.detail || 'Failed to claim reward');
+      console.error('Offer claim error:', error);
+      toast.error(error.detail || error.message || 'Failed to claim reward');
     } finally {
       setClaiming(false);
     }

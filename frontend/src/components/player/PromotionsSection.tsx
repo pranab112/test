@@ -107,7 +107,8 @@ export function PromotionsSection() {
         toast.error(response.message);
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Failed to claim promotion');
+      console.error('Promotion claim error:', error);
+      toast.error(error.detail || error.message || 'Failed to claim promotion');
     } finally {
       setClaiming(false);
     }
