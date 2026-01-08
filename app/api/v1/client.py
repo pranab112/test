@@ -303,6 +303,234 @@ def bulk_register_players(
         "failed_players": failed_players
     }
 
+@router.get("/analytics", response_model=schemas.AnalyticsResponse)
+async def get_analytics(
+    current_user: models.User = Depends(get_client_user),
+    db: Session = Depends(get_db)
+):
+    """Get comprehensive analytics data for the client dashboard"""
+    from datetime import datetime, timedelta
+    from sqlalchemy import or_
+
+    today = datetime.utcnow().date()
+    yesterday = today - timedelta(days=1)
+    last_week = today - timedelta(days=7)
+    two_weeks_ago = today - timedelta(days=14)
+
+    # --- Total Friends ---
+    total_friends = len(current_user.friends) if current_user.friends else 0
+
+    # Friends added in last week vs week before for trend
+    # Note: We'll approximate trends based on available data
+    friends_trend = {"value": "+0%", "is_positive": True}
+
+    # --- Total Messages ---
+    total_messages_sent = db.query(models.Message).filter(
+        models.Message.sender_id == current_user.id
+    ).count()
+    total_messages_received = db.query(models.Message).filter(
+        models.Message.receiver_id == current_user.id
+    ).count()
+    total_messages = total_messages_sent + total_messages_received
+
+    # Messages in last week vs week before for trend
+    messages_this_week = db.query(models.Message).filter(
+        or_(
+            models.Message.sender_id == current_user.id,
+            models.Message.receiver_id == current_user.id
+        ),
+        func.date(models.Message.created_at) >= last_week
+    ).count()
+    messages_last_week = db.query(models.Message).filter(
+        or_(
+            models.Message.sender_id == current_user.id,
+            models.Message.receiver_id == current_user.id
+        ),
+        func.date(models.Message.created_at) >= two_weeks_ago,
+        func.date(models.Message.created_at) < last_week
+    ).count()
+
+    if messages_last_week > 0:
+        msg_change = ((messages_this_week - messages_last_week) / messages_last_week) * 100
+        messages_trend = {
+            "value": f"{'+' if msg_change >= 0 else ''}{int(msg_change)}%",
+            "is_positive": msg_change >= 0
+        }
+    else:
+        messages_trend = {"value": f"+{messages_this_week}", "is_positive": True}
+
+    # --- Active Players ---
+    direct_active = db.query(models.User).filter(
+        models.User.created_by_client_id == current_user.id,
+        models.User.user_type == models.UserType.PLAYER,
+        models.User.is_active == True
+    ).count()
+
+    credential_active = db.query(models.User).join(
+        models.GameCredentials,
+        models.GameCredentials.player_id == models.User.id
+    ).filter(
+        models.GameCredentials.created_by_client_id == current_user.id,
+        models.User.user_type == models.UserType.PLAYER,
+        models.User.is_active == True,
+        models.User.created_by_client_id != current_user.id
+    ).distinct().count()
+
+    active_players = direct_active + credential_active
+    players_trend = {"value": "+0%", "is_positive": True}
+
+    # --- New Signups (today) ---
+    new_signups = db.query(models.User).filter(
+        models.User.created_by_client_id == current_user.id,
+        models.User.user_type == models.UserType.PLAYER,
+        func.date(models.User.created_at) == today
+    ).count()
+
+    signups_yesterday = db.query(models.User).filter(
+        models.User.created_by_client_id == current_user.id,
+        models.User.user_type == models.UserType.PLAYER,
+        func.date(models.User.created_at) == yesterday
+    ).count()
+
+    if signups_yesterday > 0:
+        signup_change = ((new_signups - signups_yesterday) / signups_yesterday) * 100
+        signups_trend = {
+            "value": f"{'+' if signup_change >= 0 else ''}{int(signup_change)}%",
+            "is_positive": signup_change >= 0
+        }
+    else:
+        signups_trend = {"value": f"+{new_signups}", "is_positive": True}
+
+    # --- Avg Session Time (placeholder - would need session tracking) ---
+    avg_session_time = "N/A"
+    session_time_trend = {"value": "N/A", "is_positive": True}
+
+    # --- Quick Stats ---
+    # Response rate: messages responded to / messages received
+    unread_messages = db.query(models.Message).filter(
+        models.Message.receiver_id == current_user.id,
+        models.Message.is_read == False
+    ).count()
+
+    if total_messages_received > 0:
+        response_rate = ((total_messages_received - unread_messages) / total_messages_received) * 100
+    else:
+        response_rate = 100.0
+
+    # Player retention: active players / total players
+    total_direct = db.query(models.User).filter(
+        models.User.created_by_client_id == current_user.id,
+        models.User.user_type == models.UserType.PLAYER
+    ).count()
+
+    if total_direct > 0:
+        player_retention = (direct_active / total_direct) * 100
+    else:
+        player_retention = 100.0
+
+    # Avg rating from reviews
+    avg_rating_result = db.query(func.avg(models.Review.rating)).filter(
+        models.Review.reviewed_id == current_user.id
+    ).scalar()
+    avg_rating = float(avg_rating_result) if avg_rating_result else 5.0
+
+    quick_stats = {
+        "response_rate": round(response_rate, 1),
+        "player_retention": round(player_retention, 1),
+        "avg_rating": round(avg_rating, 1)
+    }
+
+    # --- Recent Activity ---
+    activities = []
+
+    # Friend requests received
+    friend_requests = db.query(models.FriendRequest).filter(
+        models.FriendRequest.receiver_id == current_user.id
+    ).order_by(models.FriendRequest.created_at.desc()).limit(3).all()
+
+    for fr in friend_requests:
+        activities.append({
+            "activity_type": "friend_request",
+            "description": "sent a friend request",
+            "user": fr.sender.username,
+            "timestamp": fr.created_at,
+            "status": fr.status.value.title()
+        })
+
+    # Recent player registrations
+    recent_players = db.query(models.User).filter(
+        models.User.created_by_client_id == current_user.id,
+        models.User.user_type == models.UserType.PLAYER
+    ).order_by(models.User.created_at.desc()).limit(3).all()
+
+    for player in recent_players:
+        activities.append({
+            "activity_type": "signup",
+            "description": "signed up",
+            "user": player.username,
+            "timestamp": player.created_at,
+            "status": "Active" if player.is_active else "Inactive"
+        })
+
+    # Recent messages
+    recent_msgs = db.query(models.Message).filter(
+        models.Message.receiver_id == current_user.id
+    ).order_by(models.Message.created_at.desc()).limit(3).all()
+
+    for msg in recent_msgs:
+        activities.append({
+            "activity_type": "message",
+            "description": "sent you a message",
+            "user": msg.sender.username,
+            "timestamp": msg.created_at,
+            "status": "Unread" if not msg.is_read else "Read"
+        })
+
+    # Sort and limit activities
+    activities.sort(key=lambda x: x["timestamp"], reverse=True)
+    activities = activities[:4]
+
+    # --- Top Performing Promotions ---
+    top_promotions = []
+    promotions = db.query(models.Promotion).filter(
+        models.Promotion.client_id == current_user.id,
+        models.Promotion.status == models.PromotionStatus.ACTIVE
+    ).order_by(models.Promotion.created_at.desc()).limit(3).all()
+
+    for promo in promotions:
+        claim_count = db.query(models.PromotionClaim).filter(
+            models.PromotionClaim.promotion_id == promo.id
+        ).count()
+
+        # Calculate engagement rate based on budget usage
+        if promo.total_budget and promo.total_budget > 0:
+            rate = (promo.used_budget / promo.total_budget) * 100
+        else:
+            rate = 0
+
+        top_promotions.append({
+            "name": promo.title,
+            "claims": claim_count,
+            "rate": round(rate, 1)
+        })
+
+    return {
+        "total_friends": total_friends,
+        "total_messages": total_messages,
+        "active_players": active_players,
+        "new_signups": new_signups,
+        "avg_session_time": avg_session_time,
+        "friends_trend": friends_trend,
+        "messages_trend": messages_trend,
+        "players_trend": players_trend,
+        "signups_trend": signups_trend,
+        "session_time_trend": session_time_trend,
+        "quick_stats": quick_stats,
+        "recent_activity": activities,
+        "top_promotions": top_promotions
+    }
+
+
 @router.get("/recent-activity", response_model=schemas.RecentActivityResponse)
 async def get_recent_activity(
     current_user: models.User = Depends(get_client_user),

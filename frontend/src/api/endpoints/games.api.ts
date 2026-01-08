@@ -140,6 +140,22 @@ export const gamesApi = {
   },
 
   // Client endpoints
+
+  // Get all available games (for clients to browse library)
+  getAvailableGames: async (): Promise<Game[]> => {
+    try {
+      const response = await apiClient.get<never, Game[]>('/games/');
+      return response;
+    } catch (error: any) {
+      if (error?.response?.status === 404 || error?.error?.code === 'NOT_FOUND') {
+        console.log('No games available, returning empty array');
+        return [];
+      }
+      console.error('Failed to fetch available games:', error);
+      return [];
+    }
+  },
+
   getClientGames: async (): Promise<ClientGame[]> => {
     try {
       const response = await apiClient.get('/games/my-games-details');

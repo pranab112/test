@@ -54,13 +54,8 @@ export function GamesSection() {
   const loadGamesData = async () => {
     setLoading(true);
     try {
-      // Get all available games (use general endpoint, not admin endpoint)
-      const allGamesData = await fetch('http://localhost:8000/api/v1/games/', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          'Content-Type': 'application/json',
-        },
-      }).then(res => res.json()).catch(() => []);
+      // Get all available games using the API client
+      const allGamesData = await gamesApi.getAvailableGames();
       setAllGames(allGamesData);
 
       // Get client's selected games

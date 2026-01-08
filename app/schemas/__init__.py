@@ -98,7 +98,7 @@ from app.schemas.email import (
     EmailStatusResponse,
     OTPVerificationRequest
 )
-from app.schemas.activity import ActivityItem, RecentActivityResponse
+from app.schemas.activity import ActivityItem, RecentActivityResponse, TrendData, QuickStats, PromotionStats, AnalyticsResponse
 from app.schemas.password import (
     ChangePasswordRequest,
     AdminResetPasswordRequest,
@@ -219,6 +219,10 @@ __all__ = [
     # Activity
     "ActivityItem",
     "RecentActivityResponse",
+    "TrendData",
+    "QuickStats",
+    "PromotionStats",
+    "AnalyticsResponse",
     # Password
     "ChangePasswordRequest",
     "AdminResetPasswordRequest",
