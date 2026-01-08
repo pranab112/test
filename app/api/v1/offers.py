@@ -5,7 +5,7 @@ from typing import List, Optional
 from app import models, schemas, auth
 from app.database import get_db
 from app.models import UserType, OfferStatus, OfferClaimStatus, OfferType, MessageType
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal, ROUND_DOWN
 
 router = APIRouter(prefix="/offers", tags=["offers"])
@@ -234,7 +234,7 @@ def admin_process_claim(
         raise HTTPException(status_code=400, detail="Claim has already been processed")
 
     claim.status = process_data.status
-    claim.processed_at = datetime.utcnow()
+    claim.processed_at = datetime.now(timezone.utc)
     claim.processed_by = admin.id
 
     # If approved, add bonus credits to BOTH player AND client
@@ -295,7 +295,7 @@ def get_available_offers(
     db: Session = Depends(get_db)
 ):
     """Get all active offers available for the player to claim"""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     # Get active offers that haven't expired
     offers = db.query(models.PlatformOffer).filter(
@@ -388,7 +388,7 @@ def claim_offer(
         raise HTTPException(status_code=404, detail="Offer not found or not active")
 
     # Check expiry
-    if offer.end_date and offer.end_date < datetime.utcnow():
+    if offer.end_date and offer.end_date < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Offer has expired")
 
     # VALIDATION: For EMAIL_VERIFICATION offers, check if email is actually verified
