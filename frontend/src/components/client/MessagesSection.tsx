@@ -451,7 +451,7 @@ export function MessagesSection() {
 
   // Helper to parse and detect promotion claim messages
   const parsePromotionClaimMessage = (message: Message): { isPromotionClaim: boolean; data?: any } => {
-    if (message.message_type !== 'promotion') {
+    if (message.message_type !== 'promotion' || !message.content) {
       return { isPromotionClaim: false };
     }
 
