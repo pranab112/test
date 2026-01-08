@@ -3,7 +3,7 @@ import { GiCardAceSpades } from 'react-icons/gi';
 import {
   MdDashboard, MdPeople, MdSettings, MdMessage,
   MdCheckCircle, MdFlag, MdStar, MdCardGiftcard,
-  MdBroadcastOnPersonal, MdGroup, MdVideogameAsset
+  MdBroadcastOnPersonal, MdGroup, MdVideogameAsset, MdSupport
 } from 'react-icons/md';
 import { FiLogOut, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { FaUsers, FaGamepad, FaChartLine, FaGift } from 'react-icons/fa';
@@ -37,6 +37,7 @@ export function Sidebar({ activeSection, onSectionChange, isMobile = false }: Si
         { id: 'games', label: 'Game Library', icon: MdVideogameAsset },
         { id: 'approvals', label: 'Approvals', icon: MdCheckCircle },
         { id: 'messages', label: 'Messages', icon: MdMessage },
+        { id: 'tickets', label: 'Support Tickets', icon: MdSupport },
         { id: 'promotions', label: 'Promotions', icon: MdCardGiftcard },
         { id: 'reports', label: 'Reports', icon: MdFlag },
         { id: 'reviews', label: 'Reviews', icon: MdStar },

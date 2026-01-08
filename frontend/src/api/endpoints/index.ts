@@ -117,3 +117,6 @@ export {
   type ReferralListResponse,
   type ReferralBonusInfo,
 } from './referrals.api';
+
+// Tickets API
+export { ticketsApi } from './tickets.api';
