@@ -330,8 +330,8 @@ def investigate_report(
     if action not in valid_actions:
         raise HTTPException(status_code=400, detail=f"Action must be one of: {', '.join(valid_actions)}")
 
-    # Update report status
-    report.status = ReportStatus(action.upper())
+    # Update report status (ReportStatus enum values are lowercase)
+    report.status = ReportStatus(action)
     report.reviewed_by = current_user.id
     report.reviewed_at = datetime.now(timezone.utc)
     report.admin_notes = investigation.admin_notes
