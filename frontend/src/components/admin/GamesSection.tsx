@@ -112,13 +112,20 @@ export function GamesSection() {
     }
   };
 
-  const handleImageSelect = (file: File) => {
-    setSelectedImage(file);
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+  const handleImageSelect = (file: File | null) => {
+    if (file) {
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleClearImage = () => {
+    setSelectedImage(null);
+    setImagePreview('');
   };
 
   const columns = [
@@ -287,6 +294,7 @@ export function GamesSection() {
           selectedImage={selectedImage}
           imagePreview={imagePreview || editingGame?.icon_url || ''}
           onImageSelect={handleImageSelect}
+          onClearImage={handleClearImage}
         />
       )}
 
@@ -309,7 +317,8 @@ interface GameFormModalProps {
   categories: string[];
   selectedImage: File | null;
   imagePreview: string;
-  onImageSelect: (file: File) => void;
+  onImageSelect: (file: File | null) => void;
+  onClearImage: () => void;
 }
 
 function GameFormModal({
@@ -322,6 +331,7 @@ function GameFormModal({
   selectedImage,
   imagePreview,
   onImageSelect,
+  onClearImage,
 }: GameFormModalProps) {
   const [formData, setFormData] = useState<CreateGameRequest>({
     name: game?.name || '',
@@ -330,6 +340,7 @@ function GameFormModal({
     category: game?.category || 'slots',
     is_active: game?.is_active ?? true,
   });
+  const [imageError, setImageError] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -406,18 +417,20 @@ function GameFormModal({
             <div>
               <label className="label">Game Cover Image</label>
               <div className="bg-dark-300 border-2 border-dashed border-gold-700 rounded-lg p-4">
-                {imagePreview ? (
+                {(imagePreview && !imageError) ? (
                   <div className="space-y-3">
                     <img
                       src={imagePreview}
                       alt="Preview"
                       className="w-full h-48 object-cover rounded-lg"
+                      onError={() => setImageError(true)}
                     />
                     <button
                       type="button"
                       onClick={() => {
-                        onImageSelect(null as any);
+                        onClearImage();
                         setFormData({ ...formData, icon_url: '' });
+                        setImageError(false);
                       }}
                       className="w-full text-red-500 hover:text-red-400 text-sm"
                     >
@@ -435,7 +448,12 @@ function GameFormModal({
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={(e) => e.target.files?.[0] && onImageSelect(e.target.files[0])}
+                      onChange={(e) => {
+                        if (e.target.files?.[0]) {
+                          onImageSelect(e.target.files[0]);
+                          setImageError(false);
+                        }
+                      }}
                     />
                   </label>
                 )}

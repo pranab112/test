@@ -180,6 +180,7 @@ def get_user_reports(
             reported_user_name=user.full_name or user.username,
             reported_user_username=user.username,
             reason=my_report.reason,
+            evidence=my_report.evidence,
             status=my_report.status,
             created_at=my_report.created_at,
             updated_at=my_report.updated_at

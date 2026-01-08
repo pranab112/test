@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Badge } from '@/components/common/Badge';
 import { Avatar } from '@/components/common/Avatar';
 import { Input } from '@/components/common/Input';
@@ -10,6 +10,7 @@ import { friendsApi, type FriendDetails, type FriendRequest } from '@/api/endpoi
 import { reportsApi } from '@/api/endpoints/reports.api';
 import { formatDistanceToNow } from 'date-fns';
 import { useDashboard } from '@/contexts/DashboardContext';
+import { useWebSocket } from '@/contexts/WebSocketContext';
 
 type FriendsTab = 'friends' | 'received' | 'sent';
 
@@ -33,9 +34,29 @@ export function FriendsSection() {
   const [reportReason, setReportReason] = useState('');
   const [submittingReport, setSubmittingReport] = useState(false);
 
+  // WebSocket for real-time online status
+  const { onlineUsers, requestOnlineStatus, isConnected } = useWebSocket();
+
+  // Helper to check if a friend is online (prefer real-time status over initial data)
+  const isFriendOnline = useCallback((friendId: number, initialOnlineStatus: boolean) => {
+    const wsStatus = onlineUsers.get(friendId);
+    if (wsStatus !== undefined) {
+      return wsStatus.is_online;
+    }
+    return initialOnlineStatus;
+  }, [onlineUsers]);
+
   useEffect(() => {
     loadData();
   }, []);
+
+  // Request online status for all friends when friends list changes or WebSocket connects
+  useEffect(() => {
+    if (isConnected && friends.length > 0) {
+      const friendIds = friends.map(f => f.id);
+      requestOnlineStatus(friendIds);
+    }
+  }, [isConnected, friends, requestOnlineStatus]);
 
   const loadData = async () => {
     setLoading(true);
@@ -159,7 +180,7 @@ export function FriendsSection() {
       username: friend.username,
       full_name: friend.full_name,
       profile_picture: friend.profile_picture,
-      is_online: friend.is_online,
+      is_online: isFriendOnline(friend.id, friend.is_online),
     });
   };
 
@@ -314,14 +335,14 @@ export function FriendsSection() {
                     <Avatar
                       name={friend.full_name || friend.username}
                       size="lg"
-                      online={friend.is_online}
+                      online={isFriendOnline(friend.id, friend.is_online)}
                       src={friend.profile_picture}
                     />
                     <div className="flex-1 min-w-0">
                       <p className="text-white font-medium truncate">{friend.username}</p>
                       <p className="text-sm text-gray-400 truncate">{friend.full_name}</p>
                       <div className="flex items-center gap-2 mt-1">
-                        {friend.is_online ? (
+                        {isFriendOnline(friend.id, friend.is_online) ? (
                           <Badge variant="success" size="sm" dot>
                             Online
                           </Badge>
@@ -525,7 +546,7 @@ export function FriendsSection() {
                         name={user.full_name || user.username}
                         size="md"
                         src={user.profile_picture}
-                        online={user.is_online}
+                        online={isFriendOnline(user.id, user.is_online)}
                       />
                       <div>
                         <p className="text-white font-medium">{user.username}</p>

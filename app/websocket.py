@@ -206,8 +206,25 @@ class ConnectionManager:
 
     async def _notify_friends_online(self, user: models.User, db: Session):
         """Notify all friends that user is online"""
-        for friend in user.friends:
-            await self.send_to_user(friend.id, WSMessage(
+        # Query friends from both directions in the friends_association table
+        from sqlalchemy import or_, and_
+        friendships = db.query(models.friends_association).filter(
+            or_(
+                models.friends_association.c.user_id == user.id,
+                models.friends_association.c.friend_id == user.id
+            )
+        ).all()
+
+        # Get all friend IDs from both directions
+        friend_ids = set()
+        for f in friendships:
+            if f.user_id == user.id:
+                friend_ids.add(f.friend_id)
+            else:
+                friend_ids.add(f.user_id)
+
+        for friend_id in friend_ids:
+            await self.send_to_user(friend_id, WSMessage(
                 type=WSMessageType.USER_ONLINE,
                 data={
                     "user_id": user.id,
@@ -219,8 +236,25 @@ class ConnectionManager:
 
     async def _notify_friends_offline(self, user: models.User, db: Session):
         """Notify all friends that user is offline"""
-        for friend in user.friends:
-            await self.send_to_user(friend.id, WSMessage(
+        # Query friends from both directions in the friends_association table
+        from sqlalchemy import or_, and_
+        friendships = db.query(models.friends_association).filter(
+            or_(
+                models.friends_association.c.user_id == user.id,
+                models.friends_association.c.friend_id == user.id
+            )
+        ).all()
+
+        # Get all friend IDs from both directions
+        friend_ids = set()
+        for f in friendships:
+            if f.user_id == user.id:
+                friend_ids.add(f.friend_id)
+            else:
+                friend_ids.add(f.user_id)
+
+        for friend_id in friend_ids:
+            await self.send_to_user(friend_id, WSMessage(
                 type=WSMessageType.USER_OFFLINE,
                 data={
                     "user_id": user.id,
