@@ -20,8 +20,7 @@ export const ticketsApi = {
    * Create a new support ticket
    */
   createTicket: async (data: TicketCreateRequest): Promise<TicketDetail> => {
-    const response = await apiClient.post('/tickets/', data);
-    return response as TicketDetail;
+    return await apiClient.post('/tickets/', data) as any;
   },
 
   /**
@@ -35,16 +34,14 @@ export const ticketsApi = {
     const params: any = { skip, limit };
     if (statusFilter) params.status_filter = statusFilter;
 
-    const response = await apiClient.get('/tickets/my-tickets', { params });
-    return response as TicketListResponse;
+    return await apiClient.get('/tickets/my-tickets', { params }) as any;
   },
 
   /**
    * Get a specific ticket with all messages
    */
   getTicket: async (ticketId: number): Promise<TicketDetail> => {
-    const response = await apiClient.get(`/tickets/${ticketId}`);
-    return response as TicketDetail;
+    return await apiClient.get(`/tickets/${ticketId}`) as any;
   },
 
   /**
@@ -54,16 +51,14 @@ export const ticketsApi = {
     ticketId: number,
     data: TicketMessageCreateRequest
   ): Promise<TicketMessage> => {
-    const response = await apiClient.post(`/tickets/${ticketId}/messages`, data);
-    return response as TicketMessage;
+    return await apiClient.post(`/tickets/${ticketId}/messages`, data) as any;
   },
 
   /**
    * Close own ticket
    */
   closeTicket: async (ticketId: number): Promise<{ message: string; ticket_number: string }> => {
-    const response = await apiClient.post(`/tickets/${ticketId}/close`);
-    return response as any;
+    return await apiClient.post(`/tickets/${ticketId}/close`) as any;
   },
 
   // ============== ADMIN ENDPOINTS ==============
@@ -80,8 +75,7 @@ export const ticketsApi = {
     skip?: number;
     limit?: number;
   } = {}): Promise<TicketListResponse> => {
-    const response = await apiClient.get('/tickets/admin/all', { params });
-    return response as TicketListResponse;
+    return await apiClient.get('/tickets/admin/all', { params }) as any;
   },
 
   /**
@@ -91,8 +85,7 @@ export const ticketsApi = {
     ticketId: number,
     data: TicketUpdateRequest
   ): Promise<Ticket> => {
-    const response = await apiClient.put(`/tickets/admin/${ticketId}`, data);
-    return response as Ticket;
+    return await apiClient.put(`/tickets/admin/${ticketId}`, data) as any;
   },
 
   /**
@@ -123,7 +116,6 @@ export const ticketsApi = {
    * Get ticket statistics (admin only)
    */
   getStats: async (): Promise<TicketStatsResponse> => {
-    const response = await apiClient.get('/tickets/admin/stats');
-    return response as TicketStatsResponse;
+    return await apiClient.get('/tickets/admin/stats') as any;
   },
 };

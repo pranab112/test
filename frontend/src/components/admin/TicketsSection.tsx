@@ -6,7 +6,6 @@ import {
   MdClose,
   MdFilterList,
   MdCheck,
-  MdWarning,
   MdPerson,
   MdSend,
   MdLock,
@@ -49,7 +48,6 @@ const CATEGORY_LABELS: Record<TicketCategory, string> = {
 };
 
 export function TicketsSection() {
-  const { user } = useAuth();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<TicketStatsResponse | null>(null);
