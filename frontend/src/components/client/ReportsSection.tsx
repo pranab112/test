@@ -268,6 +268,11 @@ export function ReportsSection() {
       return;
     }
 
+    if (appealReason.trim().length < 10) {
+      toast.error('Appeal reason must be at least 10 characters long');
+      return;
+    }
+
     setLoading(true);
     try {
       const result = await reportsApi.appealReport(selectedReport.id, appealReason);
@@ -883,6 +888,9 @@ export function ReportsSection() {
                   rows={5}
                   className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
+                <p className="text-xs text-gray-400 mt-1">
+                  Minimum 10 characters required
+                </p>
               </div>
 
               <div className="bg-purple-900/20 border border-purple-700 rounded-lg p-4">
