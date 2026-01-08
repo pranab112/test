@@ -39,7 +39,7 @@ const requiredFiles = [
   'vite.config.ts',
   'tsconfig.json',
   'index.html',
-  'nixpacks.toml',
+  'railway.toml',
   'railway.json',
   '.env.production'
 ];
@@ -126,28 +126,28 @@ if (wsUrlMatch) {
   }
 }
 
-// Check 6: Verify nixpacks.toml configuration
-log.info('\nChecking nixpacks.toml...');
-const nixpacksContent = fs.readFileSync(path.join(__dirname, 'nixpacks.toml'), 'utf8');
-if (nixpacksContent.includes('nodejs')) {
-  log.success('Node.js is configured in nixpacks.toml');
+// Check 6: Verify railway.toml configuration
+log.info('\nChecking railway.toml...');
+const railwayContent = fs.readFileSync(path.join(__dirname, 'railway.toml'), 'utf8');
+if (railwayContent.includes('nixpacks')) {
+  log.success('Nixpacks builder is configured in railway.toml');
 } else {
-  log.error('Node.js should be specified in nixpacks.toml');
-  errors++;
-}
-
-if (nixpacksContent.includes('npm run build')) {
-  log.success('Build command is configured');
-} else {
-  log.warning('Build command should be "npm run build"');
+  log.warning('Nixpacks builder should be specified in railway.toml');
   warnings++;
 }
 
-if (nixpacksContent.includes('npm run start')) {
+if (railwayContent.includes('npm run start')) {
   log.success('Start command is configured');
 } else {
   log.error('Start command should be "npm run start"');
   errors++;
+}
+
+if (railwayContent.includes('restartPolicyType')) {
+  log.success('Restart policy is configured');
+} else {
+  log.warning('Restart policy should be configured');
+  warnings++;
 }
 
 // Check 7: Verify dependencies
