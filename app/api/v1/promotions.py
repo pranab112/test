@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func
 from typing import List, Optional
@@ -757,7 +757,7 @@ async def approve_promotion_claim(
 @router.post("/reject-claim/{claim_id}")
 async def reject_promotion_claim(
     claim_id: int,
-    rejection_data: Optional[dict] = None,
+    rejection_data: Optional[dict] = Body(None),
     current_user: models.User = Depends(auth.get_current_active_user),
     db: Session = Depends(get_db)
 ):
