@@ -16,11 +16,14 @@ import {
   MdVisibility,
   MdVisibilityOff,
   MdMic,
+  MdCheck,
+  MdStar,
 } from 'react-icons/md';
 import { FaKey, FaUser, FaGamepad, FaLink } from 'react-icons/fa';
 import { chatApi, type Conversation, type Message } from '@/api/endpoints';
 import { gamesApi, type ClientGame } from '@/api/endpoints/games.api';
 import { gameCredentialsApi, type GameCredential } from '@/api/endpoints/gameCredentials.api';
+import { promotionsApi } from '@/api/endpoints/promotions.api';
 import { useAuth } from '@/contexts/AuthContext';
 import { getFileUrl } from '@/config/api.config';
 
@@ -412,6 +415,58 @@ export function MessagesSection() {
     return clientGame?.game;
   };
 
+  // Promotion claim handlers
+  const handleApprovePromotionClaim = async (claimId: number) => {
+    if (!confirm('Are you sure you want to approve this promotion claim?')) return;
+
+    try {
+      await promotionsApi.approvePromotionClaim(claimId);
+      toast.success('Promotion claim approved!');
+      // Reload messages to update the UI
+      if (selectedConversation) {
+        loadMessages(selectedConversation.friend.id);
+      }
+    } catch (error: any) {
+      console.error('Failed to approve promotion claim:', error);
+      toast.error(error.detail || error.message || 'Failed to approve claim');
+    }
+  };
+
+  const handleRejectPromotionClaim = async (claimId: number) => {
+    const reason = prompt('Enter reason for rejection (optional):');
+    if (reason === null) return; // User clicked cancel
+
+    try {
+      await promotionsApi.rejectPromotionClaim(claimId, reason || undefined);
+      toast.success('Promotion claim rejected');
+      // Reload messages to update the UI
+      if (selectedConversation) {
+        loadMessages(selectedConversation.friend.id);
+      }
+    } catch (error: any) {
+      console.error('Failed to reject promotion claim:', error);
+      toast.error(error.detail || error.message || 'Failed to reject claim');
+    }
+  };
+
+  // Helper to parse and detect promotion claim messages
+  const parsePromotionClaimMessage = (message: Message): { isPromotionClaim: boolean; data?: any } => {
+    if (message.message_type !== 'promotion') {
+      return { isPromotionClaim: false };
+    }
+
+    try {
+      const data = JSON.parse(message.content);
+      if (data.type === 'promotion_claim_request') {
+        return { isPromotionClaim: true, data };
+      }
+    } catch (e) {
+      console.error('Failed to parse promotion message:', e);
+    }
+
+    return { isPromotionClaim: false };
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -529,6 +584,8 @@ export function MessagesSection() {
               ) : (
                 messages.map((message) => {
                   const isOwnMessage = message.sender_id === user?.id;
+                  const promotionClaim = parsePromotionClaimMessage(message);
+
                   return (
                     <div
                       key={message.id}
@@ -536,12 +593,58 @@ export function MessagesSection() {
                     >
                       <div
                         className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                          isOwnMessage
+                          promotionClaim.isPromotionClaim
+                            ? 'bg-gradient-to-br from-purple-600 to-blue-600 text-white'
+                            : isOwnMessage
                             ? 'bg-gold-gradient text-dark-700'
                             : 'bg-dark-300 text-white'
                         }`}
                       >
-                        {message.message_type === 'image' && message.file_url ? (
+                        {promotionClaim.isPromotionClaim && promotionClaim.data ? (
+                          // Promotion Claim Request
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2 border-b border-white/20 pb-2">
+                              <MdStar className="text-yellow-300" size={20} />
+                              <span className="font-bold">Promotion Claim Request</span>
+                            </div>
+
+                            <div className="space-y-2 text-sm">
+                              <div>
+                                <span className="text-white/70">Promotion:</span>
+                                <div className="font-semibold">{promotionClaim.data.promotion_title}</div>
+                              </div>
+                              <div>
+                                <span className="text-white/70">Player:</span>
+                                <div className="font-semibold">{promotionClaim.data.player_username} (Level {promotionClaim.data.player_level})</div>
+                              </div>
+                              <div>
+                                <span className="text-white/70">Value:</span>
+                                <div className="font-semibold">{promotionClaim.data.value} credits</div>
+                              </div>
+                              <div>
+                                <span className="text-white/70">Type:</span>
+                                <div className="font-semibold capitalize">{promotionClaim.data.promotion_type.replace('_', ' ')}</div>
+                              </div>
+                            </div>
+
+                            <div className="flex gap-2 pt-2">
+                              <button
+                                onClick={() => handleApprovePromotionClaim(promotionClaim.data.claim_id)}
+                                className="flex-1 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded font-medium transition-colors flex items-center justify-center gap-1"
+                              >
+                                <MdCheck size={16} />
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleRejectPromotionClaim(promotionClaim.data.claim_id)}
+                                className="flex-1 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded font-medium transition-colors flex items-center justify-center gap-1"
+                              >
+                                <MdClose size={16} />
+                                Reject
+                              </button>
+                            </div>
+                          </div>
+                        ) : message.message_type === 'image' && message.file_url ? (
                           <img
                             src={getFileUrl(message.file_url)}
                             alt="Shared image"
@@ -560,10 +663,10 @@ export function MessagesSection() {
                           <p className="break-words">{message.content}</p>
                         )}
                         <div className="flex items-center justify-between mt-1">
-                          <p className={`text-xs ${isOwnMessage ? 'text-dark-500' : 'text-gray-500'}`}>
+                          <p className={`text-xs ${promotionClaim.isPromotionClaim ? 'text-white/60' : isOwnMessage ? 'text-dark-500' : 'text-gray-500'}`}>
                             {formatMessageTime(message.created_at)}
                           </p>
-                          {isOwnMessage && (
+                          {isOwnMessage && !promotionClaim.isPromotionClaim && (
                             <button
                               type="button"
                               title="Delete message"
