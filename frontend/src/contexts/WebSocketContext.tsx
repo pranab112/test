@@ -367,20 +367,8 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
         wsService.disconnect();
       };
     }
-  }, [
-    user,
-    handleNewMessage,
-    handleMessageDelivered,
-    handleMessageRead,
-    handleTypingStart,
-    handleTypingStop,
-    handleUserOnline,
-    handleUserOffline,
-    handleUserStatusResponse,
-    handleFriendRequest,
-    handleFriendAccepted,
-    handleNotification,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   // Context methods
   const sendMessage = useCallback((receiverId: number, content: string, messageType: string = 'text') => {
