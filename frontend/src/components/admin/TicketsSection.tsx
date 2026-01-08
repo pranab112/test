@@ -20,7 +20,6 @@ import {
   TicketCategory,
   TicketStatsResponse,
 } from '@/types/ticket.types';
-import { useAuth } from '@/contexts/AuthContext';
 
 const STATUS_COLORS: Record<TicketStatus, string> = {
   [TicketStatus.OPEN]: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50',
