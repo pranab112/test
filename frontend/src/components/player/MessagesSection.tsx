@@ -646,9 +646,9 @@ export function MessagesSection() {
                                       <span className="font-bold text-sm">
                                         {promotionInfo.data.type === 'promotion_claim_request'
                                           ? 'Promotion Claim Request'
-                                          : promotionInfo.data.type === 'promotion_approved'
+                                          : promotionInfo.data.type === 'promotion_claim_approved'
                                           ? 'Promotion Approved ✅'
-                                          : promotionInfo.data.type === 'promotion_rejected'
+                                          : promotionInfo.data.type === 'promotion_claim_rejected'
                                           ? 'Promotion Rejected ❌'
                                           : 'Promotion Update'
                                         }
