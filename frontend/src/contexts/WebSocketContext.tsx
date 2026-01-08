@@ -64,7 +64,6 @@ interface WebSocketProviderProps {
 
 export function WebSocketProvider({ children }: WebSocketProviderProps) {
   const { user } = useAuth();
-  const token = localStorage.getItem('access_token');
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('disconnected');
   const [messages, setMessages] = useState<Map<string, ChatMessage[]>>(new Map());
@@ -303,6 +302,7 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
 
   // Initialize WebSocket connection
   useEffect(() => {
+    const token = localStorage.getItem('access_token');
     if (user && token) {
       setConnectionStatus('connecting');
       wsService.connect(token, user.id);
@@ -369,7 +369,6 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
     }
   }, [
     user,
-    token,
     handleNewMessage,
     handleMessageDelivered,
     handleMessageRead,
