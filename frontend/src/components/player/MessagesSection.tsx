@@ -3,7 +3,7 @@ import { Avatar } from '@/components/common/Avatar';
 import { Badge } from '@/components/common/Badge';
 import { Button } from '@/components/common/Button';
 import toast from 'react-hot-toast';
-import { MdMessage, MdSend, MdContentCopy, MdVisibility, MdVisibilityOff, MdRefresh, MdImage, MdMic, MdClose, MdSettings } from 'react-icons/md';
+import { MdMessage, MdSend, MdContentCopy, MdVisibility, MdVisibilityOff, MdRefresh, MdImage, MdMic, MdClose, MdSettings, MdStar } from 'react-icons/md';
 import { FaKey } from 'react-icons/fa';
 import { useDashboard } from '@/contexts/DashboardContext';
 import { chatApi, type Conversation, type Message } from '@/api/endpoints/chat.api';
@@ -425,6 +425,21 @@ export function MessagesSection() {
     }
   };
 
+  // Helper to parse and detect promotion messages
+  const parsePromotionMessage = (message: Message): { isPromotion: boolean; data?: any } => {
+    if (message.message_type !== 'promotion' || !message.content) {
+      return { isPromotion: false };
+    }
+
+    try {
+      const data = JSON.parse(message.content);
+      return { isPromotion: true, data };
+    } catch (e) {
+      console.error('Failed to parse promotion message:', e);
+      return { isPromotion: false };
+    }
+  };
+
   const getMessagePreview = (message?: Message): React.ReactNode => {
     if (!message) return 'No messages yet';
     switch (message.message_type) {
@@ -608,6 +623,8 @@ export function MessagesSection() {
                     <>
                       {messages.map((msg) => {
                         const isOwn = msg.sender_id === user?.id;
+                        const promotionInfo = parsePromotionMessage(msg);
+
                         return (
                           <div
                             key={msg.id}
@@ -615,25 +632,75 @@ export function MessagesSection() {
                           >
                             <div className={`max-w-[70%] ${isOwn ? 'order-2' : 'order-1'}`}>
                               <div className={`rounded-lg p-3 ${
-                                isOwn
+                                promotionInfo.isPromotion
+                                  ? 'bg-gradient-to-br from-purple-600 to-blue-600 text-white'
+                                  : isOwn
                                   ? 'bg-gold-gradient text-dark-700'
                                   : 'bg-dark-300 text-white'
                               }`}>
-                                {msg.message_type === 'text' && (
+                                {promotionInfo.isPromotion && promotionInfo.data ? (
+                                  // Promotion Message
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-2 border-b border-white/20 pb-2">
+                                      <MdStar className="text-yellow-300" size={18} />
+                                      <span className="font-bold text-sm">
+                                        {promotionInfo.data.type === 'promotion_claim_request'
+                                          ? 'Promotion Claim Request'
+                                          : promotionInfo.data.type === 'promotion_approved'
+                                          ? 'Promotion Approved ✅'
+                                          : promotionInfo.data.type === 'promotion_rejected'
+                                          ? 'Promotion Rejected ❌'
+                                          : 'Promotion Update'
+                                        }
+                                      </span>
+                                    </div>
+                                    <div className="space-y-1 text-xs">
+                                      {promotionInfo.data.promotion_title && (
+                                        <div>
+                                          <span className="text-white/70">Promotion:</span>
+                                          <div className="font-semibold">{promotionInfo.data.promotion_title}</div>
+                                        </div>
+                                      )}
+                                      {promotionInfo.data.value && (
+                                        <div>
+                                          <span className="text-white/70">Value:</span>
+                                          <span className="font-semibold ml-1">{promotionInfo.data.value} credits</span>
+                                        </div>
+                                      )}
+                                      {promotionInfo.data.promotion_type && (
+                                        <div>
+                                          <span className="text-white/70">Type:</span>
+                                          <span className="font-semibold ml-1 capitalize">
+                                            {promotionInfo.data.promotion_type.replace('_', ' ')}
+                                          </span>
+                                        </div>
+                                      )}
+                                      {promotionInfo.data.message && (
+                                        <div className="pt-1 border-t border-white/20 mt-2">
+                                          <p className="text-white">{promotionInfo.data.message}</p>
+                                        </div>
+                                      )}
+                                      {promotionInfo.data.reason && (
+                                        <div className="pt-1 border-t border-white/20 mt-2">
+                                          <span className="text-white/70">Reason:</span>
+                                          <p className="text-white">{promotionInfo.data.reason}</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                ) : msg.message_type === 'text' ? (
                                   <p className="text-sm">{msg.content}</p>
-                                )}
-                                {msg.message_type === 'image' && msg.file_url && (
+                                ) : msg.message_type === 'image' && msg.file_url ? (
                                   <img
                                     src={getFileUrl(msg.file_url)}
                                     alt="Image message"
                                     className="max-w-full rounded-lg"
                                   />
-                                )}
-                                {msg.message_type === 'voice' && msg.file_url && (
+                                ) : msg.message_type === 'voice' && msg.file_url ? (
                                   <audio controls className="max-w-full">
                                     <source src={getFileUrl(msg.file_url)} type="audio/webm" />
                                   </audio>
-                                )}
+                                ) : null}
                               </div>
                               <p className={`text-xs text-gray-500 mt-1 ${
                                 isOwn ? 'text-right' : 'text-left'
