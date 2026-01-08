@@ -73,6 +73,51 @@ export interface RecentActivityResponse {
   activities: ActivityItem[];
 }
 
+// Analytics
+export interface TrendData {
+  value: string;
+  isPositive: boolean;
+}
+
+export interface QuickStats {
+  response_rate: number;
+  player_retention: number;
+  avg_rating: number;
+}
+
+export interface PromotionStats {
+  name: string;
+  claims: number;
+  rate: number;
+}
+
+export interface AnalyticsActivityItem {
+  activity_type: string;
+  description: string;
+  user: string;
+  timestamp: string;
+  status?: string;
+}
+
+export interface AnalyticsResponse {
+  total_friends: number;
+  total_messages: number;
+  active_players: number;
+  new_signups: number;
+  avg_session_time: string;
+  friends_trend: TrendData;
+  messages_trend: TrendData;
+  players_trend: TrendData;
+  signups_trend: TrendData;
+  session_time_trend: TrendData;
+  quick_stats: QuickStats;
+  recent_activity: AnalyticsActivityItem[];
+  top_promotions: PromotionStats[];
+}
+
+// Alias for camelCase access (used in components)
+export type { AnalyticsResponse as ClientAnalytics };
+
 // Game types
 export interface Game {
   id: number;
@@ -147,6 +192,24 @@ export const clientApi = {
   getRecentActivity: async (): Promise<RecentActivityResponse> => {
     const response = await apiClient.get('/client/recent-activity');
     return response as any;
+  },
+
+  // Analytics
+  getAnalytics: async (): Promise<AnalyticsResponse> => {
+    const response: any = await apiClient.get('/client/analytics');
+    // Transform snake_case to camelCase for trend data
+    const transformTrend = (trend: { value: string; is_positive: boolean }): TrendData => ({
+      value: trend.value,
+      isPositive: trend.is_positive,
+    });
+    return {
+      ...response,
+      friends_trend: transformTrend(response.friends_trend),
+      messages_trend: transformTrend(response.messages_trend),
+      players_trend: transformTrend(response.players_trend),
+      signups_trend: transformTrend(response.signups_trend),
+      session_time_trend: transformTrend(response.session_time_trend),
+    };
   },
 
   // Games Management
