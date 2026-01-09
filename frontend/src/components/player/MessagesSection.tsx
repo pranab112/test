@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Avatar } from '@/components/common/Avatar';
 import { Badge } from '@/components/common/Badge';
 import { Button } from '@/components/common/Button';
+import { Modal } from '@/components/common/Modal';
 import toast from 'react-hot-toast';
 import { MdMessage, MdSend, MdContentCopy, MdVisibility, MdVisibilityOff, MdRefresh, MdImage, MdMic, MdClose, MdSettings, MdStar, MdMoreVert, MdPersonOff, MdDeleteForever } from 'react-icons/md';
 import { FaKey } from 'react-icons/fa';
@@ -23,15 +24,14 @@ export function MessagesSection() {
   const [sending, setSending] = useState(false);
   const [loadingConversations, setLoadingConversations] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
-  const [credentials, setCredentials] = useState<GameCredential[]>([]);
-  const [loadingCredentials, setLoadingCredentials] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const currentRoomRef = useRef<string | null>(null);
 
   // Credentials modal state (per client)
-  const [, setShowCredentialsModal] = useState(false);
-  const [, setSelectedClientCredentials] = useState<GameCredential[]>([]);
-  const [, setLoadingClientCredentials] = useState(false);
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [selectedClientCredentials, setSelectedClientCredentials] = useState<GameCredential[]>([]);
+  const [loadingClientCredentials, setLoadingClientCredentials] = useState(false);
+  const [selectedClientName, setSelectedClientName] = useState<string>('');
 
   // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -48,32 +48,20 @@ export function MessagesSection() {
   // Delete menu state
   const [deleteMenuOpen, setDeleteMenuOpen] = useState<number | null>(null);
 
-  // Load conversations and credentials on mount
+  // Load conversations on mount
   useEffect(() => {
     loadConversations();
-    loadCredentials();
   }, []);
 
-  const loadCredentials = async () => {
-    setLoadingCredentials(true);
-    try {
-      const data = await gameCredentialsApi.getMyCredentials();
-      setCredentials(data);
-    } catch (error) {
-      console.error('Failed to load credentials:', error);
-    } finally {
-      setLoadingCredentials(false);
-    }
-  };
-
-  const openClientCredentials = async (_clientId: number) => {
+  const openClientCredentials = async (clientId: number, clientName: string) => {
     setShowCredentialsModal(true);
+    setSelectedClientName(clientName);
     setLoadingClientCredentials(true);
     try {
-      // Get credentials assigned by this client
-      // Currently fetches all credentials - can be filtered by client ID when API supports it
+      // Get all credentials and filter by client ID
       const allCredentials = await gameCredentialsApi.getMyCredentials();
-      setSelectedClientCredentials(allCredentials);
+      const clientCredentials = allCredentials.filter(cred => cred.created_by_client_id === clientId);
+      setSelectedClientCredentials(clientCredentials);
     } catch (error) {
       console.error('Failed to load client credentials:', error);
       toast.error('Failed to load credentials');
@@ -507,41 +495,6 @@ export function MessagesSection() {
         </button>
       </div>
 
-      {/* Client Credentials Section - Compact */}
-      <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-4">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-bold text-gold-500 flex items-center gap-2">
-            <FaKey />
-            My Game Credentials
-          </h2>
-          <button
-            type="button"
-            onClick={loadCredentials}
-            className="text-gold-500 hover:text-gold-400 transition-colors"
-            title="Refresh credentials"
-          >
-            <MdRefresh size={18} />
-          </button>
-        </div>
-        <div className="max-h-[120px] overflow-y-auto">
-          {loadingCredentials ? (
-            <div className="text-center py-4 text-gray-400 text-sm">
-              Loading credentials...
-            </div>
-          ) : credentials.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-gray-400 text-sm">No game credentials assigned yet</p>
-            </div>
-          ) : (
-            <div className="flex gap-3 overflow-x-auto pb-2">
-              {credentials.map((cred) => (
-                <CredentialCardCompact key={cred.id} credential={cred} />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Messages Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-320px)] min-h-[500px]">
         {/* Conversations List */}
@@ -630,7 +583,7 @@ export function MessagesSection() {
                     {/* Credentials/Settings button */}
                     <button
                       type="button"
-                      onClick={() => openClientCredentials(selectedConversation.friend.id)}
+                      onClick={() => openClientCredentials(selectedConversation.friend.id, selectedConversation.friend.username)}
                       className="bg-dark-400 hover:bg-dark-300 text-gold-500 p-2 rounded-lg transition-colors"
                       title="View Game Credentials"
                     >
@@ -899,12 +852,47 @@ export function MessagesSection() {
           </div>
         </div>
       </div>
+
+      {/* Client Credentials Modal */}
+      <Modal
+        isOpen={showCredentialsModal}
+        onClose={() => {
+          setShowCredentialsModal(false);
+          setSelectedClientCredentials([]);
+          setSelectedClientName('');
+        }}
+        title={`Game Credentials from ${selectedClientName}`}
+        size="lg"
+      >
+        <div className="space-y-4">
+          {loadingClientCredentials ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gold-500 mx-auto mb-4" />
+              <p className="text-gray-400">Loading credentials...</p>
+            </div>
+          ) : selectedClientCredentials.length === 0 ? (
+            <div className="text-center py-8">
+              <FaKey className="text-4xl text-gray-600 mx-auto mb-4" />
+              <p className="text-gray-400">No game credentials from this client</p>
+              <p className="text-sm text-gray-500 mt-2">
+                This client hasn't assigned any game credentials to you yet.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {selectedClientCredentials.map((cred) => (
+                <CredentialCard key={cred.id} credential={cred} />
+              ))}
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }
 
-// Compact credential card for horizontal scrolling
-function CredentialCardCompact({ credential }: { credential: GameCredential }) {
+// Full credential card for modal
+function CredentialCard({ credential }: { credential: GameCredential }) {
   const [showPassword, setShowPassword] = useState(false);
 
   const copyToClipboard = (text: string, label: string) => {
@@ -913,55 +901,61 @@ function CredentialCardCompact({ credential }: { credential: GameCredential }) {
   };
 
   return (
-    <div className="bg-dark-300 border border-gold-700 rounded-lg p-3 min-w-[200px] flex-shrink-0">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="font-bold text-gold-500 text-sm truncate">{credential.game_name}</h3>
+    <div className="bg-dark-300 border border-gold-700 rounded-lg p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-bold text-gold-500 text-lg">{credential.game_name}</h3>
         {credential.login_url && (
-          <button
-            type="button"
+          <Button
+            variant="secondary"
             onClick={() => window.open(credential.login_url, '_blank')}
-            className="text-blue-400 hover:text-blue-300 text-xs"
-            title="Open game"
+            className="text-sm"
           >
-            Open
-          </button>
+            Open Game
+          </Button>
         )}
       </div>
-      <div className="flex items-center gap-2 text-xs">
-        <span className="text-gray-400">User:</span>
-        <span className="text-white font-mono truncate flex-1">{credential.username}</span>
-        <button
-          type="button"
-          onClick={() => copyToClipboard(credential.username || '', 'Username')}
-          className="text-gold-500 hover:text-gold-400"
-          title="Copy"
-        >
-          <MdContentCopy size={12} />
-        </button>
-      </div>
-      <div className="flex items-center gap-2 text-xs mt-1">
-        <span className="text-gray-400">Pass:</span>
-        <span className="text-white font-mono truncate flex-1">
-          {showPassword ? credential.password : '••••••'}
-        </span>
-        <button
-          type="button"
-          onClick={() => setShowPassword(!showPassword)}
-          className="text-gold-500 hover:text-gold-400"
-          title={showPassword ? 'Hide' : 'Show'}
-        >
-          {showPassword ? <MdVisibilityOff size={12} /> : <MdVisibility size={12} />}
-        </button>
-        <button
-          type="button"
-          onClick={() => copyToClipboard(credential.password || '', 'Password')}
-          className="text-gold-500 hover:text-gold-400"
-          title="Copy"
-        >
-          <MdContentCopy size={12} />
-        </button>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs text-gray-400 mb-1">Username</label>
+          <div className="flex items-center gap-2 bg-dark-400 rounded-lg px-3 py-2">
+            <span className="text-white font-mono flex-1 truncate">{credential.username}</span>
+            <button
+              type="button"
+              onClick={() => copyToClipboard(credential.username || '', 'Username')}
+              className="text-gold-500 hover:text-gold-400"
+              title="Copy username"
+            >
+              <MdContentCopy size={16} />
+            </button>
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs text-gray-400 mb-1">Password</label>
+          <div className="flex items-center gap-2 bg-dark-400 rounded-lg px-3 py-2">
+            <span className="text-white font-mono flex-1 truncate">
+              {showPassword ? credential.password : '••••••••'}
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="text-gold-500 hover:text-gold-400"
+              title={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? <MdVisibilityOff size={16} /> : <MdVisibility size={16} />}
+            </button>
+            <button
+              type="button"
+              onClick={() => copyToClipboard(credential.password || '', 'Password')}
+              className="text-gold-500 hover:text-gold-400"
+              title="Copy password"
+            >
+              <MdContentCopy size={16} />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
+
 
