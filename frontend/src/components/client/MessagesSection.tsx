@@ -516,7 +516,7 @@ export function MessagesSection() {
   };
 
   // Helper to parse and detect promotion claim messages
-  const parsePromotionClaimMessage = (message: Message): { isPromotionClaim: boolean; data?: any } => {
+  const parsePromotionClaimMessage = (message: Message): { isPromotionClaim: boolean; data?: any; messageType?: string } => {
     if (message.message_type !== 'promotion' || !message.content) {
       return { isPromotionClaim: false };
     }
@@ -524,7 +524,13 @@ export function MessagesSection() {
     try {
       const data = JSON.parse(message.content);
       if (data.type === 'promotion_claim_request') {
-        return { isPromotionClaim: true, data };
+        return { isPromotionClaim: true, data, messageType: 'request' };
+      }
+      if (data.type === 'promotion_claim_approved') {
+        return { isPromotionClaim: true, data, messageType: 'approved' };
+      }
+      if (data.type === 'promotion_claim_rejected') {
+        return { isPromotionClaim: true, data, messageType: 'rejected' };
       }
     } catch (e) {
       console.error('Failed to parse promotion message:', e);
@@ -660,46 +666,76 @@ export function MessagesSection() {
                       <div
                         className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
                           promotionClaim.isPromotionClaim
-                            ? 'bg-gradient-to-br from-purple-600 to-blue-600 text-white'
+                            ? promotionClaim.messageType === 'approved'
+                              ? 'bg-gradient-to-br from-green-600 to-emerald-600 text-white'
+                              : promotionClaim.messageType === 'rejected'
+                              ? 'bg-gradient-to-br from-red-600 to-rose-600 text-white'
+                              : 'bg-gradient-to-br from-purple-600 to-blue-600 text-white'
                             : isOwnMessage
                             ? 'bg-gold-gradient text-dark-700'
                             : 'bg-dark-300 text-white'
                         }`}
                       >
                         {promotionClaim.isPromotionClaim && promotionClaim.data ? (
-                          // Promotion Claim Request
+                          // Promotion Claim Messages (Request, Approved, Rejected)
                           (() => {
                             const claimId = promotionClaim.data.claim_id;
                             const localAction = promotionClaimActions[claimId];
-                            const isApproved = localAction === 'approved' || promotionClaim.data.status === 'approved' || promotionClaim.data.type === 'promotion_claim_approved';
-                            const isRejected = localAction === 'rejected' || promotionClaim.data.status === 'rejected' || promotionClaim.data.type === 'promotion_claim_rejected';
-                            const isPending = !isApproved && !isRejected;
+                            const msgType = promotionClaim.messageType;
+
+                            // For request messages, check local action and status
+                            const isApprovedRequest = msgType === 'request' && (localAction === 'approved' || promotionClaim.data.status === 'approved');
+                            const isRejectedRequest = msgType === 'request' && (localAction === 'rejected' || promotionClaim.data.status === 'rejected');
+                            const isPendingRequest = msgType === 'request' && !isApprovedRequest && !isRejectedRequest;
                             const isProcessing = processingClaimId === claimId;
+
+                            // For approved/rejected notification messages
+                            const isApprovedNotification = msgType === 'approved';
+                            const isRejectedNotification = msgType === 'rejected';
+
+                            // Determine header title based on message type
+                            let headerTitle = 'Promotion Claim Request';
+
+                            if (isApprovedNotification) {
+                              headerTitle = 'Promotion Claim Approved';
+                            } else if (isRejectedNotification) {
+                              headerTitle = 'Promotion Claim Rejected';
+                            }
 
                             return (
                               <div className="space-y-3">
                                 <div className="flex items-center justify-between border-b border-white/20 pb-2">
                                   <div className="flex items-center gap-2">
-                                    <MdStar className="text-yellow-300" size={20} />
-                                    <span className="font-bold">Promotion Claim Request</span>
+                                    {isApprovedNotification ? (
+                                      <MdCheck className="text-green-300" size={20} />
+                                    ) : isRejectedNotification ? (
+                                      <MdClose className="text-red-300" size={20} />
+                                    ) : (
+                                      <MdStar className="text-yellow-300" size={20} />
+                                    )}
+                                    <span className="font-bold">{headerTitle}</span>
                                   </div>
-                                  {/* Status Badge */}
-                                  {isApproved && (
-                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-300 border border-green-500/30">
-                                      <MdCheck size={14} className="mr-1" />
-                                      Approved
-                                    </span>
-                                  )}
-                                  {isRejected && (
-                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-300 border border-red-500/30">
-                                      <MdClose size={14} className="mr-1" />
-                                      Rejected
-                                    </span>
-                                  )}
-                                  {isPending && (
-                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
-                                      Pending
-                                    </span>
+                                  {/* Status Badge - only for request messages */}
+                                  {msgType === 'request' && (
+                                    <>
+                                      {isApprovedRequest && (
+                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-300 border border-green-500/30">
+                                          <MdCheck size={14} className="mr-1" />
+                                          Approved
+                                        </span>
+                                      )}
+                                      {isRejectedRequest && (
+                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-300 border border-red-500/30">
+                                          <MdClose size={14} className="mr-1" />
+                                          Rejected
+                                        </span>
+                                      )}
+                                      {isPendingRequest && (
+                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
+                                          Pending
+                                        </span>
+                                      )}
+                                    </>
                                   )}
                                 </div>
 
@@ -708,22 +744,51 @@ export function MessagesSection() {
                                     <span className="text-white/70">Promotion:</span>
                                     <div className="font-semibold">{promotionClaim.data.promotion_title}</div>
                                   </div>
-                                  <div>
-                                    <span className="text-white/70">Player:</span>
-                                    <div className="font-semibold">{promotionClaim.data.player_username} (Level {promotionClaim.data.player_level})</div>
-                                  </div>
+                                  {/* Show player info for request and approved notifications */}
+                                  {(msgType === 'request' || promotionClaim.data.player_username) && (
+                                    <div>
+                                      <span className="text-white/70">Player:</span>
+                                      <div className="font-semibold">
+                                        {promotionClaim.data.player_username || promotionClaim.data.client_name}
+                                        {promotionClaim.data.player_level && ` (Level ${promotionClaim.data.player_level})`}
+                                      </div>
+                                    </div>
+                                  )}
+                                  {/* Show client name for approved notifications */}
+                                  {isApprovedNotification && promotionClaim.data.client_name && (
+                                    <div>
+                                      <span className="text-white/70">Approved by:</span>
+                                      <div className="font-semibold">{promotionClaim.data.client_name}</div>
+                                    </div>
+                                  )}
                                   <div>
                                     <span className="text-white/70">Value:</span>
-                                    <div className={`font-semibold ${isRejected ? 'line-through text-white/50' : ''}`}>{promotionClaim.data.value} credits</div>
+                                    <div className={`font-semibold ${isRejectedRequest || isRejectedNotification ? 'line-through text-white/50' : ''}`}>
+                                      {promotionClaim.data.value} credits
+                                    </div>
                                   </div>
                                   <div>
                                     <span className="text-white/70">Type:</span>
-                                    <div className="font-semibold capitalize">{promotionClaim.data.promotion_type.replace('_', ' ')}</div>
+                                    <div className="font-semibold capitalize">{promotionClaim.data.promotion_type?.replace('_', ' ') || 'Credits'}</div>
                                   </div>
+                                  {/* Show new balance for approved notifications */}
+                                  {isApprovedNotification && promotionClaim.data.player_new_balance !== undefined && (
+                                    <div>
+                                      <span className="text-white/70">New Balance:</span>
+                                      <div className="font-semibold text-green-300">{promotionClaim.data.player_new_balance} credits</div>
+                                    </div>
+                                  )}
+                                  {/* Show rejection reason if available */}
+                                  {isRejectedNotification && promotionClaim.data.rejection_reason && (
+                                    <div>
+                                      <span className="text-white/70">Reason:</span>
+                                      <div className="font-semibold text-red-300">{promotionClaim.data.rejection_reason}</div>
+                                    </div>
+                                  )}
                                 </div>
 
-                                {/* Show buttons only if pending */}
-                                {isPending && (
+                                {/* Show buttons only if pending request */}
+                                {isPendingRequest && (
                                   <div className="flex gap-2 pt-2">
                                     <button
                                       type="button"

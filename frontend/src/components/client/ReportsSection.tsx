@@ -244,6 +244,18 @@ export function ReportsSection() {
     setShowResolveModal(true);
   };
 
+  const openAppealModalForWarning = (warning: ReportWarning) => {
+    // Find the full report from received reports
+    const report = reportsReceived.find(r => r.id === warning.report_id);
+    if (report) {
+      setSelectedReport(report);
+      setAppealReason('');
+      setShowAppealModal(true);
+    } else {
+      toast.error('Could not find report details for appeal');
+    }
+  };
+
   const handleResolveReport = async () => {
     if (!selectedReport || !resolutionProof.trim()) {
       toast.error('Please provide proof of resolution');
@@ -490,11 +502,27 @@ export function ReportsSection() {
                         <MdPayment className="mr-2" />
                         Submit Resolution Proof
                       </Button>
+                      <Button
+                        onClick={() => openAppealModalForWarning(warning)}
+                        fullWidth
+                        variant="secondary"
+                        className="!bg-purple-600 hover:!bg-purple-700 !border-purple-600"
+                      >
+                        <MdGavel className="mr-2" />
+                        Appeal Warning
+                      </Button>
                     </div>
 
                     <div className="mt-4 bg-red-900/20 border border-red-700 rounded-lg p-3">
                       <p className="text-sm text-red-400">
                         <strong>Warning:</strong> If not resolved within the deadline, this report will be automatically marked as valid.
+                      </p>
+                    </div>
+
+                    <div className="mt-3 bg-purple-900/20 border border-purple-700 rounded-lg p-3">
+                      <p className="text-sm text-purple-400">
+                        <MdGavel className="inline mr-1" />
+                        <strong>Disagree?</strong> If you believe this warning is unfair, you can appeal it. An admin will review your case.
                       </p>
                     </div>
                   </div>
@@ -559,7 +587,7 @@ export function ReportsSection() {
             const displayName = isMade
               ? report.reported_user_username || report.reported_user_name || 'Unknown Player'
               : report.reporter_username || report.reporter_name || 'Unknown User';
-            const canAppeal = !isMade && report.status === 'valid' && !report.appeal_ticket_id;
+            const canAppeal = !isMade && (report.status === 'valid' || report.status === 'warning') && !report.appeal_ticket_id;
 
             return (
               <div
