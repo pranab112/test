@@ -398,4 +398,24 @@ export const adminApi = {
     const response = await apiClient.post(`/admin/users/${userId}/reset-password`, options);
     return response as any;
   },
+
+  // Credit Management
+  addCreditsToUser: async (
+    userId: number,
+    amount: number,
+    reason?: string
+  ): Promise<{
+    message: string;
+    user_id: number;
+    username: string;
+    previous_balance: number;
+    amount_changed: number;
+    new_balance: number;
+    reason?: string;
+  }> => {
+    const response = await apiClient.post(`/admin/users/${userId}/add-credits`, null, {
+      params: { amount, reason },
+    });
+    return response as any;
+  },
 };

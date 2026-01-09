@@ -517,6 +517,76 @@ def reset_user_password(
         temp_password=new_password if request.generate_random else None
     )
 
+@router.post("/users/{user_id}/add-credits")
+def add_credits_to_user(
+    user_id: int,
+    amount: int,
+    reason: Optional[str] = None,
+    admin: models.User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Add or subtract credits from a user account (admin only).
+    Use positive amount to add credits, negative to subtract.
+    """
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Cannot modify admin credits
+    if user.user_type == UserType.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot modify admin credits"
+        )
+
+    # Calculate new balance
+    current_credits = user.credits or 0
+    new_credits = current_credits + amount
+
+    # Prevent negative balance
+    if new_credits < 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot set negative credits. Current balance: {current_credits}, trying to subtract: {abs(amount)}"
+        )
+
+    # Update credits
+    user.credits = new_credits
+
+    # Send notification message to user
+    action = "added to" if amount > 0 else "deducted from"
+    abs_amount = abs(amount)
+    dollar_value = abs_amount / 100  # 100 credits = $1
+
+    message_content = f"💰 Credit Update\n\n{abs_amount} credits (${dollar_value:.2f}) have been {action} your account by admin."
+    if reason:
+        message_content += f"\n\nReason: {reason}"
+    message_content += f"\n\nYour new balance: {new_credits} credits (${new_credits/100:.2f})"
+
+    notification = models.Message(
+        sender_id=admin.id,
+        receiver_id=user.id,
+        message_type=models.MessageType.TEXT,
+        content=message_content,
+        is_read=False
+    )
+    db.add(notification)
+
+    db.commit()
+    db.refresh(user)
+
+    return {
+        "message": f"Successfully {'added' if amount > 0 else 'deducted'} {abs_amount} credits {'to' if amount > 0 else 'from'} {user.username}",
+        "user_id": user.id,
+        "username": user.username,
+        "previous_balance": current_credits,
+        "amount_changed": amount,
+        "new_balance": new_credits,
+        "reason": reason
+    }
+
+
 @router.post("/broadcast-message")
 def broadcast_message(
     message: str,
