@@ -26,7 +26,7 @@ export default function ClientDashboard() {
   const renderContent = () => {
     switch (activeSection) {
       case 'dashboard':
-        return <DashboardSection />;
+        return <DashboardSection onNavigate={setActiveSection} />;
       case 'players':
         return <PlayersSection />;
       case 'approvals':

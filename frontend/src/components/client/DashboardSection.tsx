@@ -13,7 +13,11 @@ interface BalanceInfo {
   dollar_value: number;
 }
 
-export function DashboardSection() {
+interface DashboardSectionProps {
+  onNavigate?: (section: string) => void;
+}
+
+export function DashboardSection({ onNavigate }: DashboardSectionProps) {
   const [stats, setStats] = useState<PlayerStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
@@ -145,19 +149,19 @@ export function DashboardSection() {
           <h2 className="text-xl font-bold text-gold-500 mb-4">Quick Actions</h2>
           <div className="space-y-3">
             <button
-              onClick={() => window.location.hash = '#players'}
+              onClick={() => onNavigate?.('players')}
               className="w-full bg-gold-gradient text-dark-700 font-bold py-3 px-4 rounded-lg hover:shadow-gold transition-all"
             >
               Manage Players ({stats.total_players})
             </button>
             <button
-              onClick={() => window.location.hash = '#players'}
+              onClick={() => onNavigate?.('players')}
               className="w-full bg-dark-300 text-gold-500 border-2 border-gold-700 font-bold py-3 px-4 rounded-lg hover:bg-dark-400 transition-all"
             >
               Register New Player
             </button>
             <button
-              onClick={() => window.location.hash = '#promotions'}
+              onClick={() => onNavigate?.('promotions')}
               className="w-full bg-dark-300 text-gold-500 border-2 border-gold-700 font-bold py-3 px-4 rounded-lg hover:bg-dark-400 transition-all"
             >
               Create Promotion
