@@ -15,6 +15,7 @@ import {
   MdAttachMoney,
   MdHourglassEmpty,
   MdCheckCircle,
+  MdWarning,
 } from 'react-icons/md';
 
 type PromotionType = 'credits' | 'bonus' | 'cashback' | 'free_spins' | 'deposit_bonus' | 'game_points' | 'replay' | 'next_load_bonus';
@@ -74,6 +75,10 @@ export function PromotionsSection() {
     terms: '',
     wagering_requirement: '1',
   });
+
+  // Cancel confirmation modal state
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [pendingCancelPromotion, setPendingCancelPromotion] = useState<{ id: number; title: string } | null>(null);
 
   // Fetch data on mount
   useEffect(() => {
@@ -171,18 +176,24 @@ export function PromotionsSection() {
     }
   };
 
-  const handleCancelPromotion = async (promotionId: number, title: string) => {
-    if (!confirm(`Cancel the promotion "${title}"?`)) {
-      return;
-    }
+  const handleCancelPromotion = (promotionId: number, title: string) => {
+    setPendingCancelPromotion({ id: promotionId, title });
+    setShowCancelModal(true);
+  };
+
+  const confirmCancelPromotion = async () => {
+    if (!pendingCancelPromotion) return;
 
     try {
-      await apiClient.put(`/promotions/${promotionId}/cancel`);
+      await apiClient.put(`/promotions/${pendingCancelPromotion.id}/cancel`);
       toast.success('Promotion cancelled');
       fetchData();
     } catch (error: any) {
       toast.error(error.response?.data?.detail || 'Failed to cancel promotion');
       console.error(error);
+    } finally {
+      setShowCancelModal(false);
+      setPendingCancelPromotion(null);
     }
   };
 
@@ -756,6 +767,47 @@ export function PromotionsSection() {
             </Button>
             <Button onClick={handleEditPromotion} loading={loading} fullWidth>
               Save Changes
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Cancel Promotion Confirmation Modal */}
+      <Modal
+        isOpen={showCancelModal}
+        onClose={() => {
+          setShowCancelModal(false);
+          setPendingCancelPromotion(null);
+        }}
+        title="Cancel Promotion"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <MdWarning className="text-red-500 text-2xl flex-shrink-0" />
+            <p className="text-gray-300">
+              Are you sure you want to cancel the promotion{' '}
+              <span className="text-white font-medium">"{pendingCancelPromotion?.title}"</span>?
+              This will prevent any more claims.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => {
+                setShowCancelModal(false);
+                setPendingCancelPromotion(null);
+              }}
+              variant="secondary"
+              fullWidth
+            >
+              Keep Active
+            </Button>
+            <Button
+              onClick={confirmCancelPromotion}
+              variant="primary"
+              fullWidth
+              className="!bg-red-600 hover:!bg-red-700"
+            >
+              Cancel Promotion
             </Button>
           </div>
         </div>

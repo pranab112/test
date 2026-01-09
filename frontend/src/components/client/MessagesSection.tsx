@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Avatar } from '@/components/common/Avatar';
 import { Badge } from '@/components/common/Badge';
 import { Button } from '@/components/common/Button';
+import { Modal } from '@/components/common/Modal';
 import toast from 'react-hot-toast';
 import {
   MdMessage,
@@ -18,6 +19,10 @@ import {
   MdMic,
   MdCheck,
   MdStar,
+  MdMoreVert,
+  MdDeleteForever,
+  MdPersonOff,
+  MdWarning,
 } from 'react-icons/md';
 import { FaKey, FaUser, FaGamepad, FaLink } from 'react-icons/fa';
 import { chatApi, type Conversation, type Message } from '@/api/endpoints';
@@ -66,6 +71,19 @@ export function MessagesSection() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Delete menu state
+  const [deleteMenuOpen, setDeleteMenuOpen] = useState<number | null>(null);
+
+  // Promotion claim modal state
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [pendingClaimId, setPendingClaimId] = useState<number | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+
+  // Delete credential confirmation state
+  const [showDeleteCredentialModal, setShowDeleteCredentialModal] = useState(false);
+  const [pendingDeleteCredentialId, setPendingDeleteCredentialId] = useState<number | null>(null);
+
   useEffect(() => {
     loadConversations();
     const interval = setInterval(loadConversations, 30000);
@@ -84,6 +102,17 @@ export function MessagesSection() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Close delete menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (deleteMenuOpen !== null) {
+        setDeleteMenuOpen(null);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [deleteMenuOpen]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -136,11 +165,19 @@ export function MessagesSection() {
     }
   };
 
-  const handleDeleteMessage = async (messageId: number) => {
+  const handleDeleteMessage = async (messageId: number, deleteForEveryone: boolean = false) => {
     try {
-      await chatApi.deleteMessage(messageId);
-      setMessages(prev => prev.filter(m => m.id !== messageId));
-      toast.success('Message deleted');
+      if (deleteForEveryone) {
+        // Delete for everyone - removes the message from the database
+        await chatApi.deleteMessage(messageId);
+        setMessages(prev => prev.filter(m => m.id !== messageId));
+        toast.success('Message deleted for everyone');
+      } else {
+        // Delete for myself - just hide locally (message still exists for other user)
+        setMessages(prev => prev.filter(m => m.id !== messageId));
+        toast.success('Message hidden');
+      }
+      setDeleteMenuOpen(null);
     } catch (error: any) {
       console.error('Delete message error:', error);
       const message = error?.detail || error?.error?.message || 'Failed to delete message';
@@ -398,15 +435,23 @@ export function MessagesSection() {
   };
 
   const handleDeleteCredential = async (credentialId: number) => {
-    if (!confirm('Are you sure you want to delete this credential?')) return;
+    setPendingDeleteCredentialId(credentialId);
+    setShowDeleteCredentialModal(true);
+  };
+
+  const confirmDeleteCredential = async () => {
+    if (!pendingDeleteCredentialId) return;
 
     try {
-      await gameCredentialsApi.deleteCredential(credentialId);
-      setPlayerCredentials(prev => prev.filter(c => c.id !== credentialId));
+      await gameCredentialsApi.deleteCredential(pendingDeleteCredentialId);
+      setPlayerCredentials(prev => prev.filter(c => c.id !== pendingDeleteCredentialId));
       toast.success('Credential deleted');
     } catch (error) {
       console.error('Failed to delete credential:', error);
       toast.error('Failed to delete credential');
+    } finally {
+      setShowDeleteCredentialModal(false);
+      setPendingDeleteCredentialId(null);
     }
   };
 
@@ -415,37 +460,58 @@ export function MessagesSection() {
     return clientGame?.game;
   };
 
-  // Promotion claim handlers
-  const handleApprovePromotionClaim = async (claimId: number) => {
-    if (!confirm('Are you sure you want to approve this promotion claim?')) return;
+  // Track local action state for promotion claims (claim_id -> 'approved' | 'rejected')
+  const [promotionClaimActions, setPromotionClaimActions] = useState<Record<number, 'approved' | 'rejected'>>({});
+  const [processingClaimId, setProcessingClaimId] = useState<number | null>(null);
 
+  // Promotion claim handlers
+  const handleApprovePromotionClaim = (claimId: number) => {
+    setPendingClaimId(claimId);
+    setShowApproveModal(true);
+  };
+
+  const confirmApprovePromotionClaim = async () => {
+    if (!pendingClaimId) return;
+
+    setProcessingClaimId(pendingClaimId);
+    setShowApproveModal(false);
     try {
-      await promotionsApi.approvePromotionClaim(claimId);
+      await promotionsApi.approvePromotionClaim(pendingClaimId);
       toast.success('Promotion claim approved!');
-      // Reload messages to update the UI
-      if (selectedConversation) {
-        loadMessages(selectedConversation.friend.id);
-      }
+      // Update local state to show approved status
+      setPromotionClaimActions(prev => ({ ...prev, [pendingClaimId]: 'approved' }));
     } catch (error: any) {
       console.error('Failed to approve promotion claim:', error);
       toast.error(error.detail || error.message || 'Failed to approve claim');
+    } finally {
+      setProcessingClaimId(null);
+      setPendingClaimId(null);
     }
   };
 
-  const handleRejectPromotionClaim = async (claimId: number) => {
-    const reason = prompt('Enter reason for rejection (optional):');
-    if (reason === null) return; // User clicked cancel
+  const handleRejectPromotionClaim = (claimId: number) => {
+    setPendingClaimId(claimId);
+    setRejectionReason('');
+    setShowRejectModal(true);
+  };
 
+  const confirmRejectPromotionClaim = async () => {
+    if (!pendingClaimId) return;
+
+    setProcessingClaimId(pendingClaimId);
+    setShowRejectModal(false);
     try {
-      await promotionsApi.rejectPromotionClaim(claimId, reason || undefined);
+      await promotionsApi.rejectPromotionClaim(pendingClaimId, rejectionReason || undefined);
       toast.success('Promotion claim rejected');
-      // Reload messages to update the UI
-      if (selectedConversation) {
-        loadMessages(selectedConversation.friend.id);
-      }
+      // Update local state to show rejected status
+      setPromotionClaimActions(prev => ({ ...prev, [pendingClaimId]: 'rejected' }));
     } catch (error: any) {
       console.error('Failed to reject promotion claim:', error);
       toast.error(error.detail || error.message || 'Failed to reject claim');
+    } finally {
+      setProcessingClaimId(null);
+      setPendingClaimId(null);
+      setRejectionReason('');
     }
   };
 
@@ -602,48 +668,98 @@ export function MessagesSection() {
                       >
                         {promotionClaim.isPromotionClaim && promotionClaim.data ? (
                           // Promotion Claim Request
-                          <div className="space-y-3">
-                            <div className="flex items-center gap-2 border-b border-white/20 pb-2">
-                              <MdStar className="text-yellow-300" size={20} />
-                              <span className="font-bold">Promotion Claim Request</span>
-                            </div>
+                          (() => {
+                            const claimId = promotionClaim.data.claim_id;
+                            const localAction = promotionClaimActions[claimId];
+                            const isApproved = localAction === 'approved' || promotionClaim.data.status === 'approved' || promotionClaim.data.type === 'promotion_claim_approved';
+                            const isRejected = localAction === 'rejected' || promotionClaim.data.status === 'rejected' || promotionClaim.data.type === 'promotion_claim_rejected';
+                            const isPending = !isApproved && !isRejected;
+                            const isProcessing = processingClaimId === claimId;
 
-                            <div className="space-y-2 text-sm">
-                              <div>
-                                <span className="text-white/70">Promotion:</span>
-                                <div className="font-semibold">{promotionClaim.data.promotion_title}</div>
-                              </div>
-                              <div>
-                                <span className="text-white/70">Player:</span>
-                                <div className="font-semibold">{promotionClaim.data.player_username} (Level {promotionClaim.data.player_level})</div>
-                              </div>
-                              <div>
-                                <span className="text-white/70">Value:</span>
-                                <div className="font-semibold">{promotionClaim.data.value} credits</div>
-                              </div>
-                              <div>
-                                <span className="text-white/70">Type:</span>
-                                <div className="font-semibold capitalize">{promotionClaim.data.promotion_type.replace('_', ' ')}</div>
-                              </div>
-                            </div>
+                            return (
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between border-b border-white/20 pb-2">
+                                  <div className="flex items-center gap-2">
+                                    <MdStar className="text-yellow-300" size={20} />
+                                    <span className="font-bold">Promotion Claim Request</span>
+                                  </div>
+                                  {/* Status Badge */}
+                                  {isApproved && (
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-300 border border-green-500/30">
+                                      <MdCheck size={14} className="mr-1" />
+                                      Approved
+                                    </span>
+                                  )}
+                                  {isRejected && (
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-300 border border-red-500/30">
+                                      <MdClose size={14} className="mr-1" />
+                                      Rejected
+                                    </span>
+                                  )}
+                                  {isPending && (
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
+                                      Pending
+                                    </span>
+                                  )}
+                                </div>
 
-                            <div className="flex gap-2 pt-2">
-                              <button
-                                onClick={() => handleApprovePromotionClaim(promotionClaim.data.claim_id)}
-                                className="flex-1 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded font-medium transition-colors flex items-center justify-center gap-1"
-                              >
-                                <MdCheck size={16} />
-                                Approve
-                              </button>
-                              <button
-                                onClick={() => handleRejectPromotionClaim(promotionClaim.data.claim_id)}
-                                className="flex-1 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded font-medium transition-colors flex items-center justify-center gap-1"
-                              >
-                                <MdClose size={16} />
-                                Reject
-                              </button>
-                            </div>
-                          </div>
+                                <div className="space-y-2 text-sm">
+                                  <div>
+                                    <span className="text-white/70">Promotion:</span>
+                                    <div className="font-semibold">{promotionClaim.data.promotion_title}</div>
+                                  </div>
+                                  <div>
+                                    <span className="text-white/70">Player:</span>
+                                    <div className="font-semibold">{promotionClaim.data.player_username} (Level {promotionClaim.data.player_level})</div>
+                                  </div>
+                                  <div>
+                                    <span className="text-white/70">Value:</span>
+                                    <div className={`font-semibold ${isRejected ? 'line-through text-white/50' : ''}`}>{promotionClaim.data.value} credits</div>
+                                  </div>
+                                  <div>
+                                    <span className="text-white/70">Type:</span>
+                                    <div className="font-semibold capitalize">{promotionClaim.data.promotion_type.replace('_', ' ')}</div>
+                                  </div>
+                                </div>
+
+                                {/* Show buttons only if pending */}
+                                {isPending && (
+                                  <div className="flex gap-2 pt-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleApprovePromotionClaim(claimId)}
+                                      disabled={isProcessing}
+                                      className="flex-1 bg-green-500 hover:bg-green-600 disabled:bg-green-500/50 text-white px-3 py-2 rounded font-medium transition-colors flex items-center justify-center gap-1"
+                                    >
+                                      {isProcessing ? (
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                      ) : (
+                                        <>
+                                          <MdCheck size={16} />
+                                          Approve
+                                        </>
+                                      )}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRejectPromotionClaim(claimId)}
+                                      disabled={isProcessing}
+                                      className="flex-1 bg-red-500 hover:bg-red-600 disabled:bg-red-500/50 text-white px-3 py-2 rounded font-medium transition-colors flex items-center justify-center gap-1"
+                                    >
+                                      {isProcessing ? (
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                      ) : (
+                                        <>
+                                          <MdClose size={16} />
+                                          Reject
+                                        </>
+                                      )}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()
                         ) : message.message_type === 'image' && message.file_url ? (
                           <img
                             src={getFileUrl(message.file_url)}
@@ -666,15 +782,45 @@ export function MessagesSection() {
                           <p className={`text-xs ${promotionClaim.isPromotionClaim ? 'text-white/60' : isOwnMessage ? 'text-dark-500' : 'text-gray-500'}`}>
                             {formatMessageTime(message.created_at)}
                           </p>
-                          {isOwnMessage && !promotionClaim.isPromotionClaim && (
-                            <button
-                              type="button"
-                              title="Delete message"
-                              onClick={() => handleDeleteMessage(message.id)}
-                              className="text-dark-500 hover:text-red-600 ml-2"
-                            >
-                              <MdDelete size={14} />
-                            </button>
+                          {!promotionClaim.isPromotionClaim && (
+                            <div className="relative">
+                              <button
+                                type="button"
+                                title="Message options"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeleteMenuOpen(deleteMenuOpen === message.id ? null : message.id);
+                                }}
+                                className={`${isOwnMessage ? 'text-dark-500 hover:text-dark-700' : 'text-gray-500 hover:text-white'} ml-2`}
+                              >
+                                <MdMoreVert size={16} />
+                              </button>
+                              {deleteMenuOpen === message.id && (
+                                <div
+                                  className="absolute right-0 bottom-6 bg-dark-200 border border-gold-700 rounded-lg shadow-lg z-10 min-w-[160px] py-1"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteMessage(message.id, false)}
+                                    className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-dark-300 flex items-center gap-2"
+                                  >
+                                    <MdPersonOff size={16} />
+                                    Delete for me
+                                  </button>
+                                  {isOwnMessage && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteMessage(message.id, true)}
+                                      className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-dark-300 flex items-center gap-2"
+                                    >
+                                      <MdDeleteForever size={16} />
+                                      Delete for everyone
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>
@@ -966,6 +1112,137 @@ export function MessagesSection() {
           </div>
         </div>
       )}
+
+      {/* Approve Promotion Claim Modal */}
+      <Modal
+        isOpen={showApproveModal}
+        onClose={() => {
+          setShowApproveModal(false);
+          setPendingClaimId(null);
+        }}
+        title="Approve Promotion Claim"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+            <MdCheck className="text-green-500 text-2xl flex-shrink-0" />
+            <p className="text-gray-300">
+              Are you sure you want to approve this promotion claim? The player will receive the credited amount.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => {
+                setShowApproveModal(false);
+                setPendingClaimId(null);
+              }}
+              variant="secondary"
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmApprovePromotionClaim}
+              variant="primary"
+              fullWidth
+              className="!bg-green-600 hover:!bg-green-700"
+            >
+              Approve Claim
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Reject Promotion Claim Modal */}
+      <Modal
+        isOpen={showRejectModal}
+        onClose={() => {
+          setShowRejectModal(false);
+          setPendingClaimId(null);
+          setRejectionReason('');
+        }}
+        title="Reject Promotion Claim"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <MdWarning className="text-red-500 text-2xl flex-shrink-0" />
+            <p className="text-gray-300">
+              Are you sure you want to reject this promotion claim?
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">
+              Reason for rejection (optional)
+            </label>
+            <textarea
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              placeholder="Enter reason for rejection..."
+              className="w-full bg-dark-300 border-2 border-gold-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gold-500 resize-none"
+              rows={3}
+            />
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => {
+                setShowRejectModal(false);
+                setPendingClaimId(null);
+                setRejectionReason('');
+              }}
+              variant="secondary"
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmRejectPromotionClaim}
+              variant="primary"
+              fullWidth
+              className="!bg-red-600 hover:!bg-red-700"
+            >
+              Reject Claim
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Credential Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteCredentialModal}
+        onClose={() => {
+          setShowDeleteCredentialModal(false);
+          setPendingDeleteCredentialId(null);
+        }}
+        title="Delete Credential"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <MdWarning className="text-red-500 text-2xl flex-shrink-0" />
+            <p className="text-gray-300">
+              Are you sure you want to delete this credential? This action cannot be undone.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => {
+                setShowDeleteCredentialModal(false);
+                setPendingDeleteCredentialId(null);
+              }}
+              variant="secondary"
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmDeleteCredential}
+              variant="primary"
+              fullWidth
+              className="!bg-red-600 hover:!bg-red-700"
+            >
+              Delete Credential
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

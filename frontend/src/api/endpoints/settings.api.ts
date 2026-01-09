@@ -188,4 +188,12 @@ export const settingsApi = {
     const response = await apiClient.put('/payment-methods/player/my-preferences', data);
     return response as any;
   },
+
+  // Account Deletion
+  deleteMyAccount: async (password: string): Promise<{ message: string }> => {
+    const response = await apiClient.delete('/users/me', {
+      data: { password },
+    });
+    return response as any;
+  },
 };

@@ -283,7 +283,7 @@ def delete_user(
     admin: models.User = Depends(get_admin_user),
     db: Session = Depends(get_db)
 ):
-    """Delete a user account"""
+    """Delete a user account and all related data"""
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -303,10 +303,86 @@ def delete_user(
         )
 
     username = user.username
-    db.delete(user)
-    db.commit()
 
-    return {"message": f"User {username} deleted successfully"}
+    try:
+        # Delete related records in order to avoid foreign key constraint violations
+
+        # Delete messages (sent and received)
+        db.query(models.Message).filter(
+            or_(models.Message.sender_id == user_id, models.Message.receiver_id == user_id)
+        ).delete(synchronize_session=False)
+
+        # Delete friend requests (sent and received)
+        db.query(models.FriendRequest).filter(
+            or_(models.FriendRequest.sender_id == user_id, models.FriendRequest.receiver_id == user_id)
+        ).delete(synchronize_session=False)
+
+        # Delete reports (reported by or reported user)
+        db.query(models.Report).filter(
+            or_(models.Report.reporter_id == user_id, models.Report.reported_user_id == user_id)
+        ).delete(synchronize_session=False)
+
+        # Delete reviews
+        if hasattr(models, 'Review'):
+            db.query(models.Review).filter(
+                or_(models.Review.reviewer_id == user_id, models.Review.reviewed_user_id == user_id)
+            ).delete(synchronize_session=False)
+
+        # Delete tickets and ticket messages
+        if hasattr(models, 'TicketMessage'):
+            db.query(models.TicketMessage).filter(models.TicketMessage.sender_id == user_id).delete(synchronize_session=False)
+        if hasattr(models, 'Ticket'):
+            db.query(models.Ticket).filter(models.Ticket.user_id == user_id).delete(synchronize_session=False)
+
+        # Delete bet transactions
+        if hasattr(models, 'BetTransaction'):
+            db.query(models.BetTransaction).filter(models.BetTransaction.user_id == user_id).delete(synchronize_session=False)
+
+        # Delete game credentials (both as client and player)
+        if hasattr(models, 'GameCredential'):
+            db.query(models.GameCredential).filter(
+                or_(models.GameCredential.client_id == user_id, models.GameCredential.player_id == user_id)
+            ).delete(synchronize_session=False)
+
+        # Delete client games
+        if hasattr(models, 'ClientGame'):
+            db.query(models.ClientGame).filter(models.ClientGame.client_id == user_id).delete(synchronize_session=False)
+
+        # Delete promotion claims
+        if hasattr(models, 'PromotionClaim'):
+            db.query(models.PromotionClaim).filter(models.PromotionClaim.player_id == user_id).delete(synchronize_session=False)
+
+        # Delete promotions (if client)
+        if hasattr(models, 'Promotion'):
+            db.query(models.Promotion).filter(models.Promotion.client_id == user_id).delete(synchronize_session=False)
+
+        # Delete offer claims
+        if hasattr(models, 'OfferClaim'):
+            db.query(models.OfferClaim).filter(models.OfferClaim.player_id == user_id).delete(synchronize_session=False)
+
+        # Delete notifications
+        if hasattr(models, 'Notification'):
+            db.query(models.Notification).filter(models.Notification.user_id == user_id).delete(synchronize_session=False)
+
+        # Delete referrals (as referrer or referee)
+        if hasattr(models, 'Referral'):
+            db.query(models.Referral).filter(
+                or_(models.Referral.referrer_id == user_id, models.Referral.referee_id == user_id)
+            ).delete(synchronize_session=False)
+
+        # Finally delete the user
+        db.delete(user)
+        db.commit()
+
+        return {"message": f"User {username} and all related data deleted successfully"}
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to delete user {user_id}: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete user: {str(e)}"
+        )
 
 @router.get("/messages")
 def get_all_messages(

@@ -53,6 +53,10 @@ export function ReviewsSection() {
     comment: '',
   });
 
+  // Delete confirmation modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [pendingDeleteReview, setPendingDeleteReview] = useState<{ id: number; revieweeName: string } | null>(null);
+
   // Load reviews and friends on mount
   useEffect(() => {
     loadReviews();
@@ -155,19 +159,25 @@ export function ReviewsSection() {
     }
   };
 
-  const handleDeleteReview = async (reviewId: number, revieweeName: string) => {
-    if (!confirm(`Delete your review for ${revieweeName}?`)) {
-      return;
-    }
+  const handleDeleteReview = (reviewId: number, revieweeName: string) => {
+    setPendingDeleteReview({ id: reviewId, revieweeName });
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteReview = async () => {
+    if (!pendingDeleteReview) return;
 
     try {
-      await reviewsApi.deleteReview(reviewId);
-      setGivenReviews(prev => prev.filter(r => r.id !== reviewId));
+      await reviewsApi.deleteReview(pendingDeleteReview.id);
+      setGivenReviews(prev => prev.filter(r => r.id !== pendingDeleteReview.id));
       setGivenTotal(prev => prev - 1);
       toast.success('Review deleted');
     } catch (error: any) {
       toast.error(error.detail || 'Failed to delete review');
       console.error(error);
+    } finally {
+      setShowDeleteModal(false);
+      setPendingDeleteReview(null);
     }
   };
 
@@ -761,6 +771,47 @@ export function ReviewsSection() {
               </div>
             </>
           )}
+        </div>
+      </Modal>
+
+      {/* Delete Review Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setPendingDeleteReview(null);
+        }}
+        title="Delete Review"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <MdWarning className="text-red-500 text-2xl flex-shrink-0" />
+            <p className="text-gray-300">
+              Are you sure you want to delete your review for{' '}
+              <span className="text-white font-medium">{pendingDeleteReview?.revieweeName}</span>?
+              This action cannot be undone.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => {
+                setShowDeleteModal(false);
+                setPendingDeleteReview(null);
+              }}
+              variant="secondary"
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmDeleteReview}
+              variant="primary"
+              fullWidth
+              className="!bg-red-600 hover:!bg-red-700"
+            >
+              Delete Review
+            </Button>
+          </div>
         </div>
       </Modal>
     </div>

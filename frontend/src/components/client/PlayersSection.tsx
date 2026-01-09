@@ -7,7 +7,7 @@ import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import toast from 'react-hot-toast';
 import { FaUserPlus, FaUsers, FaEllipsisV } from 'react-icons/fa';
-import { MdBlock, MdLockReset } from 'react-icons/md';
+import { MdBlock, MdLockReset, MdWarning } from 'react-icons/md';
 import { clientApi, type Player, type PlayerCreateRequest, type BulkPlayerCreate } from '@/api/endpoints';
 import { apiClient } from '@/api/client';
 
@@ -20,44 +20,61 @@ export function PlayersSection() {
   const [actionMenuId, setActionMenuId] = useState<number | null>(null);
   const [processingAction, setProcessingAction] = useState<number | null>(null);
 
+  // Confirmation modal state
+  const [showBlockModal, setShowBlockModal] = useState(false);
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+
   useEffect(() => {
     loadPlayers();
   }, []);
 
-  const handleBlockPlayer = async (player: Player) => {
-    const action = player.is_active ? 'block' : 'unblock';
-    if (!confirm(`Are you sure you want to ${action} ${player.username}?`)) {
-      return;
-    }
+  const handleBlockPlayer = (player: Player) => {
+    setSelectedPlayer(player);
+    setShowBlockModal(true);
+    setActionMenuId(null);
+  };
 
-    setProcessingAction(player.id);
+  const confirmBlockPlayer = async () => {
+    if (!selectedPlayer) return;
+
+    const action = selectedPlayer.is_active ? 'block' : 'unblock';
+    setProcessingAction(selectedPlayer.id);
+    setShowBlockModal(false);
+
     try {
-      await apiClient.patch(`/client/block-player/${player.id}`);
-      toast.success(`Player ${player.username} has been ${action}ed`);
+      await apiClient.patch(`/client/block-player/${selectedPlayer.id}`);
+      toast.success(`Player ${selectedPlayer.username} has been ${action}ed`);
       loadPlayers();
     } catch (error: any) {
       toast.error(error.response?.data?.detail || `Failed to ${action} player`);
     } finally {
       setProcessingAction(null);
-      setActionMenuId(null);
+      setSelectedPlayer(null);
     }
   };
 
-  const handleResetPassword = async (player: Player) => {
-    if (!confirm(`Reset password for ${player.username}? The new password will be: ${player.username}@135`)) {
-      return;
-    }
+  const handleResetPassword = (player: Player) => {
+    setSelectedPlayer(player);
+    setShowResetPasswordModal(true);
+    setActionMenuId(null);
+  };
 
-    setProcessingAction(player.id);
+  const confirmResetPassword = async () => {
+    if (!selectedPlayer) return;
+
+    setProcessingAction(selectedPlayer.id);
+    setShowResetPasswordModal(false);
+
     try {
-      const result = await apiClient.post(`/client/reset-player-password/${player.id}`) as { message: string; temp_password?: string };
-      toast.success(`Password reset! New password: ${result.temp_password || `${player.username}@135`}`, { duration: 10000 });
+      const result = await apiClient.post(`/client/reset-player-password/${selectedPlayer.id}`) as { message: string; temp_password?: string };
+      toast.success(`Password reset! New password: ${result.temp_password || `${selectedPlayer.username}@135`}`, { duration: 10000 });
       loadPlayers();
     } catch (error: any) {
       toast.error(error.response?.data?.detail || 'Failed to reset password');
     } finally {
       setProcessingAction(null);
-      setActionMenuId(null);
+      setSelectedPlayer(null);
     }
   };
 
@@ -231,6 +248,90 @@ export function PlayersSection() {
         onClose={() => setShowBulkModal(false)}
         onSuccess={loadPlayers}
       />
+
+      {/* Block/Unblock Player Confirmation Modal */}
+      <Modal
+        isOpen={showBlockModal}
+        onClose={() => {
+          setShowBlockModal(false);
+          setSelectedPlayer(null);
+        }}
+        title={selectedPlayer?.is_active ? 'Block Player' : 'Unblock Player'}
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <MdWarning className="text-red-500 text-2xl flex-shrink-0" />
+            <p className="text-gray-300">
+              Are you sure you want to {selectedPlayer?.is_active ? 'block' : 'unblock'}{' '}
+              <span className="text-white font-medium">{selectedPlayer?.username}</span>?
+              {selectedPlayer?.is_active && ' They will no longer be able to access the platform.'}
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => {
+                setShowBlockModal(false);
+                setSelectedPlayer(null);
+              }}
+              variant="secondary"
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmBlockPlayer}
+              variant="primary"
+              fullWidth
+              className={selectedPlayer?.is_active ? '!bg-red-600 hover:!bg-red-700' : '!bg-green-600 hover:!bg-green-700'}
+            >
+              {selectedPlayer?.is_active ? 'Block Player' : 'Unblock Player'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Reset Password Confirmation Modal */}
+      <Modal
+        isOpen={showResetPasswordModal}
+        onClose={() => {
+          setShowResetPasswordModal(false);
+          setSelectedPlayer(null);
+        }}
+        title="Reset Player Password"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+            <MdLockReset className="text-yellow-500 text-2xl flex-shrink-0" />
+            <div className="text-gray-300">
+              <p>
+                Reset password for <span className="text-white font-medium">{selectedPlayer?.username}</span>?
+              </p>
+              <p className="text-sm mt-1">
+                The new password will be: <code className="bg-dark-400 px-2 py-0.5 rounded text-gold-500">{selectedPlayer?.username}@135</code>
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => {
+                setShowResetPasswordModal(false);
+                setSelectedPlayer(null);
+              }}
+              variant="secondary"
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmResetPassword}
+              variant="primary"
+              fullWidth
+            >
+              Reset Password
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

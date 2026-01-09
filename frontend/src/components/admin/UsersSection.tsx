@@ -6,7 +6,7 @@ import { Modal } from '@/components/common/Modal';
 import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import toast from 'react-hot-toast';
-import { MdBlock, MdCheck, MdDelete, MdLock, MdContentCopy, MdAccountBalanceWallet } from 'react-icons/md';
+import { MdBlock, MdCheck, MdDelete, MdLock, MdContentCopy, MdAccountBalanceWallet, MdWarning } from 'react-icons/md';
 import { adminApi, type User } from '@/api/endpoints';
 import { UserType } from '@/types';
 
@@ -28,6 +28,10 @@ export function UsersSection() {
   const [creditAmount, setCreditAmount] = useState('');
   const [creditReason, setCreditReason] = useState('');
   const [addingCredits, setAddingCredits] = useState(false);
+
+  // Delete user confirmation modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [pendingDeleteUser, setPendingDeleteUser] = useState<{ id: number; username: string } | null>(null);
 
   useEffect(() => {
     loadUsers();
@@ -60,17 +64,23 @@ export function UsersSection() {
     }
   };
 
-  const handleDeleteUser = async (userId: number, username: string) => {
-    if (!confirm(`Are you sure you want to delete user "${username}"? This action cannot be undone.`)) {
-      return;
-    }
+  const handleDeleteUser = (userId: number, username: string) => {
+    setPendingDeleteUser({ id: userId, username });
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!pendingDeleteUser) return;
 
     try {
-      await adminApi.deleteUser(userId);
+      await adminApi.deleteUser(pendingDeleteUser.id);
       toast.success('User deleted successfully');
       loadUsers();
     } catch (error: any) {
       toast.error(error.response?.data?.detail || 'Failed to delete user');
+    } finally {
+      setShowDeleteModal(false);
+      setPendingDeleteUser(null);
     }
   };
 
@@ -512,6 +522,47 @@ export function UsersSection() {
           </div>
         </Modal>
       )}
+
+      {/* Delete User Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setPendingDeleteUser(null);
+        }}
+        title="Delete User"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <MdWarning className="text-red-500 text-2xl flex-shrink-0" />
+            <p className="text-gray-300">
+              Are you sure you want to delete user{' '}
+              <span className="text-white font-medium">"{pendingDeleteUser?.username}"</span>?
+              This action cannot be undone.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => {
+                setShowDeleteModal(false);
+                setPendingDeleteUser(null);
+              }}
+              variant="secondary"
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmDeleteUser}
+              variant="primary"
+              fullWidth
+              className="!bg-red-600 hover:!bg-red-700"
+            >
+              Delete User
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

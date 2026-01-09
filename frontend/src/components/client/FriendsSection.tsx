@@ -5,7 +5,7 @@ import { Button } from '@/components/common/Button';
 import { Avatar } from '@/components/common/Avatar';
 import { Badge } from '@/components/common/Badge';
 import toast from 'react-hot-toast';
-import { MdPersonAdd, MdMessage, MdPersonRemove, MdCheck, MdClose, MdSearch, MdRefresh, MdFlag, MdSend, MdInbox } from 'react-icons/md';
+import { MdPersonAdd, MdMessage, MdPersonRemove, MdCheck, MdClose, MdSearch, MdRefresh, MdFlag, MdSend, MdInbox, MdWarning } from 'react-icons/md';
 import { friendsApi, type FriendDetails, type FriendRequest } from '@/api/endpoints';
 import { reportsApi } from '@/api/endpoints/reports.api';
 import { formatDistanceToNow } from 'date-fns';
@@ -31,6 +31,10 @@ export function FriendsSection() {
   const [reportTarget, setReportTarget] = useState<FriendDetails | null>(null);
   const [reportReason, setReportReason] = useState('');
   const [submittingReport, setSubmittingReport] = useState(false);
+
+  // Remove friend confirmation modal state
+  const [showRemoveFriendModal, setShowRemoveFriendModal] = useState(false);
+  const [pendingRemoveFriend, setPendingRemoveFriend] = useState<{ id: number; username: string } | null>(null);
 
   // WebSocket for real-time online status
   const { onlineUsers, requestOnlineStatus, isConnected } = useWebSocket();
@@ -165,18 +169,24 @@ export function FriendsSection() {
     }
   };
 
-  const handleRemoveFriend = async (friendId: number, username: string) => {
-    if (!confirm(`Remove ${username} from your friends?`)) {
-      return;
-    }
+  const handleRemoveFriend = (friendId: number, username: string) => {
+    setPendingRemoveFriend({ id: friendId, username });
+    setShowRemoveFriendModal(true);
+  };
+
+  const confirmRemoveFriend = async () => {
+    if (!pendingRemoveFriend) return;
 
     try {
-      await friendsApi.removeFriend(friendId);
-      toast.success(`Removed ${username} from friends`);
-      setFriends(prev => prev.filter(f => f.id !== friendId));
+      await friendsApi.removeFriend(pendingRemoveFriend.id);
+      toast.success(`Removed ${pendingRemoveFriend.username} from friends`);
+      setFriends(prev => prev.filter(f => f.id !== pendingRemoveFriend.id));
     } catch (error: any) {
       toast.error(error.detail || 'Failed to remove friend');
       console.error(error);
+    } finally {
+      setShowRemoveFriendModal(false);
+      setPendingRemoveFriend(null);
     }
   };
 
@@ -673,6 +683,47 @@ export function FriendsSection() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Remove Friend Confirmation Modal */}
+      <Modal
+        isOpen={showRemoveFriendModal}
+        onClose={() => {
+          setShowRemoveFriendModal(false);
+          setPendingRemoveFriend(null);
+        }}
+        title="Remove Friend"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <MdWarning className="text-red-500 text-2xl flex-shrink-0" />
+            <p className="text-gray-300">
+              Are you sure you want to remove{' '}
+              <span className="text-white font-medium">{pendingRemoveFriend?.username}</span>{' '}
+              from your friends?
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => {
+                setShowRemoveFriendModal(false);
+                setPendingRemoveFriend(null);
+              }}
+              variant="secondary"
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmRemoveFriend}
+              variant="primary"
+              fullWidth
+              className="!bg-red-600 hover:!bg-red-700"
+            >
+              Remove Friend
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

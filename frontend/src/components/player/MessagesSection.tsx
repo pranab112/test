@@ -3,7 +3,7 @@ import { Avatar } from '@/components/common/Avatar';
 import { Badge } from '@/components/common/Badge';
 import { Button } from '@/components/common/Button';
 import toast from 'react-hot-toast';
-import { MdMessage, MdSend, MdContentCopy, MdVisibility, MdVisibilityOff, MdRefresh, MdImage, MdMic, MdClose, MdSettings, MdStar } from 'react-icons/md';
+import { MdMessage, MdSend, MdContentCopy, MdVisibility, MdVisibilityOff, MdRefresh, MdImage, MdMic, MdClose, MdSettings, MdStar, MdMoreVert, MdPersonOff, MdDeleteForever } from 'react-icons/md';
 import { FaKey } from 'react-icons/fa';
 import { useDashboard } from '@/contexts/DashboardContext';
 import { chatApi, type Conversation, type Message } from '@/api/endpoints/chat.api';
@@ -45,6 +45,9 @@ export function MessagesSection() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Delete menu state
+  const [deleteMenuOpen, setDeleteMenuOpen] = useState<number | null>(null);
+
   // Load conversations and credentials on mount
   useEffect(() => {
     loadConversations();
@@ -83,6 +86,17 @@ export function MessagesSection() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Close delete menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (deleteMenuOpen !== null) {
+        setDeleteMenuOpen(null);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [deleteMenuOpen]);
 
   // Listen for new WebSocket messages
   useEffect(() => {
@@ -231,6 +245,26 @@ export function MessagesSection() {
       toast.error(error.detail || 'Failed to send message');
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: number, deleteForEveryone: boolean = false) => {
+    try {
+      if (deleteForEveryone) {
+        // Delete for everyone - removes the message from the database
+        await chatApi.deleteMessage(messageId);
+        setMessages(prev => prev.filter(m => m.id !== messageId));
+        toast.success('Message deleted for everyone');
+      } else {
+        // Delete for myself - just hide locally (message still exists for other user)
+        setMessages(prev => prev.filter(m => m.id !== messageId));
+        toast.success('Message hidden');
+      }
+      setDeleteMenuOpen(null);
+    } catch (error: any) {
+      console.error('Delete message error:', error);
+      const message = error?.detail || error?.error?.message || 'Failed to delete message';
+      toast.error(message);
     }
   };
 
@@ -702,14 +736,56 @@ export function MessagesSection() {
                                   </audio>
                                 ) : null}
                               </div>
-                              <p className={`text-xs text-gray-500 mt-1 ${
-                                isOwn ? 'text-right' : 'text-left'
+                              <div className={`flex items-center justify-between mt-1 ${
+                                isOwn ? 'flex-row-reverse' : ''
                               }`}>
-                                {formatMessageTime(msg.created_at)}
-                                {isOwn && msg.is_read && (
-                                  <span className="ml-2 text-blue-400">✓✓</span>
+                                <p className="text-xs text-gray-500">
+                                  {formatMessageTime(msg.created_at)}
+                                  {isOwn && msg.is_read && (
+                                    <span className="ml-2 text-blue-400">✓✓</span>
+                                  )}
+                                </p>
+                                {!promotionInfo.isPromotion && (
+                                  <div className="relative">
+                                    <button
+                                      type="button"
+                                      title="Message options"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setDeleteMenuOpen(deleteMenuOpen === msg.id ? null : msg.id);
+                                      }}
+                                      className={`${isOwn ? 'text-dark-500 hover:text-dark-700' : 'text-gray-500 hover:text-white'} mx-2`}
+                                    >
+                                      <MdMoreVert size={16} />
+                                    </button>
+                                    {deleteMenuOpen === msg.id && (
+                                      <div
+                                        className="absolute right-0 bottom-6 bg-dark-200 border border-gold-700 rounded-lg shadow-lg z-10 min-w-[160px] py-1"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDeleteMessage(msg.id, false)}
+                                          className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-dark-300 flex items-center gap-2"
+                                        >
+                                          <MdPersonOff size={16} />
+                                          Delete for me
+                                        </button>
+                                        {isOwn && (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleDeleteMessage(msg.id, true)}
+                                            className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-dark-300 flex items-center gap-2"
+                                          >
+                                            <MdDeleteForever size={16} />
+                                            Delete for everyone
+                                          </button>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
                                 )}
-                              </p>
+                              </div>
                             </div>
                           </div>
                         );

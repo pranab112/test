@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { FaBroadcastTower } from 'react-icons/fa';
+import { MdWarning } from 'react-icons/md';
+import { Modal } from '@/components/common/Modal';
+import { Button } from '@/components/common/Button';
 import { adminApi } from '@/api/endpoints';
 import { UserType } from '@/types';
 
@@ -8,17 +11,18 @@ export function BroadcastSection() {
   const [targetAudience, setTargetAudience] = useState<'all' | 'client' | 'player'>('all');
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-  const handleSendBroadcast = async () => {
+  const handleSendBroadcast = () => {
     if (!message.trim()) {
       toast.error('Please enter a message');
       return;
     }
+    setShowConfirmModal(true);
+  };
 
-    if (!confirm(`Send broadcast to ${targetAudience === 'all' ? 'all users' : `all ${targetAudience}s`}?`)) {
-      return;
-    }
-
+  const confirmSendBroadcast = async () => {
+    setShowConfirmModal(false);
     setSending(true);
     try {
       const result = await adminApi.broadcastMessage(
@@ -75,6 +79,45 @@ export function BroadcastSection() {
           </button>
         </div>
       </div>
+
+      {/* Confirm Broadcast Modal */}
+      <Modal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        title="Confirm Broadcast"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+            <MdWarning className="text-yellow-500 text-2xl flex-shrink-0" />
+            <p className="text-gray-300">
+              Send broadcast to{' '}
+              <span className="text-white font-medium">
+                {targetAudience === 'all' ? 'all users' : `all ${targetAudience}s`}
+              </span>?
+            </p>
+          </div>
+          <div className="bg-dark-300 rounded-lg p-3">
+            <p className="text-sm text-gray-400 mb-1">Message preview:</p>
+            <p className="text-white">{message}</p>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => setShowConfirmModal(false)}
+              variant="secondary"
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmSendBroadcast}
+              variant="primary"
+              fullWidth
+            >
+              Send Broadcast
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

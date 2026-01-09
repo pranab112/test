@@ -6,7 +6,7 @@ import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import toast from 'react-hot-toast';
 import { FaGift, FaPlus, FaEdit, FaCheck, FaBan } from 'react-icons/fa';
-import { MdRefresh, MdDelete } from 'react-icons/md';
+import { MdRefresh, MdDelete, MdWarning } from 'react-icons/md';
 import {
   offersApi,
   type PlatformOffer,
@@ -57,6 +57,12 @@ export function OffersSection() {
     max_claims_per_player: '1',
     end_date: '',
   });
+
+  // Confirmation modal states
+  const [showDeleteOfferModal, setShowDeleteOfferModal] = useState(false);
+  const [pendingDeleteOffer, setPendingDeleteOffer] = useState<PlatformOffer | null>(null);
+  const [showClaimActionModal, setShowClaimActionModal] = useState(false);
+  const [pendingClaimAction, setPendingClaimAction] = useState<{ claim: OfferClaim; status: OfferClaimStatus } | null>(null);
 
   useEffect(() => {
     loadData();
@@ -158,25 +164,36 @@ export function OffersSection() {
     }
   };
 
-  const handleDeleteOffer = async (offer: PlatformOffer) => {
-    if (!confirm(`Are you sure you want to deactivate "${offer.title}"?`)) {
-      return;
-    }
+  const handleDeleteOffer = (offer: PlatformOffer) => {
+    setPendingDeleteOffer(offer);
+    setShowDeleteOfferModal(true);
+  };
+
+  const confirmDeleteOffer = async () => {
+    if (!pendingDeleteOffer) return;
 
     try {
-      await offersApi.deleteOffer(offer.id);
+      await offersApi.deleteOffer(pendingDeleteOffer.id);
       toast.success('Offer deactivated');
       loadData();
     } catch (error: any) {
       toast.error(error?.detail || 'Failed to delete offer');
+    } finally {
+      setShowDeleteOfferModal(false);
+      setPendingDeleteOffer(null);
     }
   };
 
-  const handleProcessClaim = async (claim: OfferClaim, status: OfferClaimStatus) => {
+  const handleProcessClaim = (claim: OfferClaim, status: OfferClaimStatus) => {
+    setPendingClaimAction({ claim, status });
+    setShowClaimActionModal(true);
+  };
+
+  const confirmProcessClaim = async () => {
+    if (!pendingClaimAction) return;
+
+    const { claim, status } = pendingClaimAction;
     const action = status === 'approved' ? 'approve' : 'reject';
-    if (!confirm(`Are you sure you want to ${action} this claim for ${claim.player_name}?`)) {
-      return;
-    }
 
     try {
       await offersApi.processClaimAdmin(claim.id, { status });
@@ -184,6 +201,9 @@ export function OffersSection() {
       loadData();
     } catch (error: any) {
       toast.error(error?.detail || `Failed to ${action} claim`);
+    } finally {
+      setShowClaimActionModal(false);
+      setPendingClaimAction(null);
     }
   };
 
@@ -776,6 +796,95 @@ export function OffersSection() {
               className="flex-1"
             >
               Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete/Deactivate Offer Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteOfferModal}
+        onClose={() => {
+          setShowDeleteOfferModal(false);
+          setPendingDeleteOffer(null);
+        }}
+        title="Deactivate Offer"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <MdWarning className="text-red-500 text-2xl flex-shrink-0" />
+            <p className="text-gray-300">
+              Are you sure you want to deactivate{' '}
+              <span className="text-white font-medium">"{pendingDeleteOffer?.title}"</span>?
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => {
+                setShowDeleteOfferModal(false);
+                setPendingDeleteOffer(null);
+              }}
+              variant="secondary"
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmDeleteOffer}
+              variant="primary"
+              fullWidth
+              className="!bg-red-600 hover:!bg-red-700"
+            >
+              Deactivate Offer
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Process Claim Confirmation Modal */}
+      <Modal
+        isOpen={showClaimActionModal}
+        onClose={() => {
+          setShowClaimActionModal(false);
+          setPendingClaimAction(null);
+        }}
+        title={pendingClaimAction?.status === 'approved' ? 'Approve Claim' : 'Reject Claim'}
+      >
+        <div className="space-y-4">
+          <div className={`flex items-center gap-3 p-4 ${
+            pendingClaimAction?.status === 'approved'
+              ? 'bg-green-500/10 border border-green-500/30'
+              : 'bg-red-500/10 border border-red-500/30'
+          } rounded-lg`}>
+            <MdWarning className={`${
+              pendingClaimAction?.status === 'approved' ? 'text-green-500' : 'text-red-500'
+            } text-2xl flex-shrink-0`} />
+            <p className="text-gray-300">
+              Are you sure you want to {pendingClaimAction?.status === 'approved' ? 'approve' : 'reject'} this claim for{' '}
+              <span className="text-white font-medium">{pendingClaimAction?.claim.player_name}</span>?
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => {
+                setShowClaimActionModal(false);
+                setPendingClaimAction(null);
+              }}
+              variant="secondary"
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmProcessClaim}
+              variant="primary"
+              fullWidth
+              className={pendingClaimAction?.status === 'approved'
+                ? '!bg-green-600 hover:!bg-green-700'
+                : '!bg-red-600 hover:!bg-red-700'
+              }
+            >
+              {pendingClaimAction?.status === 'approved' ? 'Approve Claim' : 'Reject Claim'}
             </Button>
           </div>
         </div>

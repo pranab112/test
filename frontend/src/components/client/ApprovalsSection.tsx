@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { DataTable } from '@/components/common/DataTable';
+import { Modal } from '@/components/common/Modal';
 import { Avatar } from '@/components/common/Avatar';
 import { Button } from '@/components/common/Button';
 import { StatCard } from '@/components/common/StatCard';
 import toast from 'react-hot-toast';
-import { MdCheckCircle, MdCancel, MdPerson, MdHourglassEmpty } from 'react-icons/md';
+import { MdCheckCircle, MdCancel, MdPerson, MdHourglassEmpty, MdWarning } from 'react-icons/md';
 import { apiClient } from '@/api/client';
 
 interface PendingPlayer {
@@ -23,6 +24,10 @@ export function ApprovalsSection() {
   const [pendingPlayers, setPendingPlayers] = useState<PendingPlayer[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<number | null>(null);
+
+  // Reject confirmation modal state
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [pendingRejectPlayer, setPendingRejectPlayer] = useState<{ id: number; username: string } | null>(null);
 
   useEffect(() => {
     loadPendingPlayers();
@@ -54,20 +59,26 @@ export function ApprovalsSection() {
     }
   };
 
-  const handleReject = async (playerId: number, username: string) => {
-    if (!confirm(`Reject registration for ${username}? This will delete their account.`)) {
-      return;
-    }
+  const handleReject = (playerId: number, username: string) => {
+    setPendingRejectPlayer({ id: playerId, username });
+    setShowRejectModal(true);
+  };
 
-    setProcessingId(playerId);
+  const confirmReject = async () => {
+    if (!pendingRejectPlayer) return;
+
+    setProcessingId(pendingRejectPlayer.id);
+    setShowRejectModal(false);
+
     try {
-      await apiClient.patch(`/client/reject-player/${playerId}`);
+      await apiClient.patch(`/client/reject-player/${pendingRejectPlayer.id}`);
       toast.success('Player registration rejected');
       loadPendingPlayers();
     } catch (error: any) {
       toast.error(error.response?.data?.detail || 'Failed to reject player');
     } finally {
       setProcessingId(null);
+      setPendingRejectPlayer(null);
     }
   };
 
@@ -186,6 +197,47 @@ export function ApprovalsSection() {
       ) : (
         <DataTable data={pendingPlayers} columns={columns} emptyMessage="No pending players" />
       )}
+
+      {/* Reject Confirmation Modal */}
+      <Modal
+        isOpen={showRejectModal}
+        onClose={() => {
+          setShowRejectModal(false);
+          setPendingRejectPlayer(null);
+        }}
+        title="Reject Player Registration"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <MdWarning className="text-red-500 text-2xl flex-shrink-0" />
+            <p className="text-gray-300">
+              Are you sure you want to reject the registration for{' '}
+              <span className="text-white font-medium">{pendingRejectPlayer?.username}</span>?
+              This will delete their account.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => {
+                setShowRejectModal(false);
+                setPendingRejectPlayer(null);
+              }}
+              variant="secondary"
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmReject}
+              variant="primary"
+              fullWidth
+              className="!bg-red-600 hover:!bg-red-700"
+            >
+              Reject Registration
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

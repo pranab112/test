@@ -15,16 +15,27 @@ import {
   MdUpload,
   MdDelete,
   MdRefresh,
+  MdWarning,
 } from 'react-icons/md';
+import { useNavigate } from 'react-router-dom';
 
 type SettingsTab = 'profile' | 'security' | 'notifications' | 'appearance';
 
 export function SettingsSection() {
-  const { user, setUser } = useAuth();
+  const { user, setUser, logout } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Delete account state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
+  // Delete profile picture confirmation modal state
+  const [showDeletePictureModal, setShowDeletePictureModal] = useState(false);
 
   // Profile form state
   const [profileData, setProfileData] = useState({
@@ -161,6 +172,30 @@ export function SettingsSection() {
     }
   };
 
+  // Delete Account Handler
+  const handleDeleteAccount = async () => {
+    if (!deletePassword) {
+      toast.error('Please enter your password to confirm deletion');
+      return;
+    }
+
+    setDeletingAccount(true);
+    try {
+      await settingsApi.deleteMyAccount(deletePassword);
+      toast.success('Your account has been deleted successfully');
+      setShowDeleteModal(false);
+      // Log out and redirect to landing page
+      logout();
+      navigate('/');
+    } catch (error: any) {
+      const errorMessage = error?.detail || error?.message || 'Failed to delete account';
+      toast.error(errorMessage);
+      console.error(error);
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
+
   // Email Verification Functions
   const handleSendVerificationEmail = async () => {
     if (!verificationEmail || !verificationEmail.includes('@')) {
@@ -257,10 +292,16 @@ export function SettingsSection() {
     }
   };
 
-  const handleDeleteProfilePicture = async () => {
-    if (!user || !confirm('Remove your profile picture?')) return;
+  const handleDeleteProfilePicture = () => {
+    if (!user) return;
+    setShowDeletePictureModal(true);
+  };
+
+  const confirmDeleteProfilePicture = async () => {
+    if (!user) return;
 
     setLoading(true);
+    setShowDeletePictureModal(false);
     try {
       await settingsApi.deleteProfilePicture(user.id);
       setProfilePicture(undefined);
@@ -503,6 +544,29 @@ export function SettingsSection() {
                   </div>
                 </div>
 
+                {/* Danger Zone - inside Security tab */}
+                <div className="bg-red-900/30 border-2 border-red-700 rounded-lg p-6">
+                  <h3 className="text-lg font-bold text-red-500 mb-4 flex items-center gap-2">
+                    <MdWarning className="text-xl" />
+                    Danger Zone
+                  </h3>
+                  <div className="flex items-center justify-between p-4 bg-dark-300 rounded-lg">
+                    <div>
+                      <p className="font-medium text-white">Delete Account</p>
+                      <p className="text-sm text-gray-400">
+                        Permanently delete your account and all associated data. This action cannot be undone.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteModal(true)}
+                      className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-lg transition-colors"
+                    >
+                      Delete Account
+                    </button>
+                  </div>
+                </div>
+
               </div>
             )}
 
@@ -624,6 +688,68 @@ export function SettingsSection() {
         </div>
       </div>
 
+      {/* Delete Account Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setDeletePassword('');
+        }}
+        title="Delete Your Account"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="bg-red-900/30 border border-red-700 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <MdWarning className="text-red-500 text-2xl flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-red-400 font-medium">This action is permanent!</p>
+                <p className="text-gray-400 text-sm mt-1">
+                  Once you delete your account, all your data including messages, game credentials,
+                  promotions, and player information will be permanently removed. This cannot be undone.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <Input
+            label="Enter your password to confirm"
+            type="password"
+            value={deletePassword}
+            onChange={(e) => setDeletePassword(e.target.value)}
+            placeholder="Your current password"
+          />
+
+          <div className="flex gap-3 pt-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowDeleteModal(false);
+                setDeletePassword('');
+              }}
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <button
+              type="button"
+              onClick={handleDeleteAccount}
+              disabled={deletingAccount || !deletePassword}
+              className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-red-600/50 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              {deletingAccount ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  <MdDelete size={18} />
+                  Delete My Account
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Email Verification Modal */}
       <Modal
         isOpen={showEmailVerifyModal}
@@ -698,6 +824,39 @@ export function SettingsSection() {
               </div>
             </>
           )}
+        </div>
+      </Modal>
+
+      {/* Delete Profile Picture Confirmation Modal */}
+      <Modal
+        isOpen={showDeletePictureModal}
+        onClose={() => setShowDeletePictureModal(false)}
+        title="Remove Profile Picture"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <MdWarning className="text-red-500 text-2xl flex-shrink-0" />
+            <p className="text-gray-300">
+              Are you sure you want to remove your profile picture?
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => setShowDeletePictureModal(false)}
+              variant="secondary"
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmDeleteProfilePicture}
+              variant="primary"
+              fullWidth
+              className="!bg-red-600 hover:!bg-red-700"
+            >
+              Remove Picture
+            </Button>
+          </div>
         </div>
       </Modal>
     </div>

@@ -58,6 +58,10 @@ export function ReportsSection() {
     reason: '',
   });
 
+  // Delete confirmation modal state
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [pendingDeleteReportId, setPendingDeleteReportId] = useState<number | null>(null);
+
   // Load reports on mount
   useEffect(() => {
     loadReports();
@@ -159,18 +163,24 @@ export function ReportsSection() {
     }
   };
 
-  const handleDeleteReport = async (reportId: number) => {
-    if (!confirm('Are you sure you want to delete this report?')) {
-      return;
-    }
+  const handleDeleteReport = (reportId: number) => {
+    setPendingDeleteReportId(reportId);
+    setShowDeleteConfirmModal(true);
+  };
+
+  const confirmDeleteReport = async () => {
+    if (!pendingDeleteReportId) return;
 
     try {
-      await reportsApi.deleteReport(reportId);
-      setReportsMade(prev => prev.filter(r => r.id !== reportId));
+      await reportsApi.deleteReport(pendingDeleteReportId);
+      setReportsMade(prev => prev.filter(r => r.id !== pendingDeleteReportId));
       toast.success('Report deleted');
     } catch (error: any) {
       toast.error(error.detail || 'Failed to delete report');
       console.error(error);
+    } finally {
+      setShowDeleteConfirmModal(false);
+      setPendingDeleteReportId(null);
     }
   };
 
@@ -1003,6 +1013,45 @@ export function ReportsSection() {
             <Button onClick={handleResolveReport} loading={loading} fullWidth>
               <MdPayment className="mr-1" />
               Submit Resolution
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Report Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteConfirmModal}
+        onClose={() => {
+          setShowDeleteConfirmModal(false);
+          setPendingDeleteReportId(null);
+        }}
+        title="Delete Report"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <MdWarning className="text-red-500 text-2xl flex-shrink-0" />
+            <p className="text-gray-300">
+              Are you sure you want to delete this report? This action cannot be undone.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => {
+                setShowDeleteConfirmModal(false);
+                setPendingDeleteReportId(null);
+              }}
+              variant="secondary"
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmDeleteReport}
+              variant="primary"
+              fullWidth
+              className="!bg-red-600 hover:!bg-red-700"
+            >
+              Delete Report
             </Button>
           </div>
         </div>
