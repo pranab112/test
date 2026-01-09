@@ -377,12 +377,10 @@ export function ReportsSection() {
             type="button"
             onClick={() => loadReports(true)}
             disabled={loadingReports}
-            className={`bg-dark-300 hover:bg-dark-400 text-gold-500 p-3 rounded-lg transition-colors ${
-              loadingReports ? 'animate-spin' : ''
-            }`}
+            className="bg-dark-300 hover:bg-dark-400 text-gold-500 p-3 rounded-lg transition-colors"
             title="Refresh"
           >
-            <MdRefresh size={20} />
+            <MdRefresh size={20} className={loadingReports ? 'animate-spin' : ''} />
           </button>
           <button
             type="button"

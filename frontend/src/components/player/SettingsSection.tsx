@@ -38,7 +38,6 @@ export function SettingsSection() {
     username: '',
     fullName: '',
     email: '',
-    phone: '',
   });
 
   // Security form state
@@ -112,7 +111,6 @@ export function SettingsSection() {
         username: user.username || '',
         fullName: user.full_name || '',
         email: user.email || '',
-        phone: '',
       });
       setProfilePicture(user.profile_picture);
       setEmailVerified(user.is_email_verified || false);
@@ -761,13 +759,6 @@ export function SettingsSection() {
               )}
             </div>
 
-            <Input
-              label="Phone Number (Optional)"
-              type="tel"
-              value={profileData.phone}
-              onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
-              placeholder="+1234567890"
-            />
             <div className="pt-4">
               <Button
                 onClick={handleSaveProfile}

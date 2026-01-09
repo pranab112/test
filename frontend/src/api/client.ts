@@ -74,12 +74,26 @@ api.interceptors.response.use(
         status: error.response?.status,
       };
     } else if (typeof responseData === 'object' && responseData && 'detail' in responseData) {
-      // FastAPI format: { "detail": "message" }
-      normalizedError = {
-        message: (responseData as any).detail,
-        detail: (responseData as any).detail,
-        status: error.response?.status,
-      };
+      const detail = (responseData as any).detail;
+      // FastAPI validation error format: { "detail": [{ "loc": [...], "msg": "...", "type": "..." }] }
+      if (Array.isArray(detail)) {
+        const messages = detail.map((err: any) => {
+          const field = err.loc?.slice(1).join('.') || 'field';
+          return `${field}: ${err.msg}`;
+        }).join(', ');
+        normalizedError = {
+          message: messages || 'Validation error',
+          detail: messages || 'Validation error',
+          status: error.response?.status,
+        };
+      } else {
+        // FastAPI format: { "detail": "message" }
+        normalizedError = {
+          message: detail,
+          detail: detail,
+          status: error.response?.status,
+        };
+      }
     } else if (typeof responseData === 'object' && responseData && 'error' in responseData && typeof (responseData as any).error === 'object' && (responseData as any).error && 'message' in (responseData as any).error) {
       // Custom format: { "error": { "message": "..." } }
       normalizedError = {

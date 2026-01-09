@@ -82,7 +82,13 @@
       "Bash(dir:*)",
       "Bash(npm run build:*)",
       "Bash(grep:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(.venv/bin/python:*)",
+      "Bash(.venv/bin/alembic stamp:*)",
+      "Bash(.venv/bin/alembic revision:*)",
+      "Bash(.venv/bin/alembic current:*)",
+      "Bash(.venv/bin/alembic upgrade:*)",
+      "Bash(.venv/bin/alembic:*)"
     ],
     "deny": [],
     "ask": []
