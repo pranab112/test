@@ -33,6 +33,14 @@ def format_report_response(report, reporter, reported_user, include_evidence=Tru
         "reason": report.reason,
         "evidence": report.evidence if include_evidence else None,
         "status": report.status,
+        "admin_notes": report.admin_notes,
+        "action_taken": report.action_taken,
+        "appeal_ticket_id": report.appeal_ticket_id,
+        "warning_sent_at": report.warning_sent_at,
+        "warning_deadline": report.warning_deadline,
+        "resolution_amount": report.resolution_amount,
+        "resolution_notes": report.resolution_notes,
+        "resolved_at": report.resolved_at,
         "created_at": report.created_at,
         "updated_at": report.updated_at
     }

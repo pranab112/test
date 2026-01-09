@@ -33,6 +33,8 @@ class ReviewResponse(BaseModel):
     title: str
     comment: Optional[str]
     status: str
+    admin_notes: Optional[str] = None
+    appeal_ticket_id: Optional[int] = None
     created_at: datetime
     updated_at: Optional[datetime]
     reviewer: UserResponse

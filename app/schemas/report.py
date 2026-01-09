@@ -36,6 +36,14 @@ class ReportResponse(BaseModel):
     reason: str
     evidence: Optional[str]
     status: ReportStatus
+    admin_notes: Optional[str] = None
+    action_taken: Optional[str] = None
+    appeal_ticket_id: Optional[int] = None
+    warning_sent_at: Optional[datetime] = None
+    warning_deadline: Optional[datetime] = None
+    resolution_amount: Optional[float] = None
+    resolution_notes: Optional[str] = None
+    resolved_at: Optional[datetime] = None
     created_at: datetime
     updated_at: Optional[datetime]
 
