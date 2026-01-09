@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Enum, Text, UniqueConstraint
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Enum, Text, UniqueConstraint, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.models.base import Base
@@ -19,6 +19,7 @@ class Promotion(Base):
     total_budget = Column(Integer)  # Total budget for this promotion
     used_budget = Column(Integer, default=0)  # Track used budget
     min_player_level = Column(Integer, default=1)
+    requires_screenshot = Column(Boolean, default=False, nullable=False)  # Whether player must submit screenshot proof
 
     # Validity
     start_date = Column(DateTime(timezone=True), server_default=func.now())
@@ -50,6 +51,7 @@ class PromotionClaim(Base):
 
     claimed_value = Column(Integer, nullable=False)  # Actual value claimed
     status = Column(Enum(ClaimStatus), default=ClaimStatus.PENDING_APPROVAL)
+    screenshot_url = Column(String(500), nullable=True)  # Screenshot proof URL if required by promotion
 
     claimed_at = Column(DateTime(timezone=True), server_default=func.now())
     used_at = Column(DateTime(timezone=True))

@@ -49,6 +49,7 @@ async def create_promotion(
         max_claims_per_player=promotion.max_claims_per_player,
         total_budget=total_budget,
         min_player_level=promotion.min_player_level,
+        requires_screenshot=promotion.requires_screenshot,
         end_date=promotion.end_date,
         target_player_ids=json.dumps(promotion.target_player_ids) if promotion.target_player_ids else None,
         terms=promotion.terms,
@@ -285,6 +286,14 @@ async def claim_promotion(
             db.delete(existing_claim)
             db.flush()
 
+    # Check if promotion requires screenshot and validate
+    if promotion.requires_screenshot and not claim_request.screenshot_url:
+        return schemas.PromotionClaimResponse(
+            success=False,
+            message="This promotion requires a screenshot proof. Please provide a screenshot URL.",
+            requires_screenshot=True
+        )
+
     # Check budget if applicable (reserve the budget)
     if promotion.total_budget:
         if promotion.used_budget >= promotion.total_budget:
@@ -311,6 +320,7 @@ async def claim_promotion(
         client_id=promotion.client_id,
         claimed_value=promotion.value,
         status=ClaimStatus.PENDING_APPROVAL,
+        screenshot_url=claim_request.screenshot_url,
         wagering_required=wagering_required
     )
 
@@ -328,7 +338,9 @@ async def claim_promotion(
         "value": promotion.value,
         "player_id": current_user.id,
         "player_username": current_user.username,
-        "player_level": current_user.player_level
+        "player_level": current_user.player_level,
+        "requires_screenshot": promotion.requires_screenshot,
+        "screenshot_url": claim_request.screenshot_url
     })
 
     approval_message = models.Message(
@@ -371,7 +383,9 @@ async def claim_promotion(
                 "promotion_type": promotion.promotion_type.value,
                 "value": promotion.value,
                 "player_username": current_user.username,
-                "status": "pending_approval"
+                "status": "pending_approval",
+                "requires_screenshot": promotion.requires_screenshot,
+                "screenshot_url": claim_request.screenshot_url
             }
         }
     ))
@@ -382,7 +396,9 @@ async def claim_promotion(
         claim_id=claim.id,
         claimed_value=promotion.value,
         wagering_required=wagering_required if promotion.wagering_requirement > 1 else None,
-        status="pending_approval"
+        status="pending_approval",
+        screenshot_url=claim_request.screenshot_url,
+        requires_screenshot=promotion.requires_screenshot
     )
 
 
@@ -420,7 +436,9 @@ async def get_my_claims(
             "status": claim.status,
             "claimed_at": claim.claimed_at,
             "wagering_completed": claim.wagering_completed,
-            "wagering_required": claim.wagering_required
+            "wagering_required": claim.wagering_required,
+            "requires_screenshot": promotion.requires_screenshot,
+            "screenshot_url": claim.screenshot_url
         })
 
     return result
@@ -494,6 +512,8 @@ async def update_promotion(
         promotion.total_budget = update_data.total_budget
     if update_data.min_player_level is not None:
         promotion.min_player_level = update_data.min_player_level
+    if update_data.requires_screenshot is not None:
+        promotion.requires_screenshot = update_data.requires_screenshot
     if update_data.end_date is not None:
         promotion.end_date = update_data.end_date
     if update_data.terms is not None:
@@ -582,6 +602,7 @@ def _format_promotion_response(promotion: models.Promotion, current_user: models
         total_budget=promotion.total_budget,
         used_budget=promotion.used_budget,
         min_player_level=promotion.min_player_level,
+        requires_screenshot=promotion.requires_screenshot,
         start_date=promotion.start_date,
         end_date=promotion.end_date,
         status=promotion.status,
@@ -624,7 +645,9 @@ async def get_pending_approvals(
             "player_level": player.player_level,
             "player_avatar": player.profile_picture,
             "claimed_at": claim.claimed_at.isoformat(),
-            "message_id": claim.approval_message_id
+            "message_id": claim.approval_message_id,
+            "requires_screenshot": promotion.requires_screenshot,
+            "screenshot_url": claim.screenshot_url
         })
 
     return result

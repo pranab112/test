@@ -11,6 +11,7 @@ class PromotionCreate(BaseModel):
     max_claims_per_player: int = 1
     total_budget: Optional[int] = None
     min_player_level: int = 1
+    requires_screenshot: bool = False  # Whether player must submit screenshot proof
     end_date: datetime
     target_player_ids: Optional[List[int]] = None  # None means all players
     terms: Optional[str] = None
@@ -23,6 +24,7 @@ class PromotionUpdate(BaseModel):
     max_claims_per_player: Optional[int] = None
     total_budget: Optional[int] = None
     min_player_level: Optional[int] = None
+    requires_screenshot: Optional[bool] = None
     end_date: Optional[datetime] = None
     terms: Optional[str] = None
     wagering_requirement: Optional[int] = None
@@ -41,6 +43,7 @@ class PromotionResponse(BaseModel):
     total_budget: Optional[int]
     used_budget: int
     min_player_level: int
+    requires_screenshot: bool = False
     start_date: datetime
     end_date: datetime
     status: PromotionStatus
@@ -56,6 +59,7 @@ class PromotionResponse(BaseModel):
 
 class PromotionClaimRequest(BaseModel):
     promotion_id: int
+    screenshot_url: Optional[str] = None  # Screenshot proof URL if required by promotion
 
 class PromotionClaimResponse(BaseModel):
     success: bool
@@ -65,6 +69,8 @@ class PromotionClaimResponse(BaseModel):
     new_balance: Optional[int] = None
     wagering_required: Optional[int] = None
     status: Optional[str] = None  # pending_approval, approved, rejected, claimed
+    screenshot_url: Optional[str] = None  # Screenshot proof URL
+    requires_screenshot: bool = False  # Whether this promotion required screenshot
 
 class PromotionStatsResponse(BaseModel):
     promotion_id: int
