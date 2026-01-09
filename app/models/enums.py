@@ -17,14 +17,7 @@ class MessageType(str, enum.Enum):
     PROMOTION = "promotion"
 
 class PromotionType(str, enum.Enum):
-    BONUS = "bonus"
-    CASHBACK = "cashback"
-    FREE_SPINS = "free_spins"
-    CREDITS = "credits"
-    DEPOSIT_BONUS = "deposit_bonus"
-    GAME_POINTS = "game_points"
-    REPLAY = "replay"
-    NEXT_LOAD_BONUS = "next_load_bonus"
+    GC_BONUS = "gc_bonus"  # Game Credits bonus - the only promotion type
 
 class PromotionStatus(str, enum.Enum):
     ACTIVE = "active"
