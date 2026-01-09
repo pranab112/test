@@ -671,6 +671,9 @@ async def approve_promotion_claim(
     # Deduct credits from client
     current_user.credits -= claim.claimed_value
 
+    # Add credits to player
+    player.credits = (player.credits or 0) + claim.claimed_value
+
     # Update claim status to APPROVED
     claim.status = ClaimStatus.APPROVED
     claim.approved_at = datetime.now(timezone.utc)
@@ -693,7 +696,8 @@ async def approve_promotion_claim(
         "promotion_type": promotion.promotion_type.value,
         "value": claim.claimed_value,
         "client_id": current_user.id,
-        "client_name": current_user.full_name or current_user.username
+        "client_name": current_user.full_name or current_user.username,
+        "player_new_balance": player.credits
     })
 
     response_message = models.Message(
