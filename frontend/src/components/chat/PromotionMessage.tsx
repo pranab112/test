@@ -73,17 +73,7 @@ export default function PromotionMessage({ content, isOwn, messageId: _messageId
   };
 
   const getPromotionTypeLabel = (type: string) => {
-    const labels: Record<string, string> = {
-      bonus: 'Bonus',
-      cashback: 'Cashback',
-      free_spins: 'Free Spins',
-      credits: 'Credits',
-      deposit_bonus: 'Deposit Bonus',
-      game_points: 'Game Points',
-      replay: 'Replay',
-      next_load_bonus: 'Next Load Bonus',
-    };
-    return labels[type] || type;
+    return 'GC Bonus';  // All promotions are Game Credits bonuses
   };
 
   const getStatusBadge = () => {
@@ -140,7 +130,7 @@ export default function PromotionMessage({ content, isOwn, messageId: _messageId
           <h4 className="text-white font-medium mb-1">{data.promotion_title}</h4>
           <div className="flex items-center space-x-2 text-sm">
             <span className="text-gray-400">{getPromotionTypeLabel(data.promotion_type)}</span>
-            <span className="text-yellow-500 font-bold">${data.value}</span>
+            <span className="text-yellow-500 font-bold">{data.value} GC</span>
           </div>
         </div>
 
@@ -237,7 +227,7 @@ export default function PromotionMessage({ content, isOwn, messageId: _messageId
           <div className="flex items-center space-x-2 text-sm">
             <span className="text-gray-400">{getPromotionTypeLabel(data.promotion_type)}</span>
             <span className={`font-bold ${isApproved ? 'text-green-500' : 'text-red-500 line-through'}`}>
-              ${data.value}
+              {data.value} GC
             </span>
           </div>
         </div>
@@ -269,7 +259,7 @@ export default function PromotionMessage({ content, isOwn, messageId: _messageId
         <span className="text-yellow-500 font-semibold">Promotion</span>
       </div>
       <p className="text-white">{data.promotion_title}</p>
-      <p className="text-yellow-500 font-bold">${data.value}</p>
+      <p className="text-yellow-500 font-bold">{data.value} GC</p>
     </div>
   );
 }

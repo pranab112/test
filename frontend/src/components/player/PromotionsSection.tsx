@@ -14,7 +14,7 @@ interface Promotion {
   client_name: string;
   client_company?: string;
   client_id: number;
-  promotion_type: 'bonus' | 'cashback' | 'credits' | 'free_spins' | 'deposit_bonus' | 'game_points' | 'replay' | 'next_load_bonus';
+  promotion_type: 'gc_bonus';  // Game Credits bonus - the only type
   value: number;
   can_claim: boolean;
   already_claimed: boolean;
@@ -115,31 +115,12 @@ export function PromotionsSection() {
   };
 
   const getTypeColor = (type: string): 'success' | 'purple' | 'warning' | 'info' | 'default' => {
-    switch (type) {
-      case 'bonus': return 'success';
-      case 'cashback': return 'purple';
-      case 'credits': return 'warning';
-      case 'free_spins': return 'info';
-      case 'deposit_bonus': return 'success';
-      case 'game_points': return 'info';
-      case 'replay': return 'purple';
-      case 'next_load_bonus': return 'success';
-      default: return 'default';
-    }
+    // All promotions are GC Bonus type now
+    return 'warning';  // Gold color for GC
   };
 
   const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'bonus': return 'Bonus';
-      case 'cashback': return 'Cashback';
-      case 'credits': return 'Credits';
-      case 'free_spins': return 'Free Spins';
-      case 'deposit_bonus': return 'Deposit Bonus';
-      case 'game_points': return 'Game Points';
-      case 'replay': return 'Replay';
-      case 'next_load_bonus': return 'Next Load Bonus';
-      default: return type;
-    }
+    return 'GC Bonus';  // All promotions give Game Credits
   };
 
   const getStatusBadge = (claim: Claim) => {
@@ -203,7 +184,7 @@ export function PromotionsSection() {
       label: 'Value',
       render: (promo: Promotion) => (
         <span className="font-bold text-gold-500">
-          {promo.promotion_type === 'cashback' ? `${promo.value}%` : `$${promo.value}`}
+          {promo.value} GC
         </span>
       ),
     },
@@ -289,7 +270,7 @@ export function PromotionsSection() {
       key: 'value',
       label: 'Value',
       render: (claim: Claim) => (
-        <span className="font-bold text-gold-500">${claim.claimed_value}</span>
+        <span className="font-bold text-gold-500">{claim.claimed_value} GC</span>
       ),
     },
     {
@@ -395,9 +376,9 @@ export function PromotionsSection() {
         <div className="bg-gradient-to-br from-purple-900/30 to-purple-800/20 border-2 border-purple-700 rounded-lg p-6">
           <MdCardGiftcard className="text-4xl text-purple-500 mb-2" />
           <p className="text-2xl font-bold text-white">
-            ${approvedClaims.reduce((sum, c) => sum + c.claimed_value, 0)}
+            {approvedClaims.reduce((sum, c) => sum + c.claimed_value, 0)} GC
           </p>
-          <p className="text-sm text-purple-400">Total Value Claimed</p>
+          <p className="text-sm text-purple-400">Total GC Claimed</p>
         </div>
       </div>
 
@@ -475,9 +456,7 @@ export function PromotionsSection() {
                 <div>
                   <p className="text-sm text-gray-400 mb-1">Value</p>
                   <p className="font-bold text-gold-500 text-xl">
-                    {selectedPromotion.promotion_type === 'cashback'
-                      ? `${selectedPromotion.value}%`
-                      : `$${selectedPromotion.value}`}
+                    {selectedPromotion.value} GC
                   </p>
                 </div>
                 <div>

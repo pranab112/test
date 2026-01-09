@@ -12,13 +12,12 @@ import {
   MdEdit,
   MdCancel,
   MdPeople,
-  MdAttachMoney,
   MdHourglassEmpty,
   MdCheckCircle,
   MdWarning,
 } from 'react-icons/md';
 
-type PromotionType = 'credits' | 'bonus' | 'cashback' | 'free_spins' | 'deposit_bonus' | 'game_points' | 'replay' | 'next_load_bonus';
+type PromotionType = 'gc_bonus';  // Game Credits bonus - the only promotion type
 
 interface Promotion {
   id: number;
@@ -66,7 +65,7 @@ export function PromotionsSection() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    promotion_type: 'credits' as PromotionType,
+    promotion_type: 'gc_bonus' as PromotionType,
     value: '',
     end_date: '',
     max_claims_per_player: '1',
@@ -238,7 +237,7 @@ export function PromotionsSection() {
     setFormData({
       title: '',
       description: '',
-      promotion_type: 'credits',
+      promotion_type: 'gc_bonus',
       value: '',
       end_date: '',
       max_claims_per_player: '1',
@@ -255,28 +254,14 @@ export function PromotionsSection() {
   };
 
   const promotionTypeColors: Record<string, string> = {
-    credits: 'bg-blue-600',
-    bonus: 'bg-green-600',
-    cashback: 'bg-purple-600',
-    free_spins: 'bg-gold-600',
-    deposit_bonus: 'bg-emerald-600',
-    game_points: 'bg-cyan-600',
-    replay: 'bg-pink-600',
-    next_load_bonus: 'bg-orange-600',
+    gc_bonus: 'bg-gold-600',
   };
 
   const getPromotionTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
-      bonus: 'Bonus',
-      cashback: 'Cashback',
-      free_spins: 'Free Spins',
-      credits: 'Credits',
-      deposit_bonus: 'Deposit Bonus',
-      game_points: 'Game Points',
-      replay: 'Replay',
-      next_load_bonus: 'Next Load Bonus',
+      gc_bonus: 'GC Bonus',
     };
-    return labels[type] || type;
+    return labels[type] || 'GC Bonus';
   };
 
   if (dataLoading) {
@@ -324,9 +309,9 @@ export function PromotionsSection() {
           color="blue"
         />
         <StatCard
-          title="Budget Used"
-          value={`$${stats.creditsUsed.toLocaleString()}`}
-          icon={<MdAttachMoney />}
+          title="GC Used"
+          value={`${stats.creditsUsed.toLocaleString()} GC`}
+          icon={<MdCardGiftcard />}
           color="green"
         />
       </div>
@@ -406,7 +391,7 @@ export function PromotionsSection() {
                         Level: <span className="text-white font-medium">{claim.player_level}</span>
                       </span>
                       <span>
-                        Value: <span className="text-gold-500 font-bold">${claim.value}</span>
+                        Value: <span className="text-gold-500 font-bold">{claim.value} GC</span>
                       </span>
                       <span>
                         Claimed: <span className="text-white">{new Date(claim.claimed_at).toLocaleDateString()}</span>
@@ -489,7 +474,7 @@ export function PromotionsSection() {
                 <div className="grid grid-cols-4 gap-4 mb-4">
                   <div>
                     <p className="text-sm text-gray-400 mb-1">Value</p>
-                    <p className="text-white font-bold">${promo.value}</p>
+                    <p className="text-white font-bold">{promo.value} GC</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-400 mb-1">Claims</p>
@@ -511,9 +496,9 @@ export function PromotionsSection() {
                 {promo.total_budget && (
                   <div>
                     <div className="flex justify-between text-sm mb-1">
-                      <span className="text-gray-400">Budget Used</span>
+                      <span className="text-gray-400">GC Used</span>
                       <span className="text-white font-medium">
-                        ${promo.used_budget.toLocaleString()} / ${promo.total_budget.toLocaleString()}
+                        {promo.used_budget.toLocaleString()} / {promo.total_budget.toLocaleString()} GC
                       </span>
                     </div>
                     <div className="w-full bg-dark-400 rounded-full h-2">
@@ -562,33 +547,18 @@ export function PromotionsSection() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">Promotion Type</label>
-            <select
-              value={formData.promotion_type}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  promotion_type: e.target.value as PromotionType,
-                })
-              }
-              className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500"
-            >
-              <option value="credits">Credits</option>
-              <option value="bonus">Bonus</option>
-              <option value="cashback">Cashback</option>
-              <option value="free_spins">Free Spins</option>
-              <option value="deposit_bonus">Deposit Bonus</option>
-              <option value="game_points">Game Points</option>
-              <option value="replay">Replay</option>
-              <option value="next_load_bonus">Next Load Bonus</option>
-            </select>
+            <div className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg border border-gold-600">
+              <span className="text-gold-500 font-medium">GC Bonus</span>
+              <span className="text-gray-400 ml-2">(Game Credits)</span>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Value"
+              label="Value (GC)"
               type="number"
               value={formData.value}
               onChange={(e) => setFormData({ ...formData, value: e.target.value })}
-              placeholder="Enter value..."
+              placeholder="Enter GC amount..."
             />
             <Input
               label="Max Claims Per Player"
@@ -606,7 +576,7 @@ export function PromotionsSection() {
               onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
             />
             <Input
-              label="Total Budget (optional)"
+              label="Total Budget (GC)"
               type="number"
               value={formData.total_budget}
               onChange={(e) => setFormData({ ...formData, total_budget: e.target.value })}
@@ -642,10 +612,10 @@ export function PromotionsSection() {
           <div className="bg-blue-900/30 border border-blue-500 rounded-lg p-3 space-y-2">
             <p className="text-sm text-blue-300">
               <strong>Note:</strong> This is a manual promotion. When players claim it, you will need to approve/reject
-              their claims. Credits will be deducted from your balance when you approve claims.
+              their claims. GC will be deducted from your balance when you approve claims.
             </p>
             <p className="text-sm text-yellow-300">
-              <strong>Budget:</strong> If left empty, budget will be set to your current credit balance. Budget cannot exceed your credits.
+              <strong>Budget:</strong> If left empty, budget will be set to your current GC balance. Budget cannot exceed your GC.
             </p>
           </div>
           <div className="flex gap-3 pt-4">
@@ -695,7 +665,7 @@ export function PromotionsSection() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Value"
+              label="Value (GC)"
               type="number"
               value={formData.value}
               onChange={(e) => setFormData({ ...formData, value: e.target.value })}
@@ -715,11 +685,11 @@ export function PromotionsSection() {
               onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
             />
             <Input
-              label="Total Budget"
+              label="Total Budget (GC)"
               type="number"
               value={formData.total_budget}
               onChange={(e) => setFormData({ ...formData, total_budget: e.target.value })}
-              placeholder="Leave empty to use your credits"
+              placeholder="Leave empty to use your GC"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -750,7 +720,7 @@ export function PromotionsSection() {
           </div>
           <div className="bg-yellow-900/30 border border-yellow-500 rounded-lg p-3">
             <p className="text-sm text-yellow-300">
-              <strong>Note:</strong> Budget will be capped to your current credit balance. Credits will be deducted when claims are approved.
+              <strong>Note:</strong> Budget will be capped to your current GC balance. GC will be deducted when claims are approved.
             </p>
           </div>
           <div className="flex gap-3 pt-4">

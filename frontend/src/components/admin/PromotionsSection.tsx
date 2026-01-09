@@ -60,10 +60,14 @@ export function PromotionsSection() {
       key: 'promotion_type',
       label: 'Type',
       render: (promo: Promotion) => (
-        <Badge variant="info">{promo.promotion_type.toUpperCase()}</Badge>
+        <Badge variant="info">GC BONUS</Badge>
       ),
     },
-    { key: 'value', label: 'Value' },
+    {
+      key: 'value',
+      label: 'Value',
+      render: (promo: Promotion) => `${promo.value} GC`,
+    },
     {
       key: 'total_claims',
       label: 'Claims',
