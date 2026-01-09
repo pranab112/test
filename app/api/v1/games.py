@@ -143,10 +143,14 @@ async def get_my_games_with_details(
     if current_user.user_type != models.UserType.CLIENT:
         raise HTTPException(status_code=403, detail="Only clients can access this")
 
+    # Only return active client games (games the client has selected)
     client_games = db.query(models.ClientGame).join(
         models.Game
     ).filter(
-        models.ClientGame.client_id == current_user.id
+        and_(
+            models.ClientGame.client_id == current_user.id,
+            models.ClientGame.is_active == True
+        )
     ).all()
 
     return {

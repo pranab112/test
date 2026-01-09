@@ -14,10 +14,7 @@ import {
   MdVerified,
   MdUpload,
   MdDelete,
-  MdContentCopy,
   MdRefresh,
-  MdWarning,
-  MdCheck,
 } from 'react-icons/md';
 
 type SettingsTab = 'profile' | 'security' | 'notifications' | 'appearance';
@@ -43,18 +40,6 @@ export function SettingsSection() {
     newPassword: '',
     confirmPassword: '',
   });
-
-  // 2FA state
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
-  const [show2FASetupModal, setShow2FASetupModal] = useState(false);
-  const [show2FADisableModal, setShow2FADisableModal] = useState(false);
-  const [twoFactorSetup, setTwoFactorSetup] = useState<{
-    secret: string;
-    qr_code: string;
-    backup_codes: string[];
-  } | null>(null);
-  const [verificationCode, setVerificationCode] = useState('');
-  const [showBackupCodes, setShowBackupCodes] = useState(false);
 
   // Email verification state
   const [emailVerified, setEmailVerified] = useState(false);
@@ -95,15 +80,6 @@ export function SettingsSection() {
       });
       setProfilePicture(user.profile_picture);
       setEmailVerified(user.is_email_verified || false);
-      setTwoFactorEnabled(user.two_factor_enabled || false);
-
-      // Load 2FA status
-      try {
-        const twoFAStatus = await settingsApi.get2FAStatus();
-        setTwoFactorEnabled(twoFAStatus.enabled);
-      } catch {
-        // 2FA status endpoint may not exist yet
-      }
 
       // Load email verification status for players
       if (user.user_type === 'player') {
@@ -182,69 +158,6 @@ export function SettingsSection() {
       console.error(error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  // 2FA Functions
-  const handleSetup2FA = async () => {
-    setLoading(true);
-    try {
-      const setup = await settingsApi.setup2FA();
-      setTwoFactorSetup(setup);
-      setShow2FASetupModal(true);
-    } catch (error: any) {
-      toast.error(error?.detail || 'Failed to initialize 2FA setup');
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerify2FA = async () => {
-    if (!verificationCode || verificationCode.length !== 6) {
-      toast.error('Please enter a valid 6-digit code');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await settingsApi.verify2FA(verificationCode);
-      setTwoFactorEnabled(true);
-      setShowBackupCodes(true);
-      toast.success('Two-factor authentication enabled successfully!');
-    } catch (error: any) {
-      toast.error(error?.detail || 'Invalid verification code');
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDisable2FA = async () => {
-    if (!verificationCode) {
-      toast.error('Please enter your verification code');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await settingsApi.disable2FA(verificationCode);
-      setTwoFactorEnabled(false);
-      setShow2FADisableModal(false);
-      setVerificationCode('');
-      toast.success('Two-factor authentication disabled');
-    } catch (error: any) {
-      toast.error(error?.detail || 'Invalid verification code');
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const copyBackupCodes = () => {
-    if (twoFactorSetup?.backup_codes) {
-      navigator.clipboard.writeText(twoFactorSetup.backup_codes.join('\n'));
-      toast.success('Backup codes copied to clipboard');
     }
   };
 
@@ -379,24 +292,6 @@ export function SettingsSection() {
       toast.success('Notification settings updated');
     } catch (error: any) {
       toast.error(error?.detail || 'Failed to update notification settings');
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLogoutAllDevices = async () => {
-    if (!confirm('This will log you out of all devices including this one. Continue?')) return;
-
-    setLoading(true);
-    try {
-      await settingsApi.logoutAllSessions();
-      toast.success('Logged out of all devices');
-      // Logout current session
-      authApi.logout();
-      window.location.href = '/login';
-    } catch (error: any) {
-      toast.error(error?.detail || 'Failed to logout all devices');
       console.error(error);
     } finally {
       setLoading(false);
@@ -608,54 +503,6 @@ export function SettingsSection() {
                   </div>
                 </div>
 
-                {/* Two-Factor Authentication */}
-                <div className="bg-dark-300 p-6 rounded-lg">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-lg font-bold text-white">Two-Factor Authentication</h3>
-                    {twoFactorEnabled && (
-                      <span className="flex items-center gap-1 text-green-400 text-sm">
-                        <MdCheck size={16} />
-                        Enabled
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-gray-400 mb-4">
-                    Add an extra layer of security to your account using a time-based one-time password (TOTP).
-                  </p>
-                  {twoFactorEnabled ? (
-                    <button
-                      type="button"
-                      onClick={() => setShow2FADisableModal(true)}
-                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                    >
-                      Disable 2FA
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleSetup2FA}
-                      disabled={loading}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50"
-                    >
-                      Enable 2FA
-                    </button>
-                  )}
-                </div>
-
-                <div className="bg-dark-300 p-6 rounded-lg">
-                  <h3 className="text-lg font-bold text-white mb-3">Active Sessions</h3>
-                  <p className="text-gray-400 mb-4">
-                    Manage devices where you're currently logged in.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleLogoutAllDevices}
-                    disabled={loading}
-                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50"
-                  >
-                    Logout All Devices
-                  </button>
-                </div>
               </div>
             )}
 
@@ -776,154 +623,6 @@ export function SettingsSection() {
           </div>
         </div>
       </div>
-
-      {/* 2FA Setup Modal */}
-      <Modal
-        isOpen={show2FASetupModal}
-        onClose={() => {
-          if (!showBackupCodes) {
-            setShow2FASetupModal(false);
-            setTwoFactorSetup(null);
-            setVerificationCode('');
-          }
-        }}
-        title={showBackupCodes ? 'Save Your Backup Codes' : 'Set Up Two-Factor Authentication'}
-        size="lg"
-      >
-        {showBackupCodes ? (
-          <div className="space-y-4">
-            <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-4 flex items-start gap-3">
-              <MdWarning className="text-yellow-500 flex-shrink-0 mt-0.5" size={20} />
-              <div className="text-sm text-yellow-400">
-                <strong>Important:</strong> Save these backup codes in a safe place. You can use them to access your account if you lose your authenticator device.
-              </div>
-            </div>
-
-            <div className="bg-dark-300 rounded-lg p-4">
-              <div className="grid grid-cols-2 gap-2">
-                {twoFactorSetup?.backup_codes.map((code, index) => (
-                  <div key={index} className="font-mono text-center py-2 bg-dark-400 rounded text-white">
-                    {code}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={copyBackupCodes}
-              className="w-full flex items-center justify-center gap-2 bg-dark-300 hover:bg-dark-400 text-white py-2 rounded-lg transition-colors"
-            >
-              <MdContentCopy size={18} />
-              Copy All Codes
-            </button>
-
-            <Button
-              onClick={() => {
-                setShow2FASetupModal(false);
-                setShowBackupCodes(false);
-                setTwoFactorSetup(null);
-                setVerificationCode('');
-              }}
-              fullWidth
-            >
-              I've Saved My Codes
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <p className="text-gray-400">
-              Scan the QR code below with your authenticator app (like Google Authenticator or Authy).
-            </p>
-
-            {twoFactorSetup?.qr_code && (
-              <div className="flex justify-center">
-                <img
-                  src={twoFactorSetup.qr_code}
-                  alt="2FA QR Code"
-                  className="w-48 h-48 bg-white p-2 rounded-lg"
-                />
-              </div>
-            )}
-
-            <div className="bg-dark-300 rounded-lg p-4">
-              <p className="text-sm text-gray-400 mb-2">Or enter this code manually:</p>
-              <code className="block text-center font-mono text-gold-500 break-all">
-                {twoFactorSetup?.secret}
-              </code>
-            </div>
-
-            <Input
-              label="Enter 6-digit code from your app"
-              type="text"
-              value={verificationCode}
-              onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              placeholder="000000"
-            />
-
-            <div className="flex gap-3">
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setShow2FASetupModal(false);
-                  setTwoFactorSetup(null);
-                  setVerificationCode('');
-                }}
-                fullWidth
-              >
-                Cancel
-              </Button>
-              <Button onClick={handleVerify2FA} loading={loading} fullWidth>
-                Verify & Enable
-              </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      {/* 2FA Disable Modal */}
-      <Modal
-        isOpen={show2FADisableModal}
-        onClose={() => {
-          setShow2FADisableModal(false);
-          setVerificationCode('');
-        }}
-        title="Disable Two-Factor Authentication"
-        size="md"
-      >
-        <div className="space-y-4">
-          <div className="bg-red-900/20 border border-red-700 rounded-lg p-4 flex items-start gap-3">
-            <MdWarning className="text-red-500 flex-shrink-0 mt-0.5" size={20} />
-            <div className="text-sm text-red-400">
-              Disabling 2FA will make your account less secure. You'll need to set it up again if you want to re-enable it.
-            </div>
-          </div>
-
-          <Input
-            label="Enter 6-digit code or backup code"
-            type="text"
-            value={verificationCode}
-            onChange={(e) => setVerificationCode(e.target.value.toUpperCase().slice(0, 8))}
-            placeholder="Enter code"
-          />
-
-          <div className="flex gap-3">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setShow2FADisableModal(false);
-                setVerificationCode('');
-              }}
-              fullWidth
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleDisable2FA} loading={loading} fullWidth>
-              Disable 2FA
-            </Button>
-          </div>
-        </div>
-      </Modal>
 
       {/* Email Verification Modal */}
       <Modal
