@@ -210,11 +210,14 @@ export function RewardsSection() {
     const claimedOfferIds = new Set(myClaims.map(c => c.offer_id));
 
     if (filter === 'available') {
-      return availableOffers.map(offer => ({
-        ...offer,
-        displayStatus: 'available' as const,
-        claim: null as OfferClaim | null,
-      }));
+      // Filter out offers that have already been claimed
+      return availableOffers
+        .filter(offer => !claimedOfferIds.has(offer.id))
+        .map(offer => ({
+          ...offer,
+          displayStatus: 'available' as const,
+          claim: null as OfferClaim | null,
+        }));
     }
 
     if (filter === 'claimed') {
@@ -357,7 +360,9 @@ export function RewardsSection() {
     },
   ];
 
-  const availableCount = availableOffers.length;
+  // Calculate counts - available should exclude already claimed offers
+  const claimedOfferIds = new Set(myClaims.map(c => c.offer_id));
+  const availableCount = availableOffers.filter(o => !claimedOfferIds.has(o.id)).length;
   const claimedCount = myClaims.length;
   const totalEarned = myClaims
     .filter(c => c.status === 'approved' || c.status === 'completed')

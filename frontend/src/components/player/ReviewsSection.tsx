@@ -219,7 +219,18 @@ export function ReviewsSection() {
     try {
       const canReview = await reviewsApi.canReviewUser(friend.id);
       if (!canReview.can_review) {
-        toast.error(canReview.reason || 'Cannot review this client');
+        // If already reviewed, offer to edit the existing review
+        if (canReview.existing_review_id) {
+          const existingReview = givenReviews.find(r => r.id === canReview.existing_review_id);
+          if (existingReview && existingReview.status === 'pending') {
+            toast('You have already reviewed this client. Opening edit mode...', { icon: '📝' });
+            openEditModal(existingReview);
+          } else {
+            toast.error('You have already reviewed this client and the review is being processed.');
+          }
+        } else {
+          toast.error(canReview.reason || 'Cannot review this client');
+        }
         return;
       }
 

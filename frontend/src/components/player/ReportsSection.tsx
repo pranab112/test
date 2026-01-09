@@ -281,7 +281,18 @@ export function ReportsSection() {
     try {
       const reportCheck = await reportsApi.getUserReports(friend.id);
       if (!reportCheck.can_report) {
-        toast.error('You have already reported this client');
+        // If already reported, offer to edit the existing report
+        if (reportCheck.my_report) {
+          const existingReport = reportsMade.find(r => r.reported_user_id === friend.id);
+          if (existingReport && existingReport.status === 'pending') {
+            toast('You have already reported this client. Opening edit mode...', { icon: '📝' });
+            openEditModal(existingReport);
+          } else {
+            toast.error('You have already reported this client and the report is being processed.');
+          }
+        } else {
+          toast.error('You cannot report this client');
+        }
         return;
       }
 
