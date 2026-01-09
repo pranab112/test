@@ -23,8 +23,8 @@ def upgrade() -> None:
     # Add screenshot_url column to offer_claims for proof submissions
     op.add_column('offer_claims', sa.Column('screenshot_url', sa.String(length=500), nullable=True))
     # Add requires_screenshot column to platform_offers to indicate if screenshot proof is needed
-    # Using server_default for SQLite compatibility (it will remain on the column but that's fine)
-    op.add_column('platform_offers', sa.Column('requires_screenshot', sa.Boolean(), nullable=False, server_default=sa.text('0')))
+    # Using 'false' for PostgreSQL compatibility (works for both PostgreSQL and SQLite)
+    op.add_column('platform_offers', sa.Column('requires_screenshot', sa.Boolean(), nullable=False, server_default=sa.text('false')))
 
 
 def downgrade() -> None:
