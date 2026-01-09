@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Enum, UniqueConstraint
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Enum, UniqueConstraint, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.models.base import Base
@@ -16,6 +16,7 @@ class PlatformOffer(Base):
 
     # Conditions
     requirement_description = Column(String(500), nullable=True)  # e.g., "Add and verify your email address"
+    requires_screenshot = Column(Boolean, default=False, nullable=False)  # Whether player must submit screenshot proof
     max_claims = Column(Integer, nullable=True)  # Max total claims (null = unlimited)
     max_claims_per_player = Column(Integer, default=1)  # How many times a player can claim
 
@@ -48,6 +49,7 @@ class OfferClaim(Base):
 
     # For verification-based offers
     verification_data = Column(Text, nullable=True)  # e.g., email address that was verified
+    screenshot_url = Column(String(500), nullable=True)  # Screenshot proof URL if required by offer
 
     claimed_at = Column(DateTime(timezone=True), server_default=func.now())
     processed_at = Column(DateTime(timezone=True), nullable=True)  # When approved/rejected

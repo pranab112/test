@@ -9,6 +9,7 @@ class PlatformOfferCreate(BaseModel):
     offer_type: OfferType
     bonus_amount: int
     requirement_description: Optional[str] = None
+    requires_screenshot: bool = False  # Whether player must submit screenshot proof
     max_claims: Optional[int] = None
     max_claims_per_player: int = 1
     end_date: Optional[datetime] = None
@@ -18,6 +19,7 @@ class PlatformOfferUpdate(BaseModel):
     description: Optional[str] = None
     bonus_amount: Optional[int] = None
     requirement_description: Optional[str] = None
+    requires_screenshot: Optional[bool] = None
     max_claims: Optional[int] = None
     max_claims_per_player: Optional[int] = None
     status: Optional[OfferStatus] = None
@@ -30,6 +32,7 @@ class PlatformOfferResponse(BaseModel):
     offer_type: OfferType
     bonus_amount: int
     requirement_description: Optional[str]
+    requires_screenshot: bool = False
     max_claims: Optional[int]
     max_claims_per_player: int
     status: OfferStatus
@@ -45,6 +48,7 @@ class OfferClaimCreate(BaseModel):
     offer_id: int
     client_id: Optional[int] = None  # Optional - player can claim without client
     verification_data: Optional[str] = None  # e.g., email for email verification offer
+    screenshot_url: Optional[str] = None  # Screenshot proof URL if required by offer
 
 
 class CreditTransfer(BaseModel):
@@ -60,6 +64,7 @@ class OfferClaimResponse(BaseModel):
     status: OfferClaimStatus
     bonus_amount: int
     verification_data: Optional[str]
+    screenshot_url: Optional[str] = None  # Screenshot proof URL
     claimed_at: datetime
     processed_at: Optional[datetime]
 
@@ -67,6 +72,7 @@ class OfferClaimResponse(BaseModel):
     offer_title: Optional[str] = None
     client_name: Optional[str] = None
     player_name: Optional[str] = None
+    requires_screenshot: bool = False  # Whether this offer required screenshot
 
     class Config:
         from_attributes = True

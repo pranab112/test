@@ -66,6 +66,7 @@ def create_offer(
         offer_type=offer.offer_type,
         bonus_amount=offer.bonus_amount,
         requirement_description=offer.requirement_description,
+        requires_screenshot=offer.requires_screenshot,
         max_claims=offer.max_claims,
         max_claims_per_player=offer.max_claims_per_player,
         end_date=offer.end_date,
@@ -101,6 +102,7 @@ def get_all_offers_admin(
             "offer_type": offer.offer_type,
             "bonus_amount": offer.bonus_amount,
             "requirement_description": offer.requirement_description,
+            "requires_screenshot": offer.requires_screenshot,
             "max_claims": offer.max_claims,
             "max_claims_per_player": offer.max_claims_per_player,
             "status": offer.status,
@@ -328,6 +330,7 @@ def get_available_offers(
                 "offer_type": offer.offer_type,
                 "bonus_amount": offer.bonus_amount,
                 "requirement_description": offer.requirement_description,
+                "requires_screenshot": offer.requires_screenshot,
                 "max_claims": offer.max_claims,
                 "max_claims_per_player": offer.max_claims_per_player,
                 "status": offer.status,
@@ -399,6 +402,13 @@ def claim_offer(
                 detail="You must verify your email address before claiming this offer."
             )
 
+    # VALIDATION: Check if screenshot is required but not provided
+    if offer.requires_screenshot and not claim_data.screenshot_url:
+        raise HTTPException(
+            status_code=400,
+            detail="This offer requires a screenshot proof. Please provide a screenshot URL."
+        )
+
     # Verify client exists (optional - player can claim without client)
     client = None
     if claim_data.client_id:
@@ -452,6 +462,7 @@ def claim_offer(
         client_id=claim_data.client_id if claim_data.client_id else None,
         bonus_amount=offer.bonus_amount,
         verification_data=claim_data.verification_data,
+        screenshot_url=claim_data.screenshot_url,
         status=OfferClaimStatus.PENDING
     )
 
@@ -467,11 +478,13 @@ def claim_offer(
         "status": new_claim.status,
         "bonus_amount": new_claim.bonus_amount,
         "verification_data": new_claim.verification_data,
+        "screenshot_url": new_claim.screenshot_url,
         "claimed_at": new_claim.claimed_at,
         "processed_at": new_claim.processed_at,
         "offer_title": offer.title,
         "client_name": client.company_name or client.username if client else None,
-        "player_name": player.username
+        "player_name": player.username,
+        "requires_screenshot": offer.requires_screenshot
     }
 
 # ============= CREDIT TRANSFER (Player to Client only) =============
