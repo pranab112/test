@@ -72,7 +72,7 @@ export default function PromotionMessage({ content, isOwn, messageId: _messageId
     }
   };
 
-  const getPromotionTypeLabel = (type: string) => {
+  const getPromotionTypeLabel = (_type: string) => {
     return 'GC Bonus';  // All promotions are Game Credits bonuses
   };
 

@@ -59,7 +59,7 @@ export function PromotionsSection() {
     {
       key: 'promotion_type',
       label: 'Type',
-      render: (promo: Promotion) => (
+      render: (_promo: Promotion) => (
         <Badge variant="info">GC BONUS</Badge>
       ),
     },

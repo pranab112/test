@@ -114,12 +114,12 @@ export function PromotionsSection() {
     }
   };
 
-  const getTypeColor = (type: string): 'success' | 'purple' | 'warning' | 'info' | 'default' => {
+  const getTypeColor = (_type: string): 'success' | 'purple' | 'warning' | 'info' | 'default' => {
     // All promotions are GC Bonus type now
     return 'warning';  // Gold color for GC
   };
 
-  const getTypeLabel = (type: string) => {
+  const getTypeLabel = (_type: string) => {
     return 'GC Bonus';  // All promotions give Game Credits
   };
 
