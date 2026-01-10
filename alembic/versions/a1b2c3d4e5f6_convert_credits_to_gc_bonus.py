@@ -20,8 +20,24 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Convert all CREDITS promotion types to GC_BONUS."""
-    # Update existing promotions with CREDITS type to GC_BONUS
-    op.execute("UPDATE promotions SET promotion_type = 'gc_bonus' WHERE promotion_type = 'credits' OR promotion_type = 'CREDITS'")
+    # PostgreSQL has a native enum type, so we need to:
+    # 1. Convert the column to TEXT temporarily
+    # 2. Update the values
+    # 3. Drop the old enum type and create a new one with only GC_BONUS
+    # 4. Convert the column back to the enum type
+
+    # Step 1: Alter column to TEXT
+    op.execute("ALTER TABLE promotions ALTER COLUMN promotion_type TYPE TEXT")
+
+    # Step 2: Update any CREDITS values to gc_bonus
+    op.execute("UPDATE promotions SET promotion_type = 'gc_bonus' WHERE LOWER(promotion_type) = 'credits'")
+
+    # Step 3: Drop old enum type and create new one
+    op.execute("DROP TYPE IF EXISTS promotiontype")
+    op.execute("CREATE TYPE promotiontype AS ENUM ('gc_bonus')")
+
+    # Step 4: Convert column back to enum
+    op.execute("ALTER TABLE promotions ALTER COLUMN promotion_type TYPE promotiontype USING promotion_type::promotiontype")
 
 
 def downgrade() -> None:
