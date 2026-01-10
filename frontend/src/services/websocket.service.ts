@@ -183,6 +183,12 @@ class WebSocketService {
         if (this.socket?.readyState !== WebSocket.OPEN && !this.isConnecting && !this.manualDisconnect) {
           console.log('Tab visible, checking connection...');
           if (this.token && this.userId) {
+            // Check if token is expired
+            if (this.isTokenExpired(this.token)) {
+              console.log('Token expired on tab visible, redirecting to login...');
+              this.handleUnauthorized();
+              return;
+            }
             this.reconnectAttempts = 0; // Reset attempts on visibility change
             this.connect(this.token, this.userId);
           }
@@ -225,6 +231,13 @@ class WebSocketService {
         reason: event.reason,
         wasClean: event.wasClean,
       });
+
+      // Handle unauthorized - token expired or invalid
+      if (event.code === 4001 || event.reason === 'Unauthorized') {
+        console.log('WebSocket unauthorized - token expired, logging out...');
+        this.handleUnauthorized();
+        return;
+      }
 
       // Attempt reconnection if not manually disconnected
       if (!this.manualDisconnect) {
@@ -307,6 +320,21 @@ class WebSocketService {
   }
 
   /**
+   * Check if token is expired
+   */
+  private isTokenExpired(token: string): boolean {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const exp = payload.exp;
+      if (!exp) return false;
+      // Check if token expires in less than 30 seconds
+      return Date.now() >= (exp * 1000) - 30000;
+    } catch {
+      return true; // If we can't parse, assume expired
+    }
+  }
+
+  /**
    * Schedule reconnection attempt
    */
   private scheduleReconnect(): void {
@@ -317,6 +345,13 @@ class WebSocketService {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       console.error('Max reconnection attempts reached');
       this.emit('reconnect_failed', { attempts: this.reconnectAttempts });
+      return;
+    }
+
+    // Check if token is expired before attempting reconnect
+    if (this.token && this.isTokenExpired(this.token)) {
+      console.log('Token expired, redirecting to login...');
+      this.handleUnauthorized();
       return;
     }
 
@@ -490,6 +525,33 @@ class WebSocketService {
         console.error(`Error in WebSocket listener for ${event}:`, error);
       }
     });
+  }
+
+  /**
+   * Handle unauthorized - clear tokens and redirect to login
+   */
+  private handleUnauthorized(): void {
+    this.manualDisconnect = true;
+    this.stopHeartbeat();
+
+    // Clear tokens
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user');
+
+    // Determine redirect path based on current location
+    const currentPath = window.location.pathname;
+    let redirectPath = '/login';
+
+    if (currentPath.startsWith('/admin')) {
+      redirectPath = '/admin/login';
+    } else if (currentPath.startsWith('/client')) {
+      redirectPath = '/client/login';
+    } else if (currentPath.startsWith('/player')) {
+      redirectPath = '/player/login';
+    }
+
+    // Redirect to login
+    window.location.href = redirectPath;
   }
 
   /**
