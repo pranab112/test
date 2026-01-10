@@ -125,6 +125,9 @@ class WebSocketService {
   // Visibility change handler
   private visibilityHandler: (() => void) | null = null;
 
+  // Beforeunload handler
+  private beforeUnloadHandler: (() => void) | null = null;
+
   /**
    * Get WebSocket URL based on environment
    */
@@ -149,6 +152,14 @@ class WebSocketService {
       return;
     }
 
+    // Validate token before connecting
+    if (this.isTokenExpired(token)) {
+      console.log('Token expired, cannot connect to WebSocket');
+      // Don't redirect here - let the API call handle it
+      // Just don't attempt the connection
+      return;
+    }
+
     this.token = token;
     this.userId = userId;
     this.manualDisconnect = false;
@@ -161,11 +172,31 @@ class WebSocketService {
       this.socket = new WebSocket(wsUrl);
       this.setupEventHandlers();
       this.setupVisibilityHandler();
+      this.setupBeforeUnloadHandler();
     } catch (error) {
       console.error('Failed to create WebSocket:', error);
       this.isConnecting = false;
       this.scheduleReconnect();
     }
+  }
+
+  /**
+   * Setup beforeunload handler to cleanly close connection on page unload
+   */
+  private setupBeforeUnloadHandler(): void {
+    if (this.beforeUnloadHandler) {
+      window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+    }
+
+    this.beforeUnloadHandler = () => {
+      // Set manual disconnect to prevent reconnection attempts during unload
+      this.manualDisconnect = true;
+      if (this.socket?.readyState === WebSocket.OPEN) {
+        this.socket.close(1000, 'Page unload');
+      }
+    };
+
+    window.addEventListener('beforeunload', this.beforeUnloadHandler);
   }
 
   /**
@@ -571,6 +602,12 @@ class WebSocketService {
     if (this.visibilityHandler) {
       document.removeEventListener('visibilitychange', this.visibilityHandler);
       this.visibilityHandler = null;
+    }
+
+    // Remove beforeunload handler
+    if (this.beforeUnloadHandler) {
+      window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+      this.beforeUnloadHandler = null;
     }
 
     if (this.socket) {
