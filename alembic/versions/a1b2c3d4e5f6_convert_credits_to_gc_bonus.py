@@ -23,21 +23,27 @@ def upgrade() -> None:
     # PostgreSQL has a native enum type, so we need to:
     # 1. Convert the column to TEXT temporarily
     # 2. Update the values
-    # 3. Drop the old enum type and create a new one with only GC_BONUS
+    # 3. Rename the old enum type and create a new one with only GC_BONUS
     # 4. Convert the column back to the enum type
+    # 5. Drop the old enum type
 
-    # Step 1: Alter column to TEXT
+    # Step 1: Alter column to TEXT (bypasses enum validation)
     op.execute("ALTER TABLE promotions ALTER COLUMN promotion_type TYPE TEXT")
 
     # Step 2: Update ALL values to gc_bonus (handles CREDITS, BONUS, and any other legacy values)
     op.execute("UPDATE promotions SET promotion_type = 'gc_bonus'")
 
-    # Step 3: Drop old enum type and create new one
-    op.execute("DROP TYPE IF EXISTS promotiontype")
+    # Step 3: Rename old enum type (safer than DROP which may fail if type is in use elsewhere)
+    op.execute("ALTER TYPE promotiontype RENAME TO promotiontype_old")
+
+    # Step 4: Create new enum type with only gc_bonus
     op.execute("CREATE TYPE promotiontype AS ENUM ('gc_bonus')")
 
-    # Step 4: Convert column back to enum
+    # Step 5: Convert column back to enum
     op.execute("ALTER TABLE promotions ALTER COLUMN promotion_type TYPE promotiontype USING promotion_type::promotiontype")
+
+    # Step 6: Drop old enum type
+    op.execute("DROP TYPE IF EXISTS promotiontype_old")
 
 
 def downgrade() -> None:

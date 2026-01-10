@@ -12,11 +12,21 @@ import { gameCredentialsApi, type GameCredential } from '@/api/endpoints/gameCre
 import { useAuth } from '@/contexts/AuthContext';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { getFileUrl } from '@/config/api.config';
+import { useCallback } from 'react';
 
 export function MessagesSection() {
   const { chatTarget, clearChatTarget } = useDashboard();
   const { user } = useAuth();
-  const { getRoomId, messages: wsMessages, joinRoom, leaveRoom } = useWebSocket();
+  const { getRoomId, messages: wsMessages, joinRoom, leaveRoom, onlineUsers, requestOnlineStatus, isConnected } = useWebSocket();
+
+  // Helper to check if a friend is online (prefer real-time status over initial data)
+  const isFriendOnline = useCallback((friendId: number, initialOnlineStatus?: boolean) => {
+    const wsStatus = onlineUsers.get(friendId);
+    if (wsStatus !== undefined) {
+      return wsStatus.is_online;
+    }
+    return initialOnlineStatus ?? false;
+  }, [onlineUsers]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -52,6 +62,14 @@ export function MessagesSection() {
   useEffect(() => {
     loadConversations();
   }, []);
+
+  // Request online status for all conversation partners when conversations load or WebSocket connects
+  useEffect(() => {
+    if (isConnected && conversations.length > 0) {
+      const friendIds = conversations.map(c => c.friend.id);
+      requestOnlineStatus(friendIds);
+    }
+  }, [isConnected, conversations, requestOnlineStatus]);
 
   const openClientCredentials = async (clientId: number, clientName: string) => {
     setShowCredentialsModal(true);
@@ -530,7 +548,7 @@ export function MessagesSection() {
                       <Avatar
                         name={conv.friend.full_name || conv.friend.username}
                         size="sm"
-                        online={conv.friend.is_online}
+                        online={isFriendOnline(conv.friend.id, conv.friend.is_online)}
                         src={conv.friend.profile_picture}
                       />
                       <div className="flex-1 min-w-0">
@@ -567,15 +585,17 @@ export function MessagesSection() {
                       <Avatar
                         name={selectedConversation.friend.full_name || selectedConversation.friend.username}
                         size="sm"
-                        online={selectedConversation.friend.is_online}
+                        online={isFriendOnline(selectedConversation.friend.id, selectedConversation.friend.is_online)}
                         src={selectedConversation.friend.profile_picture}
                       />
                       <div>
                         <p className="font-bold text-white">{selectedConversation.friend.username}</p>
                         <p className="text-xs text-gray-400">
                           {selectedConversation.friend.full_name}
-                          {selectedConversation.friend.is_online && (
+                          {isFriendOnline(selectedConversation.friend.id, selectedConversation.friend.is_online) ? (
                             <span className="text-green-500 ml-2">● Online</span>
+                          ) : (
+                            <span className="text-gray-500 ml-2">● Offline</span>
                           )}
                         </p>
                       </div>
@@ -713,7 +733,7 @@ export function MessagesSection() {
                                     </button>
                                     {deleteMenuOpen === msg.id && (
                                       <div
-                                        className="absolute right-0 bottom-6 bg-dark-200 border border-gold-700 rounded-lg shadow-lg z-10 min-w-[160px] py-1"
+                                        className="absolute right-0 bottom-full mb-1 bg-dark-200 border border-gold-700 rounded-lg shadow-lg z-50 min-w-[160px] py-1"
                                         onClick={(e) => e.stopPropagation()}
                                       >
                                         <button
