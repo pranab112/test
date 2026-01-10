@@ -29,8 +29,8 @@ def upgrade() -> None:
     # Step 1: Alter column to TEXT
     op.execute("ALTER TABLE promotions ALTER COLUMN promotion_type TYPE TEXT")
 
-    # Step 2: Update any CREDITS values to gc_bonus
-    op.execute("UPDATE promotions SET promotion_type = 'gc_bonus' WHERE LOWER(promotion_type) = 'credits'")
+    # Step 2: Update ALL values to gc_bonus (handles CREDITS, BONUS, and any other legacy values)
+    op.execute("UPDATE promotions SET promotion_type = 'gc_bonus'")
 
     # Step 3: Drop old enum type and create new one
     op.execute("DROP TYPE IF EXISTS promotiontype")
