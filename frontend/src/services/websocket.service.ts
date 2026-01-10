@@ -101,15 +101,15 @@ class WebSocketService {
 
   // Reconnection settings
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 10;
+  private maxReconnectAttempts = 50; // More attempts for better resilience
   private reconnectDelay = 1000; // Start with 1 second
-  private maxReconnectDelay = 30000; // Max 30 seconds
+  private maxReconnectDelay = 10000; // Max 10 seconds (reduced from 30)
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  // Heartbeat settings
+  // Heartbeat settings - more aggressive for Railway
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
   private heartbeatTimeout: ReturnType<typeof setTimeout> | null = null;
-  private heartbeatIntervalMs = 30000; // Send ping every 30 seconds
+  private heartbeatIntervalMs = 15000; // Send ping every 15 seconds (Railway may timeout idle connections)
   private heartbeatTimeoutMs = 10000; // Wait 10 seconds for pong
 
   // Event listeners
@@ -121,6 +121,9 @@ class WebSocketService {
   // Connection state
   private isConnecting = false;
   private manualDisconnect = false;
+
+  // Visibility change handler
+  private visibilityHandler: (() => void) | null = null;
 
   /**
    * Get WebSocket URL based on environment
@@ -157,11 +160,37 @@ class WebSocketService {
     try {
       this.socket = new WebSocket(wsUrl);
       this.setupEventHandlers();
+      this.setupVisibilityHandler();
     } catch (error) {
       console.error('Failed to create WebSocket:', error);
       this.isConnecting = false;
       this.scheduleReconnect();
     }
+  }
+
+  /**
+   * Setup visibility change handler to reconnect when tab becomes visible
+   */
+  private setupVisibilityHandler(): void {
+    // Remove existing handler if any
+    if (this.visibilityHandler) {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+    }
+
+    this.visibilityHandler = () => {
+      if (document.visibilityState === 'visible') {
+        // Check connection and reconnect if needed
+        if (this.socket?.readyState !== WebSocket.OPEN && !this.isConnecting && !this.manualDisconnect) {
+          console.log('Tab visible, checking connection...');
+          if (this.token && this.userId) {
+            this.reconnectAttempts = 0; // Reset attempts on visibility change
+            this.connect(this.token, this.userId);
+          }
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', this.visibilityHandler);
   }
 
   /**
@@ -475,6 +504,12 @@ class WebSocketService {
     }
 
     this.stopHeartbeat();
+
+    // Remove visibility handler
+    if (this.visibilityHandler) {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+      this.visibilityHandler = null;
+    }
 
     if (this.socket) {
       this.socket.close(1000, 'User disconnected');
