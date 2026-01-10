@@ -11,7 +11,7 @@ class Promotion(Base):
     client_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     title = Column(String, nullable=False)
     description = Column(Text)
-    promotion_type = Column(Enum(PromotionType), nullable=False)
+    promotion_type = Column(Enum(PromotionType, values_callable=lambda x: [e.value for e in x]), nullable=False)
     value = Column(Integer, nullable=False)  # Amount in credits/percentage
 
     # Limits and conditions
