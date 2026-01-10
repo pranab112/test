@@ -214,10 +214,9 @@ class WebSocketService {
         if (this.socket?.readyState !== WebSocket.OPEN && !this.isConnecting && !this.manualDisconnect) {
           console.log('Tab visible, checking connection...');
           if (this.token && this.userId) {
-            // Check if token is expired
+            // Check if token is expired - just skip reconnection, don't redirect
             if (this.isTokenExpired(this.token)) {
-              console.log('Token expired on tab visible, redirecting to login...');
-              this.handleUnauthorized();
+              console.log('Token expired on tab visible, skipping WebSocket reconnection');
               return;
             }
             this.reconnectAttempts = 0; // Reset attempts on visibility change
@@ -380,9 +379,9 @@ class WebSocketService {
     }
 
     // Check if token is expired before attempting reconnect
+    // Don't redirect - just skip reconnection and let API calls handle logout
     if (this.token && this.isTokenExpired(this.token)) {
-      console.log('Token expired, redirecting to login...');
-      this.handleUnauthorized();
+      console.log('Token expired, skipping WebSocket reconnection');
       return;
     }
 

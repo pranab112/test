@@ -301,11 +301,13 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
   }, []);
 
   // Initialize WebSocket connection
+  // Only depend on user.id to prevent reconnection when user object updates
+  const userId = user?.id;
   useEffect(() => {
     const token = localStorage.getItem('access_token');
-    if (user && token) {
+    if (userId && token) {
       setConnectionStatus('connecting');
-      wsService.connect(token, user.id);
+      wsService.connect(token, userId);
 
       // Setup event listeners
       const handleConnected = () => {
@@ -368,7 +370,7 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
       };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [userId]);
 
   // Context methods
   const sendMessage = useCallback((receiverId: number, content: string, messageType: string = 'text') => {
