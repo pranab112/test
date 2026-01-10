@@ -16,6 +16,8 @@ export interface RegisterRequest {
   full_name?: string;
   user_type: UserType;
   company_name?: string;
+  client_identifier?: string;
+  referral_code?: string;
 }
 
 export interface TokenResponse {

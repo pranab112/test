@@ -15,6 +15,7 @@ export interface PlayerCreateRequest {
   username: string;
   full_name: string;
   password?: string;
+  referral_code?: string;
 }
 
 export interface PlayerRegistrationResponse {

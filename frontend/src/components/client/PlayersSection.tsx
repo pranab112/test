@@ -6,7 +6,7 @@ import { Modal } from '@/components/common/Modal';
 import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import toast from 'react-hot-toast';
-import { FaUserPlus, FaUsers, FaEllipsisV } from 'react-icons/fa';
+import { FaUserPlus, FaUsers, FaEllipsisV, FaGift } from 'react-icons/fa';
 import { MdBlock, MdLockReset, MdWarning } from 'react-icons/md';
 import { clientApi, type Player, type PlayerCreateRequest, type BulkPlayerCreate } from '@/api/endpoints';
 import { apiClient } from '@/api/client';
@@ -350,6 +350,7 @@ function RegisterPlayerModal({
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [useAutoPassword, setUseAutoPassword] = useState(true);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -363,12 +364,14 @@ function RegisterPlayerModal({
       username: username.trim(),
       full_name: fullName.trim(),
       password: useAutoPassword ? undefined : password.trim() || undefined,
+      referral_code: referralCode.trim() || undefined,
     });
 
     // Reset form
     setUsername('');
     setFullName('');
     setPassword('');
+    setReferralCode('');
     setUseAutoPassword(true);
   };
 
@@ -413,6 +416,19 @@ function RegisterPlayerModal({
             placeholder="Enter password"
           />
         )}
+
+        <div className="relative">
+          <div className="absolute left-3 top-[38px] text-gold-600">
+            <FaGift />
+          </div>
+          <Input
+            label="Referral Code (Optional)"
+            value={referralCode}
+            onChange={(e) => setReferralCode(e.target.value)}
+            placeholder="Enter referral code for bonus credits"
+            className="pl-10"
+          />
+        </div>
 
         <div className="flex gap-2 pt-4">
           <Button type="button" onClick={onClose} className="flex-1 bg-dark-300">

@@ -446,6 +446,13 @@ export function SettingsSection() {
   };
 
   // Referral Functions
+  // Generate dynamic referral link using current domain
+  const getDynamicReferralLink = () => {
+    if (!referralCode) return null;
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/register?ref=${referralCode}`;
+  };
+
   const handleCopyReferralCode = () => {
     if (referralCode) {
       navigator.clipboard.writeText(referralCode);
@@ -454,8 +461,9 @@ export function SettingsSection() {
   };
 
   const handleCopyReferralLink = () => {
-    if (referralLink) {
-      navigator.clipboard.writeText(referralLink);
+    const linkToCopy = getDynamicReferralLink() || referralLink;
+    if (linkToCopy) {
+      navigator.clipboard.writeText(linkToCopy);
       toast.success('Referral link copied!');
     }
   };
@@ -907,15 +915,15 @@ export function SettingsSection() {
                   </div>
                 </div>
 
-                {referralLink && (
+                {referralCode && (
                   <div className="bg-dark-300 rounded-lg p-4">
-                    <p className="text-sm text-gray-400 mb-2">Referral Link</p>
+                    <p className="text-sm text-gray-400 mb-2">Registration URL (Share this link!)</p>
                     <div className="flex items-center gap-2">
                       <input
                         type="text"
-                        value={referralLink}
+                        value={getDynamicReferralLink() || referralLink || ''}
                         readOnly
-                        className="flex-1 bg-dark-400 text-white px-3 py-2 rounded-lg text-sm"
+                        className="flex-1 bg-dark-400 text-white px-3 py-2 rounded-lg text-sm font-mono"
                       />
                       <button
                         onClick={handleCopyReferralLink}
@@ -925,6 +933,9 @@ export function SettingsSection() {
                         Copy Link
                       </button>
                     </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Anyone who registers using this link will automatically have your referral code applied!
+                    </p>
                   </div>
                 )}
               </>

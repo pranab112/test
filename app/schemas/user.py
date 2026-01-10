@@ -7,6 +7,7 @@ class PlayerCreateByClient(BaseModel):
     username: str
     full_name: str
     password: Optional[str] = None
+    referral_code: Optional[str] = None  # Optional referral code for bonus credits
 
 class UserResponse(BaseModel):
     """Response model for user data - email is optional for client-created players"""

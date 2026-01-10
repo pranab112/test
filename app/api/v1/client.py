@@ -79,6 +79,41 @@ def register_player(
     db.commit()
     db.refresh(new_player)
 
+    # Handle referral code if provided
+    if player.referral_code:
+        # Find the referrer by their referral code
+        referrer = db.query(models.User).filter(
+            models.User.referral_code == player.referral_code,
+            models.User.is_active == True
+        ).first()
+
+        if referrer and referrer.id != new_player.id:
+            # Since client-created players are auto-approved, credit the bonus immediately
+            referrer.credits = (referrer.credits or 0) + REFERRAL_BONUS_CREDITS
+
+            # Create a completed referral record
+            referral = models.Referral(
+                referrer_id=referrer.id,
+                referred_id=new_player.id,
+                status=ReferralStatus.COMPLETED,
+                bonus_amount=REFERRAL_BONUS_CREDITS
+            )
+            db.add(referral)
+            db.commit()
+            logger.info(f"Referral bonus credited: {referrer.username} referred {new_player.username}, {REFERRAL_BONUS_CREDITS} credits added")
+
+            # Send email notification to referrer about bonus
+            try:
+                if referrer.email:
+                    send_referral_bonus_email(
+                        to_email=referrer.email,
+                        username=referrer.username,
+                        referred_username=new_player.username,
+                        bonus_amount=REFERRAL_BONUS_CREDITS
+                    )
+            except Exception as e:
+                logger.error(f"Failed to send referral bonus email: {e}")
+
     # Automatically create a friend connection between client and player
     # This allows them to communicate
     if client.id not in [f.id for f in new_player.friends]:
