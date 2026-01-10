@@ -88,7 +88,10 @@
       "Bash(.venv/bin/alembic revision:*)",
       "Bash(.venv/bin/alembic current:*)",
       "Bash(.venv/bin/alembic upgrade:*)",
-      "Bash(.venv/bin/alembic:*)"
+      "Bash(.venv/bin/alembic:*)",
+      "Bash(head:*)",
+      "Bash(alembic upgrade:*)",
+      "Bash(source .venv/bin/activate)"
     ],
     "deny": [],
     "ask": []
