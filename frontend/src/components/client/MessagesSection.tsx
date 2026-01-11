@@ -30,10 +30,13 @@ import { gamesApi, type ClientGame } from '@/api/endpoints/games.api';
 import { gameCredentialsApi, type GameCredential } from '@/api/endpoints/gameCredentials.api';
 import { promotionsApi } from '@/api/endpoints/promotions.api';
 import { useAuth } from '@/contexts/AuthContext';
+import { useWebSocket } from '@/contexts/WebSocketContext';
 import { getFileUrl } from '@/config/api.config';
 
 export function MessagesSection() {
   const { user } = useAuth();
+  const { getRoomId, messages: wsMessages, joinRoom, leaveRoom, requestOnlineStatus, isConnected } = useWebSocket();
+
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -41,6 +44,7 @@ export function MessagesSection() {
   const [loading, setLoading] = useState(true);
   const [sendingMessage, setSendingMessage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const currentRoomRef = useRef<string | null>(null);
 
   // Player settings modal state
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -113,6 +117,71 @@ export function MessagesSection() {
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, [deleteMenuOpen]);
+
+  // Request online status for all conversation partners when conversations load
+  useEffect(() => {
+    if (isConnected && conversations.length > 0) {
+      const friendIds = conversations.map(c => c.friend.id);
+      requestOnlineStatus(friendIds);
+    }
+  }, [isConnected, conversations, requestOnlineStatus]);
+
+  // Listen for new WebSocket messages
+  useEffect(() => {
+    if (selectedConversation && user) {
+      const roomId = getRoomId(selectedConversation.friend.id);
+      const wsRoomMessages = wsMessages.get(roomId);
+
+      if (wsRoomMessages && wsRoomMessages.length > 0) {
+        // Convert WebSocket messages to Message format and merge with existing
+        const newMessages = wsRoomMessages.map(wsMsg => ({
+          id: wsMsg.id as number,
+          sender_id: wsMsg.sender_id,
+          receiver_id: wsMsg.receiver_id,
+          message_type: wsMsg.message_type as 'text' | 'image' | 'voice' | 'promotion',
+          content: wsMsg.content,
+          file_url: wsMsg.file_url,
+          file_name: wsMsg.file_name,
+          duration: wsMsg.duration,
+          is_read: wsMsg.is_read,
+          created_at: wsMsg.created_at,
+        }));
+
+        setMessages(prev => {
+          // Merge and dedupe by id
+          const existingIds = new Set(prev.map(m => m.id));
+          const uniqueNew = newMessages.filter(m => !existingIds.has(m.id));
+          if (uniqueNew.length > 0) {
+            return [...prev, ...uniqueNew];
+          }
+          return prev;
+        });
+      }
+    }
+  }, [wsMessages, selectedConversation, user, getRoomId]);
+
+  // Join/leave room when conversation changes
+  useEffect(() => {
+    if (selectedConversation && user) {
+      const roomId = getRoomId(selectedConversation.friend.id);
+
+      // Leave previous room
+      if (currentRoomRef.current && currentRoomRef.current !== roomId) {
+        leaveRoom(currentRoomRef.current);
+      }
+
+      // Join new room
+      joinRoom(roomId);
+      currentRoomRef.current = roomId;
+    }
+
+    return () => {
+      if (currentRoomRef.current) {
+        leaveRoom(currentRoomRef.current);
+        currentRoomRef.current = null;
+      }
+    };
+  }, [selectedConversation, user, getRoomId, joinRoom, leaveRoom]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
