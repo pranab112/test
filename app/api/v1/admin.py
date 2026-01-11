@@ -1,9 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
 import secrets
 import string
+import os
+import uuid
+import shutil
 from app import models, schemas, auth
 from app.database import get_db
 from app.models import UserType, ReferralStatus, REFERRAL_BONUS_CREDITS
@@ -816,4 +819,49 @@ def delete_game(
     db.commit()
 
     return {"message": f"Game '{game_name}' deleted successfully"}
+
+
+@router.post("/games/{game_id}/image")
+async def upload_game_image(
+    game_id: int,
+    image: UploadFile = File(...),
+    admin: models.User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Upload an image for a game"""
+    db_game = db.query(models.Game).filter(models.Game.id == game_id).first()
+    if not db_game:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    # Validate file type
+    allowed_types = ["image/jpeg", "image/png", "image/gif", "image/webp"]
+    if image.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file type. Allowed: {', '.join(allowed_types)}"
+        )
+
+    # Create uploads directory if it doesn't exist
+    upload_dir = "uploads/games"
+    os.makedirs(upload_dir, exist_ok=True)
+
+    # Generate unique filename
+    file_ext = os.path.splitext(image.filename)[1] if image.filename else ".png"
+    unique_filename = f"{uuid.uuid4()}{file_ext}"
+    file_path = os.path.join(upload_dir, unique_filename)
+
+    # Save file
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(image.file, buffer)
+    except Exception as e:
+        logger.error(f"Failed to save game image: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save image")
+
+    # Update game icon_url
+    icon_url = f"/uploads/games/{unique_filename}"
+    db_game.icon_url = icon_url
+    db.commit()
+
+    return {"icon_url": icon_url, "message": "Game image uploaded successfully"}
 
