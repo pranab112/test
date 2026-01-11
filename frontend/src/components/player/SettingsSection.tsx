@@ -7,6 +7,7 @@ import { Modal } from '@/components/common/Modal';
 import { authApi, settingsApi, referralsApi } from '@/api/endpoints';
 import type { ReferralStats, ReferredUser, PaymentMethod, PlayerPaymentPreferences } from '@/api/endpoints';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import toast from 'react-hot-toast';
 import {
   MdSecurity,
@@ -29,6 +30,7 @@ type SettingsTab = 'profile' | 'security' | 'notifications' | 'referrals' | 'pay
 
 export function SettingsSection() {
   const { user, setUser, logout } = useAuth();
+  const { soundEnabled, setSoundEnabled } = useNotifications();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
   const [loading, setLoading] = useState(false);
@@ -815,6 +817,12 @@ export function SettingsSection() {
             <div className="bg-dark-300 rounded-lg p-4">
               <h3 className="font-bold text-white mb-4">General Notifications</h3>
               <div className="space-y-4">
+                <ToggleSetting
+                  label="Notification Sounds"
+                  description="Play sound when receiving new messages and notifications"
+                  enabled={soundEnabled}
+                  onChange={setSoundEnabled}
+                />
                 <ToggleSetting
                   label="Email Notifications"
                   description="Receive notifications via email"

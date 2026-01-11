@@ -9,6 +9,7 @@ import {
 } from '@/services/websocket.service';
 import { useAuth } from './AuthContext';
 import toast from 'react-hot-toast';
+import { notificationService } from '@/services/notification.service';
 
 interface WebSocketContextType {
   // Connection state
@@ -46,6 +47,9 @@ interface WebSocketContextType {
   getRoomId: (otherUserId: number) => string;
   addMessage: (roomId: string, message: ChatMessage) => void;
   clearUnread: (roomId: string) => void;
+
+  // Total unread count for badges
+  totalUnreadMessages: number;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | null>(null);
@@ -119,6 +123,10 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
         return newCounts;
       });
 
+      // Play notification sound
+      const isPromotion = messageData.message_type === 'promotion';
+      notificationService.playNotificationSound(isPromotion ? 'promotion' : 'message');
+
       // Show notification if tab is hidden
       if (document.hidden) {
         if ('Notification' in window && Notification.permission === 'granted') {
@@ -129,7 +137,7 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
         }
       } else {
         toast(`${messageData.sender_name}: ${messageData.content || 'Sent an attachment'}`, {
-          icon: '💬',
+          icon: isPromotion ? '🎁' : '💬',
           duration: 3000,
         });
       }
@@ -274,6 +282,7 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
   // Handle friend request notification
   const handleFriendRequest = useCallback((data: unknown) => {
     const { from_username } = data as { from_username: string };
+    notificationService.playNotificationSound('alert');
     toast(`${from_username} sent you a friend request!`, {
       icon: '👋',
       duration: 5000,
@@ -283,6 +292,7 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
   // Handle friend accepted notification
   const handleFriendAccepted = useCallback((data: unknown) => {
     const { friend_username } = data as { friend_username: string };
+    notificationService.playNotificationSound('promotion');
     toast(`${friend_username} accepted your friend request!`, {
       icon: '🎉',
       duration: 5000,
@@ -291,8 +301,14 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
 
   // Handle general notification
   const handleNotification = useCallback((data: unknown) => {
-    const { message } = data as { notification_type: string; message?: string };
+    const { message, notification_type } = data as { notification_type: string; message?: string };
     if (message) {
+      // Play sound based on notification type
+      if (notification_type === 'promotion') {
+        notificationService.playNotificationSound('promotion');
+      } else {
+        notificationService.playNotificationSound('alert');
+      }
       toast(message, {
         icon: '🔔',
         duration: 4000,
@@ -407,6 +423,9 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
     wsService.leaveRoom(roomId);
   }, []);
 
+  // Calculate total unread messages across all rooms
+  const totalUnreadMessages = Array.from(unreadCounts.values()).reduce((sum, count) => sum + count, 0);
+
   const value: WebSocketContextType = {
     isConnected,
     connectionStatus,
@@ -424,6 +443,7 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
     getRoomId,
     addMessage,
     clearUnread,
+    totalUnreadMessages,
   };
 
   return (

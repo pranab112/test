@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
 import { WebSocketProvider } from './contexts/WebSocketContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 import AppRouter from './routes';
 
 // Create React Query client
@@ -22,8 +23,9 @@ function App() {
       <BrowserRouter>
         <AuthProvider>
           <WebSocketProvider>
-            <AppRouter />
-            <Toaster
+            <NotificationProvider>
+              <AppRouter />
+              <Toaster
             position="top-right"
             toastOptions={{
               duration: 4000,
@@ -45,7 +47,8 @@ function App() {
                 },
               },
             }}
-          />
+            />
+            </NotificationProvider>
           </WebSocketProvider>
         </AuthProvider>
       </BrowserRouter>

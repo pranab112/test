@@ -5,6 +5,7 @@ import { Avatar } from '@/components/common/Avatar';
 import { Modal } from '@/components/common/Modal';
 import { authApi, settingsApi } from '@/api/endpoints';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import toast from 'react-hot-toast';
 import {
   MdPerson,
@@ -23,6 +24,7 @@ type SettingsTab = 'profile' | 'security' | 'notifications' | 'appearance';
 
 export function SettingsSection() {
   const { user, setUser, logout } = useAuth();
+  const { soundEnabled, setSoundEnabled } = useNotifications();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
   const [loading, setLoading] = useState(false);
@@ -574,6 +576,28 @@ export function SettingsSection() {
             {activeTab === 'notifications' && (
               <div className="space-y-6">
                 <h2 className="text-2xl font-bold text-gold-500 mb-4">Notification Settings</h2>
+
+                {/* Sound Toggle - Separate from other settings */}
+                <div className="bg-dark-300 rounded-lg p-4 mb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="font-medium text-white">Notification Sounds</p>
+                      <p className="text-sm text-gray-400">Play sound when receiving new messages and notifications</p>
+                    </div>
+                    <button
+                      onClick={() => setSoundEnabled(!soundEnabled)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        soundEnabled ? 'bg-gold-500' : 'bg-gray-600'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          soundEnabled ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
 
                 <div className="space-y-4">
                   {[
