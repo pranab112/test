@@ -29,13 +29,13 @@ class Settings(BaseSettings):
     # Encryption key for credentials
     CREDENTIAL_ENCRYPTION_KEY: Optional[str] = None
 
-    # SMTP Email Configuration
-    SMTP_HOST: str = "smtp.hostinger.com"
-    SMTP_PORT: int = 465
-    SMTP_ENCRYPTION: str = "ssl"  # ssl or tls
+    # SMTP Email Configuration (Gmail defaults)
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_ENCRYPTION: str = "tls"  # ssl or tls
     SMTP_USERNAME: Optional[str] = None
     SMTP_PASSWORD: Optional[str] = None
-    SMTP_FROM_EMAIL: str = "support@goldenace.fun"
+    SMTP_FROM_EMAIL: str = "tgoldenace@gmail.com"
     SMTP_FROM_NAME: str = "Golden Ace"
 
     # Base URL for links in emails

@@ -29,6 +29,9 @@ def send_email(
     """
     Send an email using SMTP settings from config.
 
+    This function is designed to NEVER crash the app - all errors are caught
+    and logged, returning False on failure.
+
     Args:
         to_email: Recipient email address
         subject: Email subject
@@ -38,11 +41,17 @@ def send_email(
     Returns:
         True if email sent successfully, False otherwise
     """
+    # Early return if SMTP not configured - this is not an error in development
     if not settings.smtp_configured:
-        logger.error("SMTP not configured. Cannot send email.")
+        logger.warning("SMTP not configured. Skipping email send.")
         return False
 
     try:
+        # Validate email address format
+        if not to_email or '@' not in to_email:
+            logger.warning(f"Invalid email address: {to_email}")
+            return False
+
         # Create message
         message = MIMEMultipart("alternative")
         message["Subject"] = subject
@@ -58,17 +67,19 @@ def send_email(
         part2 = MIMEText(html_content, "html")
         message.attach(part2)
 
-        # Connect and send
+        # Connect and send with timeout
         if settings.SMTP_ENCRYPTION.lower() == "ssl":
             # SSL connection (port 465 typically)
             context = ssl.create_default_context()
-            with smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, context=context) as server:
+            with smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, context=context, timeout=30) as server:
                 server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
                 server.sendmail(settings.SMTP_FROM_EMAIL, to_email, message.as_string())
         else:
-            # TLS connection (port 587 typically)
-            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
+            # TLS connection (port 587 typically) - Gmail uses this
+            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as server:
+                server.ehlo()
                 server.starttls()
+                server.ehlo()
                 server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
                 server.sendmail(settings.SMTP_FROM_EMAIL, to_email, message.as_string())
 
@@ -78,11 +89,30 @@ def send_email(
     except smtplib.SMTPAuthenticationError as e:
         logger.error(f"SMTP authentication failed: {e}")
         return False
+    except smtplib.SMTPConnectError as e:
+        logger.error(f"SMTP connection failed: {e}")
+        return False
+    except smtplib.SMTPServerDisconnected as e:
+        logger.error(f"SMTP server disconnected: {e}")
+        return False
     except smtplib.SMTPException as e:
         logger.error(f"SMTP error occurred: {e}")
         return False
+    except ssl.SSLError as e:
+        logger.error(f"SSL error occurred: {e}")
+        return False
+    except ConnectionRefusedError as e:
+        logger.error(f"Connection refused by SMTP server: {e}")
+        return False
+    except TimeoutError as e:
+        logger.error(f"SMTP connection timed out: {e}")
+        return False
+    except OSError as e:
+        logger.error(f"Network error sending email: {e}")
+        return False
     except Exception as e:
-        logger.error(f"Failed to send email: {e}")
+        # Catch-all to ensure we never crash the app
+        logger.error(f"Unexpected error sending email: {type(e).__name__}: {e}")
         return False
 
 

@@ -24,19 +24,22 @@ def send_otp_email_handler(email: str, otp: str, username: str) -> bool:
     """
     Send OTP verification email using SMTP settings from config.
     Falls back to console logging if SMTP is not configured.
-    """
-    # Try to send via SMTP if configured
-    if settings.smtp_configured:
-        success = smtp_send_otp_email(email, otp, username)
-        if success:
-            logger.info(f"OTP email sent to {email} via SMTP")
-            return True
-        else:
-            logger.warning(f"SMTP send failed for {email}, falling back to console")
 
-    # Fallback to console logging for development or if SMTP fails
-    logger.warning("SMTP not configured or failed. Logging OTP to console.")
-    print(f"""
+    This function is designed to NEVER raise exceptions - it always returns True/False.
+    """
+    try:
+        # Try to send via SMTP if configured
+        if settings.smtp_configured:
+            success = smtp_send_otp_email(email, otp, username)
+            if success:
+                logger.info(f"OTP email sent to {email} via SMTP")
+                return True
+            else:
+                logger.warning(f"SMTP send failed for {email}, falling back to console")
+
+        # Fallback to console logging for development or if SMTP fails
+        logger.warning("SMTP not configured or failed. Logging OTP to console.")
+        print(f"""
 ===========================================
 EMAIL VERIFICATION OTP (DEV MODE)
 ===========================================
@@ -45,8 +48,23 @@ Subject: Your {settings.SMTP_FROM_NAME} Verification Code
 OTP Code: {otp}
 Expires in: 10 minutes
 ===========================================
-    """)
-    return True
+        """)
+        return True
+    except Exception as e:
+        # Catch any unexpected errors and log them
+        logger.error(f"Unexpected error in send_otp_email_handler: {type(e).__name__}: {e}")
+        # Still return True since we want the OTP flow to continue (user can see OTP in console)
+        print(f"""
+===========================================
+EMAIL VERIFICATION OTP (FALLBACK - Error occurred)
+===========================================
+To: {email}
+Subject: Your {settings.SMTP_FROM_NAME} Verification Code
+OTP Code: {otp}
+Expires in: 10 minutes
+===========================================
+        """)
+        return True
 
 
 @router.post("/send-otp", response_model=schemas.EmailVerificationResponse)
