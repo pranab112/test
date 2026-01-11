@@ -38,10 +38,10 @@ export interface BulkPlayerCreate {
 }
 
 export interface BulkRegistrationResponse {
-  created_players: PlayerRegistrationResponse[];
-  failed: Array<{ username: string; reason: string }>;
-  total_created: number;
-  total_failed: number;
+  created_players: Array<{ username: string; temp_password?: string }>;
+  failed_players: Array<{ username: string; reason: string }>;
+  success: number;
+  failed: number;
 }
 
 // Player
@@ -174,7 +174,7 @@ export const clientApi = {
   },
 
   bulkRegisterPlayers: async (players: BulkPlayerCreate[]): Promise<BulkRegistrationResponse> => {
-    const response = await apiClient.post('/client/bulk-register-players', { players });
+    const response = await apiClient.post('/client/bulk-register-players', players);
     return response as any;
   },
 

@@ -43,8 +43,10 @@ def send_email(
     """
     # Early return if SMTP not configured - this is not an error in development
     if not settings.smtp_configured:
-        logger.warning("SMTP not configured. Skipping email send.")
+        logger.warning(f"SMTP not configured. Host: {settings.SMTP_HOST}, Username: {settings.SMTP_USERNAME}, Password set: {bool(settings.SMTP_PASSWORD)}")
         return False
+
+    logger.info(f"SMTP configured - attempting to send email to {to_email}")
 
     try:
         # Validate email address format

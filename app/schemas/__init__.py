@@ -4,7 +4,8 @@ from app.schemas.user import (
     PlayerCreateByClient,
     UserResponse,
     PlayerRegistrationResponse,
-    UserSearchResponse
+    UserSearchResponse,
+    ProfileUpdate
 )
 from app.schemas.friend import (
     FriendRequestCreate,
@@ -132,6 +133,7 @@ __all__ = [
     "UserResponse",
     "PlayerRegistrationResponse",
     "UserSearchResponse",
+    "ProfileUpdate",
     # Friend
     "FriendRequestCreate",
     "FriendRequestResponse",

@@ -396,14 +396,41 @@ def get_all_messages(
     db: Session = Depends(get_db)
 ):
     """Get all messages in the system"""
+    from sqlalchemy.orm import joinedload
+
     messages = db.query(models.Message)\
+        .options(joinedload(models.Message.sender), joinedload(models.Message.receiver))\
         .order_by(models.Message.created_at.desc())\
         .offset(skip).limit(limit).all()
 
     total = db.query(models.Message).count()
 
+    # Format messages with sender and receiver info
+    formatted_messages = []
+    for msg in messages:
+        formatted_messages.append({
+            "id": msg.id,
+            "content": msg.content,
+            "is_read": msg.is_read,
+            "created_at": msg.created_at,
+            "sender_id": msg.sender_id,
+            "receiver_id": msg.receiver_id,
+            "sender": {
+                "id": msg.sender.id,
+                "username": msg.sender.username,
+                "full_name": msg.sender.full_name,
+                "user_type": msg.sender.user_type
+            } if msg.sender else None,
+            "receiver": {
+                "id": msg.receiver.id,
+                "username": msg.receiver.username,
+                "full_name": msg.receiver.full_name,
+                "user_type": msg.receiver.user_type
+            } if msg.receiver else None
+        })
+
     return {
-        "messages": messages,
+        "messages": formatted_messages,
         "total": total,
         "skip": skip,
         "limit": limit

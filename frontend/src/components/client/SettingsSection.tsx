@@ -682,30 +682,6 @@ export function SettingsSection() {
                     </button>
                   </div>
                 </div>
-
-                <div className="bg-dark-300 p-6 rounded-lg">
-                  <h3 className="text-lg font-bold text-white mb-3">Language</h3>
-                  <select className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500">
-                    <option>English (US)</option>
-                    <option>Spanish</option>
-                    <option>French</option>
-                    <option>German</option>
-                  </select>
-                </div>
-
-                <div className="bg-dark-300 p-6 rounded-lg">
-                  <h3 className="text-lg font-bold text-white mb-3">Display Density</h3>
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input type="radio" name="density" defaultChecked className="w-4 h-4" />
-                      <span className="text-white">Comfortable (Recommended)</span>
-                    </label>
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input type="radio" name="density" className="w-4 h-4" />
-                      <span className="text-white">Compact</span>
-                    </label>
-                  </div>
-                </div>
               </div>
             )}
           </div>

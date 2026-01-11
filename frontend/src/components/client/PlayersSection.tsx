@@ -484,16 +484,16 @@ function BulkRegisterModal({
     setProcessing(true);
     try {
       const result = await clientApi.bulkRegisterPlayers(preview);
-      toast.success(`Successfully registered ${result.total_created} players!`);
-      if (result.total_failed > 0) {
-        toast.error(`Failed to register ${result.total_failed} players`);
+      toast.success(`Successfully registered ${result.success} players!`);
+      if (result.failed > 0) {
+        toast.error(`Failed to register ${result.failed} players`);
       }
       onClose();
       onSuccess();
       setCsvText('');
       setPreview([]);
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Failed to bulk register');
+      toast.error(error?.detail || error.response?.data?.detail || 'Failed to bulk register');
     } finally {
       setProcessing(false);
     }

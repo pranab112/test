@@ -241,26 +241,82 @@ async def send_friend_request(
 
     return friend_request
 
-@router.get("/requests/sent", response_model=List[schemas.FriendRequestResponse])
+@router.get("/requests/sent")
 async def get_sent_friend_requests(
     current_user: models.User = Depends(auth.get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    requests = db.query(models.FriendRequest).filter(
+    from sqlalchemy.orm import joinedload
+
+    requests = db.query(models.FriendRequest).options(
+        joinedload(models.FriendRequest.sender),
+        joinedload(models.FriendRequest.receiver)
+    ).filter(
         models.FriendRequest.sender_id == current_user.id
     ).all()
-    return requests
 
-@router.get("/requests/received", response_model=List[schemas.FriendRequestResponse])
+    # Format response with requester/receiver naming for frontend compatibility
+    formatted = []
+    for req in requests:
+        formatted.append({
+            "id": req.id,
+            "requester_id": req.sender_id,
+            "receiver_id": req.receiver_id,
+            "status": req.status.value,
+            "created_at": req.created_at,
+            "requester": {
+                "id": req.sender.id,
+                "username": req.sender.username,
+                "full_name": req.sender.full_name,
+                "profile_picture": req.sender.profile_picture
+            } if req.sender else None,
+            "receiver": {
+                "id": req.receiver.id,
+                "username": req.receiver.username,
+                "full_name": req.receiver.full_name,
+                "profile_picture": req.receiver.profile_picture
+            } if req.receiver else None
+        })
+    return formatted
+
+@router.get("/requests/received")
 async def get_received_friend_requests(
     current_user: models.User = Depends(auth.get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    requests = db.query(models.FriendRequest).filter(
+    from sqlalchemy.orm import joinedload
+
+    requests = db.query(models.FriendRequest).options(
+        joinedload(models.FriendRequest.sender),
+        joinedload(models.FriendRequest.receiver)
+    ).filter(
         models.FriendRequest.receiver_id == current_user.id,
         models.FriendRequest.status == models.FriendRequestStatus.PENDING
     ).all()
-    return requests
+
+    # Format response with requester/receiver naming for frontend compatibility
+    formatted = []
+    for req in requests:
+        formatted.append({
+            "id": req.id,
+            "requester_id": req.sender_id,
+            "receiver_id": req.receiver_id,
+            "status": req.status.value,
+            "created_at": req.created_at,
+            "requester": {
+                "id": req.sender.id,
+                "username": req.sender.username,
+                "full_name": req.sender.full_name,
+                "profile_picture": req.sender.profile_picture
+            } if req.sender else None,
+            "receiver": {
+                "id": req.receiver.id,
+                "username": req.receiver.username,
+                "full_name": req.receiver.full_name,
+                "profile_picture": req.receiver.profile_picture
+            } if req.receiver else None
+        })
+    return formatted
 
 @router.put("/requests/{request_id}", response_model=schemas.FriendRequestResponse)
 async def update_friend_request(

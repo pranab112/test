@@ -48,6 +48,8 @@ export function HomeSection() {
   });
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
   const [availableOffers, setAvailableOffers] = useState<PlatformOffer[]>([]);
+  const [claimedOfferIds, setClaimedOfferIds] = useState<Set<number>>(new Set());
+  const [claimingOfferId, setClaimingOfferId] = useState<number | null>(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -65,7 +67,18 @@ export function HomeSection() {
       ]);
 
       setUser(userData);
-      setAvailableOffers((offersData || []).slice(0, 3)); // Show top 3 offers
+
+      // Track claimed offer IDs from claims data
+      const claimedIds = new Set<number>(
+        (claimsData || []).map((claim: OfferClaim) => claim.offer_id)
+      );
+      setClaimedOfferIds(claimedIds);
+
+      // Filter only active offers and show top 3
+      const activeOffers = (offersData || []).filter(
+        (offer: PlatformOffer) => offer.status === 'active'
+      );
+      setAvailableOffers(activeOffers.slice(0, 3));
 
       // Calculate stats - count active promotions available to the player
       const activePromos = (promotionsData || []).filter((p: any) => p.is_active).length;
@@ -120,6 +133,23 @@ export function HomeSection() {
       toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleClaimOffer = async (offerId: number) => {
+    setClaimingOfferId(offerId);
+    try {
+      await offersApi.claimOffer({ offer_id: offerId });
+      toast.success('Offer claimed successfully! Waiting for approval.');
+      // Add to claimed offers
+      setClaimedOfferIds(prev => new Set([...prev, offerId]));
+      // Reload dashboard to update stats
+      loadDashboardData();
+    } catch (error: any) {
+      const errorMessage = error?.message || error?.detail || 'Failed to claim offer';
+      toast.error(errorMessage);
+    } finally {
+      setClaimingOfferId(null);
     }
   };
 
@@ -285,6 +315,9 @@ export function HomeSection() {
                   description={offer.description}
                   value={offer.bonus_amount}
                   expiry={offer.end_date ? `Expires ${new Date(offer.end_date).toLocaleDateString()}` : 'No expiry'}
+                  isClaimed={claimedOfferIds.has(offer.id)}
+                  isClaiming={claimingOfferId === offer.id}
+                  onClaim={() => handleClaimOffer(offer.id)}
                 />
               ))
             )}
@@ -1117,12 +1150,18 @@ function OfferCard({
   title,
   description,
   value,
-  expiry
+  expiry,
+  isClaimed,
+  isClaiming,
+  onClaim
 }: {
   title: string;
   description: string;
   value: number;
   expiry: string;
+  isClaimed: boolean;
+  isClaiming: boolean;
+  onClaim: () => void;
 }) {
   return (
     <div className="p-4 bg-dark-300 border border-gold-700 rounded-lg hover:shadow-gold transition-all">
@@ -1135,9 +1174,20 @@ function OfferCard({
       </div>
       <div className="flex items-center justify-between mt-3">
         <span className="text-xs text-gray-500">{expiry}</span>
-        <button className="bg-gold-gradient text-dark-700 font-bold px-4 py-1 rounded text-sm hover:shadow-gold transition-all">
-          Claim
-        </button>
+        {isClaimed ? (
+          <span className="bg-gray-600 text-gray-300 font-bold px-4 py-1 rounded text-sm">
+            Claimed
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={onClaim}
+            disabled={isClaiming}
+            className="bg-gold-gradient text-dark-700 font-bold px-4 py-1 rounded text-sm hover:shadow-gold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isClaiming ? 'Claiming...' : 'Claim'}
+          </button>
+        )}
       </div>
     </div>
   );

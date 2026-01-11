@@ -37,3 +37,11 @@ class PlayerRegistrationResponse(UserResponse):
 
 class UserSearchResponse(BaseModel):
     users: List[UserResponse]
+
+
+class ProfileUpdate(BaseModel):
+    """Schema for updating user profile"""
+    full_name: Optional[str] = None
+    company_name: Optional[str] = None
+    bio: Optional[str] = None
+    phone: Optional[str] = None

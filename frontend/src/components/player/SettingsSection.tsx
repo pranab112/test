@@ -123,6 +123,13 @@ export function SettingsSection() {
         setEmailVerificationPending(emailStatus.verification_pending);
         if (emailStatus.secondary_email) {
           setVerificationEmail(emailStatus.secondary_email);
+          // If email is verified, use the verified email as the main email
+          if (emailStatus.is_email_verified) {
+            setProfileData(prev => ({
+              ...prev,
+              email: emailStatus.secondary_email || prev.email,
+            }));
+          }
         }
       } catch {
         // Email status endpoint may not exist

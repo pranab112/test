@@ -15,6 +15,35 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/profiles", tags=["profiles"])
 
+
+@router.patch("/me")
+async def update_my_profile(
+    profile_data: schemas.ProfileUpdate,
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Update current user's profile"""
+
+    # Update fields if provided
+    if profile_data.full_name is not None:
+        current_user.full_name = profile_data.full_name
+
+    if profile_data.bio is not None:
+        current_user.bio = profile_data.bio
+
+    if profile_data.phone is not None:
+        current_user.phone = profile_data.phone
+
+    # Company name only for clients
+    if profile_data.company_name is not None and current_user.user_type == models.UserType.CLIENT:
+        current_user.company_name = profile_data.company_name
+
+    db.commit()
+    db.refresh(current_user)
+
+    return {"message": "Profile updated successfully"}
+
+
 @router.get("/{user_id}")
 async def get_user_profile(
     user_id: int,
