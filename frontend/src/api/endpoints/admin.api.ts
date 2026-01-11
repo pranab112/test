@@ -343,7 +343,7 @@ export const adminApi = {
 
   investigateReport: async (
     reportId: number,
-    action: 'investigating' | 'valid' | 'invalid' | 'malicious',
+    action: 'investigating' | 'valid' | 'invalid' | 'malicious' | 'resolved',
     adminNotes?: string,
     actionTaken?: string
   ): Promise<{ message: string; report_id: number; new_status: string }> => {

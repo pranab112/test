@@ -663,18 +663,21 @@ def add_credits_to_user(
     }
 
 
+class BroadcastRequest(BaseModel):
+    message: str
+    user_type: Optional[UserType] = None
+
 @router.post("/broadcast-message")
 def broadcast_message(
-    message: str,
-    user_type: Optional[UserType] = None,
+    request: BroadcastRequest,
     admin: models.User = Depends(get_admin_user),
     db: Session = Depends(get_db)
 ):
     """Send a broadcast message to all users or specific user type"""
     query = db.query(models.User).filter(models.User.id != admin.id)
 
-    if user_type:
-        query = query.filter(models.User.user_type == user_type)
+    if request.user_type:
+        query = query.filter(models.User.user_type == request.user_type)
 
     users = query.all()
 
@@ -684,7 +687,7 @@ def broadcast_message(
             sender_id=admin.id,
             receiver_id=user.id,
             message_type=models.MessageType.TEXT,
-            content=f"[ADMIN BROADCAST] {message}",
+            content=f"[ADMIN BROADCAST] {request.message}",
             is_read=False
         )
         db.add(new_message)

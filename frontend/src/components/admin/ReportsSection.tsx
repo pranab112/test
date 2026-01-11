@@ -61,7 +61,7 @@ export function ReportsSection() {
     }
   };
 
-  const handleInvestigate = async (action: 'investigating' | 'valid' | 'invalid' | 'malicious') => {
+  const handleInvestigate = async (action: 'investigating' | 'valid' | 'invalid' | 'malicious' | 'resolved') => {
     if (!selectedReport) return;
 
     try {
@@ -69,7 +69,7 @@ export function ReportsSection() {
         selectedReport.id,
         action,
         adminNotes || undefined,
-        action === 'valid' ? actionTaken || undefined : undefined
+        (action === 'valid' || action === 'resolved') ? actionTaken || undefined : undefined
       );
 
       const messages: Record<string, string> = {
@@ -77,6 +77,7 @@ export function ReportsSection() {
         valid: 'Report marked as valid',
         invalid: 'Report marked as invalid',
         malicious: 'Report marked as malicious (reporter penalized)',
+        resolved: 'Report closed/resolved successfully',
       };
 
       toast.success(messages[action]);
@@ -290,8 +291,16 @@ export function ReportsSection() {
                   Invalid Report
                 </button>
                 <button
+                  onClick={() => handleInvestigate('resolved')}
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                  title="Close report as resolved"
+                >
+                  <MdCheck size={18} />
+                  Resolved/Close
+                </button>
+                <button
                   onClick={() => handleInvestigate('malicious')}
-                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 col-span-2"
                   title="Marks reporter as making false reports - may lead to suspension"
                 >
                   <MdWarning size={18} />

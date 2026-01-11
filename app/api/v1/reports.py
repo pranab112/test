@@ -335,7 +335,7 @@ def investigate_report(
         raise HTTPException(status_code=404, detail="Report not found")
 
     action = investigation.action.lower()
-    valid_actions = ["investigating", "warning", "valid", "invalid", "malicious"]
+    valid_actions = ["investigating", "warning", "valid", "invalid", "malicious", "resolved"]
     if action not in valid_actions:
         raise HTTPException(status_code=400, detail=f"Action must be one of: {', '.join(valid_actions)}")
 
@@ -354,7 +354,7 @@ def investigate_report(
         report.resolution_notes = investigation.resolution_notes or "Please resolve this issue within 4 days to avoid penalties."
         report.action_taken = f"Warning issued - {WARNING_PERIOD_DAYS} days to resolve"
 
-    if action == "valid" and investigation.action_taken:
+    if action in ["valid", "resolved"] and investigation.action_taken:
         report.action_taken = investigation.action_taken
 
     # If report is malicious, increment malicious report count for reporter

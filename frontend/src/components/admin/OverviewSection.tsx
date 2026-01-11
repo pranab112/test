@@ -4,7 +4,11 @@ import toast from 'react-hot-toast';
 import { MdPeople, MdCheckCircle, MdFlag } from 'react-icons/md';
 import { adminApi } from '@/api/endpoints';
 
-export function OverviewSection() {
+interface OverviewSectionProps {
+  onNavigate?: (section: string) => void;
+}
+
+export function OverviewSection({ onNavigate }: OverviewSectionProps) {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -111,19 +115,19 @@ export function OverviewSection() {
           <h2 className="text-xl font-bold text-gold-500 mb-4">Quick Actions</h2>
           <div className="space-y-3">
             <button
-              onClick={() => window.location.hash = '#approvals'}
+              onClick={() => onNavigate?.('approvals')}
               className="w-full bg-gold-gradient text-dark-700 font-bold py-3 px-4 rounded-lg hover:shadow-gold transition-all"
             >
               Review Pending Approvals ({stats.users.pending_approvals})
             </button>
             <button
-              onClick={() => window.location.hash = '#reports'}
+              onClick={() => onNavigate?.('reports')}
               className="w-full bg-dark-300 text-gold-500 border-2 border-gold-700 font-bold py-3 px-4 rounded-lg hover:bg-dark-400 transition-all"
             >
               Review Reports ({stats.reports.pending})
             </button>
             <button
-              onClick={() => window.location.hash = '#broadcast'}
+              onClick={() => onNavigate?.('broadcast')}
               className="w-full bg-dark-300 text-gold-500 border-2 border-gold-700 font-bold py-3 px-4 rounded-lg hover:bg-dark-400 transition-all"
             >
               Send Broadcast

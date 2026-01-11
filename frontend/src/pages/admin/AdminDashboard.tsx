@@ -26,7 +26,7 @@ export default function AdminDashboard() {
   const renderContent = () => {
     switch (activeSection) {
       case 'overview':
-        return <OverviewSection />;
+        return <OverviewSection onNavigate={setActiveSection} />;
       case 'users':
         return <UsersSection />;
       case 'games':
