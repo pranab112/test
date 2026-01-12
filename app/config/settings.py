@@ -29,14 +29,10 @@ class Settings(BaseSettings):
     # Encryption key for credentials
     CREDENTIAL_ENCRYPTION_KEY: Optional[str] = None
 
-    # SMTP Email Configuration (Gmail defaults)
-    SMTP_HOST: str = "smtp.gmail.com"
-    SMTP_PORT: int = 587
-    SMTP_ENCRYPTION: str = "tls"  # ssl or tls
-    SMTP_USERNAME: Optional[str] = None
-    SMTP_PASSWORD: Optional[str] = None
-    SMTP_FROM_EMAIL: str = "tgoldenace@gmail.com"
-    SMTP_FROM_NAME: str = "Golden Ace"
+    # Resend Email Configuration
+    RESEND_API_KEY: Optional[str] = None
+    RESEND_FROM_EMAIL: str = "onboarding@resend.dev"
+    RESEND_FROM_NAME: str = "Golden Ace"
 
     # Base URL for links in emails
     BASE_URL: str = "http://127.0.0.1:8000"
@@ -100,8 +96,8 @@ class Settings(BaseSettings):
         return ["*"]  # Can be restricted further if needed
 
     @property
-    def smtp_configured(self) -> bool:
-        """Check if SMTP is properly configured"""
-        return bool(self.SMTP_HOST and self.SMTP_USERNAME and self.SMTP_PASSWORD)
+    def resend_configured(self) -> bool:
+        """Check if Resend is properly configured"""
+        return bool(self.RESEND_API_KEY)
 
 settings = Settings()

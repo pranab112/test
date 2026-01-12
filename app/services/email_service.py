@@ -1,18 +1,18 @@
-"""Email service for sending emails via SMTP."""
+"""Email service for sending emails via Resend."""
 
-import smtplib
-import ssl
+import resend
 import random
 import string
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from datetime import datetime, timedelta
 from typing import Optional
 import logging
 
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+# Configure Resend API key
+if settings.RESEND_API_KEY:
+    resend.api_key = settings.RESEND_API_KEY
 
 
 def generate_otp(length: int = 6) -> str:
@@ -27,7 +27,7 @@ def send_email(
     text_content: Optional[str] = None
 ) -> bool:
     """
-    Send an email using SMTP settings from config.
+    Send an email using Resend API.
 
     This function is designed to NEVER crash the app - all errors are caught
     and logged, returning False on failure.
@@ -41,12 +41,12 @@ def send_email(
     Returns:
         True if email sent successfully, False otherwise
     """
-    # Early return if SMTP not configured - this is not an error in development
-    if not settings.smtp_configured:
-        logger.warning(f"SMTP not configured. Host: {settings.SMTP_HOST}, Username: {settings.SMTP_USERNAME}, Password set: {bool(settings.SMTP_PASSWORD)}")
+    # Early return if Resend not configured - this is not an error in development
+    if not settings.resend_configured:
+        logger.warning(f"Resend API not configured. API Key set: {bool(settings.RESEND_API_KEY)}")
         return False
 
-    logger.info(f"SMTP configured - attempting to send email to {to_email}")
+    logger.info(f"Resend configured - attempting to send email to {to_email}")
 
     try:
         # Validate email address format
@@ -54,63 +54,26 @@ def send_email(
             logger.warning(f"Invalid email address: {to_email}")
             return False
 
-        # Create message
-        message = MIMEMultipart("alternative")
-        message["Subject"] = subject
-        message["From"] = f"{settings.SMTP_FROM_NAME} <{settings.SMTP_FROM_EMAIL}>"
-        message["To"] = to_email
+        # Build the email params
+        params: resend.Emails.SendParams = {
+            "from": f"{settings.RESEND_FROM_NAME} <{settings.RESEND_FROM_EMAIL}>",
+            "to": [to_email],
+            "subject": subject,
+            "html": html_content,
+        }
 
-        # Add plain text part
+        # Add text content if provided
         if text_content:
-            part1 = MIMEText(text_content, "plain")
-            message.attach(part1)
+            params["text"] = text_content
 
-        # Add HTML part
-        part2 = MIMEText(html_content, "html")
-        message.attach(part2)
+        # Send the email
+        email_response = resend.Emails.send(params)
 
-        # Connect and send with timeout
-        if settings.SMTP_ENCRYPTION.lower() == "ssl":
-            # SSL connection (port 465 typically)
-            context = ssl.create_default_context()
-            with smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, context=context, timeout=30) as server:
-                server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
-                server.sendmail(settings.SMTP_FROM_EMAIL, to_email, message.as_string())
-        else:
-            # TLS connection (port 587 typically) - Gmail uses this
-            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as server:
-                server.ehlo()
-                server.starttls()
-                server.ehlo()
-                server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
-                server.sendmail(settings.SMTP_FROM_EMAIL, to_email, message.as_string())
-
-        logger.info(f"Email sent successfully to {to_email}")
+        logger.info(f"Email sent successfully to {to_email}, response: {email_response}")
         return True
 
-    except smtplib.SMTPAuthenticationError as e:
-        logger.error(f"SMTP authentication failed: {e}")
-        return False
-    except smtplib.SMTPConnectError as e:
-        logger.error(f"SMTP connection failed: {e}")
-        return False
-    except smtplib.SMTPServerDisconnected as e:
-        logger.error(f"SMTP server disconnected: {e}")
-        return False
-    except smtplib.SMTPException as e:
-        logger.error(f"SMTP error occurred: {e}")
-        return False
-    except ssl.SSLError as e:
-        logger.error(f"SSL error occurred: {e}")
-        return False
-    except ConnectionRefusedError as e:
-        logger.error(f"Connection refused by SMTP server: {e}")
-        return False
-    except TimeoutError as e:
-        logger.error(f"SMTP connection timed out: {e}")
-        return False
-    except OSError as e:
-        logger.error(f"Network error sending email: {e}")
+    except resend.exceptions.ResendError as e:
+        logger.error(f"Resend API error: {e}")
         return False
     except Exception as e:
         # Catch-all to ensure we never crash the app
@@ -130,7 +93,7 @@ def send_otp_email(to_email: str, otp: str, username: str = "User") -> bool:
     Returns:
         True if email sent successfully, False otherwise
     """
-    subject = f"Your Verification Code - {settings.SMTP_FROM_NAME}"
+    subject = f"Your Verification Code - {settings.RESEND_FROM_NAME}"
 
     html_content = f"""
     <!DOCTYPE html>
@@ -148,7 +111,7 @@ def send_otp_email(to_email: str, otp: str, username: str = "User") -> bool:
                         <tr>
                             <td style="background: linear-gradient(135deg, #d4af37 0%, #f4e5b2 50%, #d4af37 100%); padding: 30px; text-align: center;">
                                 <h1 style="margin: 0; color: #1a1a2e; font-size: 28px; font-weight: bold;">
-                                    {settings.SMTP_FROM_NAME}
+                                    {settings.RESEND_FROM_NAME}
                                 </h1>
                             </td>
                         </tr>
@@ -192,7 +155,7 @@ def send_otp_email(to_email: str, otp: str, username: str = "User") -> bool:
                         <tr>
                             <td style="background-color: #0f3460; padding: 20px 30px; text-align: center;">
                                 <p style="margin: 0 0 10px; color: #9e9e9e; font-size: 12px;">
-                                    This is an automated message from {settings.SMTP_FROM_NAME}.
+                                    This is an automated message from {settings.RESEND_FROM_NAME}.
                                 </p>
                                 <p style="margin: 0; color: #9e9e9e; font-size: 12px;">
                                     Please do not reply to this email.
@@ -208,7 +171,7 @@ def send_otp_email(to_email: str, otp: str, username: str = "User") -> bool:
     """
 
     text_content = f"""
-    {settings.SMTP_FROM_NAME} - Email Verification
+    {settings.RESEND_FROM_NAME} - Email Verification
 
     Hello {username},
 
@@ -221,7 +184,7 @@ def send_otp_email(to_email: str, otp: str, username: str = "User") -> bool:
     If you didn't request this verification, please ignore this email.
 
     ---
-    This is an automated message from {settings.SMTP_FROM_NAME}.
+    This is an automated message from {settings.RESEND_FROM_NAME}.
     Please do not reply to this email.
     """
 
@@ -239,7 +202,7 @@ def send_welcome_email(to_email: str, username: str) -> bool:
     Returns:
         True if email sent successfully, False otherwise
     """
-    subject = f"Welcome to {settings.SMTP_FROM_NAME}!"
+    subject = f"Welcome to {settings.RESEND_FROM_NAME}!"
 
     html_content = f"""
     <!DOCTYPE html>
@@ -257,7 +220,7 @@ def send_welcome_email(to_email: str, username: str) -> bool:
                         <tr>
                             <td style="background: linear-gradient(135deg, #d4af37 0%, #f4e5b2 50%, #d4af37 100%); padding: 30px; text-align: center;">
                                 <h1 style="margin: 0; color: #1a1a2e; font-size: 28px; font-weight: bold;">
-                                    Welcome to {settings.SMTP_FROM_NAME}!
+                                    Welcome to {settings.RESEND_FROM_NAME}!
                                 </h1>
                             </td>
                         </tr>
@@ -266,10 +229,10 @@ def send_welcome_email(to_email: str, username: str) -> bool:
                         <tr>
                             <td style="padding: 40px 30px;">
                                 <h2 style="margin: 0 0 20px; color: #d4af37; font-size: 24px;">
-                                    Hello {username}! 🎉
+                                    Hello {username}!
                                 </h2>
                                 <p style="margin: 0 0 20px; color: #e0e0e0; font-size: 16px; line-height: 1.6;">
-                                    Thank you for joining {settings.SMTP_FROM_NAME}. We're excited to have you!
+                                    Thank you for joining {settings.RESEND_FROM_NAME}. We're excited to have you!
                                 </p>
                                 <p style="margin: 0 0 20px; color: #e0e0e0; font-size: 16px; line-height: 1.6;">
                                     Your account is currently pending approval. Once approved, you'll be able to access all features.
@@ -284,7 +247,7 @@ def send_welcome_email(to_email: str, username: str) -> bool:
                         <tr>
                             <td style="background-color: #0f3460; padding: 20px 30px; text-align: center;">
                                 <p style="margin: 0 0 10px; color: #9e9e9e; font-size: 12px;">
-                                    This is an automated message from {settings.SMTP_FROM_NAME}.
+                                    This is an automated message from {settings.RESEND_FROM_NAME}.
                                 </p>
                                 <p style="margin: 0; color: #9e9e9e; font-size: 12px;">
                                     Please do not reply to this email.
@@ -300,18 +263,18 @@ def send_welcome_email(to_email: str, username: str) -> bool:
     """
 
     text_content = f"""
-    Welcome to {settings.SMTP_FROM_NAME}!
+    Welcome to {settings.RESEND_FROM_NAME}!
 
     Hello {username}!
 
-    Thank you for joining {settings.SMTP_FROM_NAME}. We're excited to have you!
+    Thank you for joining {settings.RESEND_FROM_NAME}. We're excited to have you!
 
     Your account is currently pending approval. Once approved, you'll be able to access all features.
 
     In the meantime, make sure to verify your email address to unlock special bonuses!
 
     ---
-    This is an automated message from {settings.SMTP_FROM_NAME}.
+    This is an automated message from {settings.RESEND_FROM_NAME}.
     Please do not reply to this email.
     """
 
@@ -331,7 +294,7 @@ def send_referral_bonus_email(to_email: str, username: str, referred_username: s
     Returns:
         True if email sent successfully, False otherwise
     """
-    subject = f"You've earned {bonus_amount} credits! - {settings.SMTP_FROM_NAME}"
+    subject = f"You've earned {bonus_amount} credits! - {settings.RESEND_FROM_NAME}"
 
     html_content = f"""
     <!DOCTYPE html>
@@ -349,7 +312,7 @@ def send_referral_bonus_email(to_email: str, username: str, referred_username: s
                         <tr>
                             <td style="background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%); padding: 30px; text-align: center;">
                                 <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold;">
-                                    🎁 Referral Bonus!
+                                    Referral Bonus!
                                 </h1>
                             </td>
                         </tr>
@@ -391,7 +354,7 @@ def send_referral_bonus_email(to_email: str, username: str, referred_username: s
                         <tr>
                             <td style="background-color: #0f3460; padding: 20px 30px; text-align: center;">
                                 <p style="margin: 0 0 10px; color: #9e9e9e; font-size: 12px;">
-                                    This is an automated message from {settings.SMTP_FROM_NAME}.
+                                    This is an automated message from {settings.RESEND_FROM_NAME}.
                                 </p>
                                 <p style="margin: 0; color: #9e9e9e; font-size: 12px;">
                                     Please do not reply to this email.
@@ -407,7 +370,7 @@ def send_referral_bonus_email(to_email: str, username: str, referred_username: s
     """
 
     text_content = f"""
-    Referral Bonus - {settings.SMTP_FROM_NAME}
+    Referral Bonus - {settings.RESEND_FROM_NAME}
 
     Congratulations {username}!
 
@@ -418,7 +381,7 @@ def send_referral_bonus_email(to_email: str, username: str, referred_username: s
     Keep sharing your referral code to earn more credits!
 
     ---
-    This is an automated message from {settings.SMTP_FROM_NAME}.
+    This is an automated message from {settings.RESEND_FROM_NAME}.
     Please do not reply to this email.
     """
 

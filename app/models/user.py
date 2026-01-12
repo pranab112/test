@@ -79,6 +79,8 @@ class User(Base):
     # OTP-based email verification
     email_otp = Column(String(6), nullable=True)
     email_otp_expires_at = Column(DateTime(timezone=True), nullable=True)
+    email_otp_resend_count = Column(Integer, default=0)  # Track resend attempts for progressive rate limiting
+    email_otp_last_resend_at = Column(DateTime(timezone=True), nullable=True)  # Track last resend time
 
     # Two-Factor Authentication (2FA)
     two_factor_enabled = Column(Boolean, default=False)

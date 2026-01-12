@@ -66,6 +66,8 @@ export function SettingsSection() {
   const [verificationEmail, setVerificationEmail] = useState('');
   const [emailOTP, setEmailOTP] = useState('');
   const [emailVerificationPending, setEmailVerificationPending] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendCount, setResendCount] = useState(0);
 
   // Notification settings
   const [notificationSettings, setNotificationSettings] = useState({
@@ -102,6 +104,23 @@ export function SettingsSection() {
     loadUserData();
   }, [user]);
 
+  // Countdown timer for resend cooldown
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
   const loadUserData = async () => {
     if (!user) return;
 
@@ -121,6 +140,8 @@ export function SettingsSection() {
         const emailStatus = await settingsApi.getEmailVerificationStatus();
         setEmailVerified(emailStatus.is_email_verified);
         setEmailVerificationPending(emailStatus.verification_pending);
+        setResendCount(emailStatus.resend_count || 0);
+        setResendCooldown(emailStatus.cooldown_seconds || 0);
         if (emailStatus.secondary_email) {
           setVerificationEmail(emailStatus.secondary_email);
           // If email is verified, use the verified email as the main email
@@ -314,6 +335,28 @@ export function SettingsSection() {
     }
   };
 
+  // Helper function to format cooldown time
+  const formatCooldownTime = (seconds: number): string => {
+    if (seconds < 60) {
+      return `${seconds}s`;
+    } else if (seconds < 3600) {
+      const minutes = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return secs > 0 ? `${minutes}m ${secs}s` : `${minutes}m`;
+    } else {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+    }
+  };
+
+  // Get cooldown duration based on resend count
+  const getCooldownForCount = (count: number): number => {
+    const cooldowns = [60, 600, 3600, 86400]; // 1min, 10min, 1hr, 24hr
+    const index = Math.min(count, cooldowns.length - 1);
+    return cooldowns[index];
+  };
+
   // Email Verification Functions
   const handleSendVerificationEmail = async () => {
     if (!verificationEmail || !verificationEmail.includes('@')) {
@@ -325,6 +368,10 @@ export function SettingsSection() {
     try {
       await settingsApi.sendEmailVerificationOTP(verificationEmail);
       setEmailVerificationPending(true);
+      // Set cooldown based on new resend count
+      const newCount = resendCount + 1;
+      setResendCount(newCount);
+      setResendCooldown(getCooldownForCount(newCount));
       toast.success('Verification code sent! Check your email.');
     } catch (error: any) {
       toast.error(error?.detail || 'Failed to send verification email');
@@ -346,6 +393,9 @@ export function SettingsSection() {
       setEmailVerified(true);
       setShowEmailVerifyModal(false);
       setEmailOTP('');
+      // Reset cooldown state on successful verification
+      setResendCount(0);
+      setResendCooldown(0);
       toast.success('Email verified successfully!');
 
       // Update user state
@@ -363,9 +413,18 @@ export function SettingsSection() {
   };
 
   const handleResendOTP = async () => {
+    if (resendCooldown > 0) {
+      toast.error(`Please wait ${formatCooldownTime(resendCooldown)} before requesting another code`);
+      return;
+    }
+
     setLoading(true);
     try {
       await settingsApi.resendEmailOTP();
+      // Set cooldown based on new resend count
+      const newCount = resendCount + 1;
+      setResendCount(newCount);
+      setResendCooldown(getCooldownForCount(newCount));
       toast.success('New verification code sent!');
     } catch (error: any) {
       toast.error(error?.detail || 'Failed to resend code. Please wait before trying again.');
@@ -1351,12 +1410,27 @@ export function SettingsSection() {
               <button
                 type="button"
                 onClick={handleResendOTP}
-                disabled={loading}
-                className="text-gold-500 hover:text-gold-400 text-sm flex items-center gap-1 disabled:opacity-50"
+                disabled={loading || resendCooldown > 0}
+                className={`text-sm flex items-center gap-1 ${
+                  resendCooldown > 0
+                    ? 'text-gray-500 cursor-not-allowed'
+                    : 'text-gold-500 hover:text-gold-400'
+                } disabled:opacity-50`}
               >
-                <MdRefresh size={16} />
-                Resend Code
+                <MdRefresh size={16} className={resendCooldown > 0 ? '' : ''} />
+                {resendCooldown > 0
+                  ? `Resend in ${formatCooldownTime(resendCooldown)}`
+                  : 'Resend Code'
+                }
               </button>
+              {resendCount > 0 && (
+                <p className="text-xs text-gray-500">
+                  {resendCount >= 4
+                    ? 'Maximum resend limit reached. Wait 24 hours between attempts.'
+                    : `Attempt ${resendCount} of 4. Cooldown increases with each resend.`
+                  }
+                </p>
+              )}
               <div className="flex gap-3">
                 <Button
                   variant="secondary"

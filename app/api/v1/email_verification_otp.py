@@ -14,6 +14,23 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/email", tags=["email-verification"])
 
+# Progressive rate limiting cooldowns (in seconds)
+# 1st resend: 1 minute, 2nd: 10 minutes, 3rd: 1 hour, 4th+: 24 hours
+RESEND_COOLDOWNS = [
+    60,        # 1 minute (after 1st send)
+    600,       # 10 minutes (after 2nd send)
+    3600,      # 1 hour (after 3rd send)
+    86400,     # 24 hours (after 4th+ send)
+]
+
+
+def get_cooldown_for_resend_count(count: int) -> int:
+    """Get the cooldown duration in seconds based on resend count."""
+    if count <= 0:
+        return RESEND_COOLDOWNS[0]
+    index = min(count - 1, len(RESEND_COOLDOWNS) - 1)
+    return RESEND_COOLDOWNS[index]
+
 
 def generate_otp() -> str:
     """Generate a 6-digit OTP code"""
@@ -22,29 +39,29 @@ def generate_otp() -> str:
 
 def send_otp_email_handler(email: str, otp: str, username: str) -> bool:
     """
-    Send OTP verification email using SMTP settings from config.
-    Falls back to console logging if SMTP is not configured.
+    Send OTP verification email using Resend API.
+    Falls back to console logging if Resend is not configured.
 
     This function is designed to NEVER raise exceptions - it always returns True/False.
     """
     try:
-        # Try to send via SMTP if configured
-        if settings.smtp_configured:
+        # Try to send via Resend if configured
+        if settings.resend_configured:
             success = smtp_send_otp_email(email, otp, username)
             if success:
-                logger.info(f"OTP email sent to {email} via SMTP")
+                logger.info(f"OTP email sent to {email} via Resend")
                 return True
             else:
-                logger.warning(f"SMTP send failed for {email}, falling back to console")
+                logger.warning(f"Resend send failed for {email}, falling back to console")
 
-        # Fallback to console logging for development or if SMTP fails
-        logger.warning("SMTP not configured or failed. Logging OTP to console.")
+        # Fallback to console logging for development or if Resend fails
+        logger.warning("Resend not configured or failed. Logging OTP to console.")
         print(f"""
 ===========================================
 EMAIL VERIFICATION OTP (DEV MODE)
 ===========================================
 To: {email}
-Subject: Your {settings.SMTP_FROM_NAME} Verification Code
+Subject: Your {settings.RESEND_FROM_NAME} Verification Code
 OTP Code: {otp}
 Expires in: 10 minutes
 ===========================================
@@ -59,12 +76,54 @@ Expires in: 10 minutes
 EMAIL VERIFICATION OTP (FALLBACK - Error occurred)
 ===========================================
 To: {email}
-Subject: Your {settings.SMTP_FROM_NAME} Verification Code
+Subject: Your {settings.RESEND_FROM_NAME} Verification Code
 OTP Code: {otp}
 Expires in: 10 minutes
 ===========================================
         """)
         return True
+
+
+def check_rate_limit(user: models.User) -> tuple[bool, int]:
+    """
+    Check if user can resend OTP based on progressive rate limiting.
+
+    Returns:
+        tuple: (can_resend: bool, seconds_remaining: int)
+    """
+    if not user.email_otp_last_resend_at:
+        return True, 0
+
+    resend_count = user.email_otp_resend_count or 0
+    cooldown = get_cooldown_for_resend_count(resend_count)
+
+    last_resend = user.email_otp_last_resend_at
+    if last_resend.tzinfo is None:
+        last_resend = last_resend.replace(tzinfo=timezone.utc)
+
+    next_allowed = last_resend + timedelta(seconds=cooldown)
+    now = datetime.now(timezone.utc)
+
+    if now >= next_allowed:
+        return True, 0
+
+    seconds_remaining = int((next_allowed - now).total_seconds())
+    return False, seconds_remaining
+
+
+def format_cooldown_message(seconds: int) -> str:
+    """Format cooldown seconds into human-readable message."""
+    if seconds < 60:
+        return f"Please wait {seconds} seconds before requesting another code"
+    elif seconds < 3600:
+        minutes = seconds // 60
+        return f"Please wait {minutes} minute{'s' if minutes > 1 else ''} before requesting another code"
+    elif seconds < 86400:
+        hours = seconds // 3600
+        return f"Please wait {hours} hour{'s' if hours > 1 else ''} before requesting another code"
+    else:
+        hours = seconds // 3600
+        return f"Please wait {hours} hours before requesting another code"
 
 
 @router.post("/send-otp", response_model=schemas.EmailVerificationResponse)
@@ -94,15 +153,13 @@ async def send_otp_verification(
     if existing_secondary:
         raise HTTPException(status_code=400, detail="Email already in use as secondary email")
 
-    # Check rate limiting (only allow resend after 1 minute)
-    if current_user.email_otp_expires_at:
-        # If OTP exists and hasn't expired yet
-        time_remaining = current_user.email_otp_expires_at.replace(tzinfo=timezone.utc) - datetime.now(timezone.utc)
-        if time_remaining > timedelta(minutes=9):  # Within first minute of 10-minute window
-            raise HTTPException(
-                status_code=429,
-                detail=f"Please wait {60 - int((timedelta(minutes=10) - time_remaining).total_seconds())} seconds before requesting another code"
-            )
+    # Check progressive rate limiting
+    can_resend, seconds_remaining = check_rate_limit(current_user)
+    if not can_resend:
+        raise HTTPException(
+            status_code=429,
+            detail=format_cooldown_message(seconds_remaining)
+        )
 
     # Generate new OTP
     otp = generate_otp()
@@ -112,6 +169,10 @@ async def send_otp_verification(
     current_user.email_otp = otp
     current_user.email_otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
     current_user.is_email_verified = False
+
+    # Update resend tracking
+    current_user.email_otp_resend_count = (current_user.email_otp_resend_count or 0) + 1
+    current_user.email_otp_last_resend_at = datetime.now(timezone.utc)
 
     db.commit()
 
@@ -147,17 +208,22 @@ async def verify_otp(
 
     # Check if OTP is expired
     if current_user.email_otp_expires_at:
-        if datetime.now(timezone.utc) > current_user.email_otp_expires_at.replace(tzinfo=timezone.utc):
+        expires_at = current_user.email_otp_expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if datetime.now(timezone.utc) > expires_at:
             raise HTTPException(status_code=400, detail="Verification code has expired. Please request a new one.")
 
     # Verify OTP
     if current_user.email_otp != request.otp:
         raise HTTPException(status_code=400, detail="Invalid verification code")
 
-    # Mark email as verified
+    # Mark email as verified and reset resend counter
     current_user.is_email_verified = True
     current_user.email_otp = None
     current_user.email_otp_expires_at = None
+    current_user.email_otp_resend_count = 0  # Reset counter on successful verification
+    current_user.email_otp_last_resend_at = None
 
     db.commit()
 
@@ -172,7 +238,7 @@ async def resend_otp(
     current_user: models.User = Depends(auth.get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Resend OTP verification code"""
+    """Resend OTP verification code with progressive rate limiting"""
     if current_user.user_type != models.UserType.PLAYER:
         raise HTTPException(status_code=403, detail="Only players can verify email")
 
@@ -182,20 +248,23 @@ async def resend_otp(
     if current_user.is_email_verified:
         raise HTTPException(status_code=400, detail="Email is already verified")
 
-    # Check rate limiting
-    if current_user.email_otp_expires_at:
-        time_remaining = current_user.email_otp_expires_at.replace(tzinfo=timezone.utc) - datetime.now(timezone.utc)
-        if time_remaining > timedelta(minutes=9):  # Within first minute
-            raise HTTPException(
-                status_code=429,
-                detail=f"Please wait {60 - int((timedelta(minutes=10) - time_remaining).total_seconds())} seconds before requesting another code"
-            )
+    # Check progressive rate limiting
+    can_resend, seconds_remaining = check_rate_limit(current_user)
+    if not can_resend:
+        raise HTTPException(
+            status_code=429,
+            detail=format_cooldown_message(seconds_remaining)
+        )
 
     # Generate new OTP
     otp = generate_otp()
 
     current_user.email_otp = otp
     current_user.email_otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+
+    # Update resend tracking
+    current_user.email_otp_resend_count = (current_user.email_otp_resend_count or 0) + 1
+    current_user.email_otp_last_resend_at = datetime.now(timezone.utc)
 
     db.commit()
 
@@ -215,7 +284,7 @@ async def get_email_verification_status(
     current_user: models.User = Depends(auth.get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Get current email verification status"""
+    """Get current email verification status including resend cooldown info"""
     if current_user.user_type != models.UserType.PLAYER:
         raise HTTPException(status_code=403, detail="Only players have email verification")
 
@@ -225,10 +294,25 @@ async def get_email_verification_status(
         current_user.email_otp
     )
 
+    # Calculate cooldown info
+    resend_count = current_user.email_otp_resend_count or 0
+    can_resend, seconds_remaining = check_rate_limit(current_user)
+
+    next_resend_at = None
+    if not can_resend and current_user.email_otp_last_resend_at:
+        cooldown = get_cooldown_for_resend_count(resend_count)
+        last_resend = current_user.email_otp_last_resend_at
+        if last_resend.tzinfo is None:
+            last_resend = last_resend.replace(tzinfo=timezone.utc)
+        next_resend_at = (last_resend + timedelta(seconds=cooldown)).isoformat()
+
     return schemas.EmailStatusResponse(
         secondary_email=current_user.secondary_email,
         is_email_verified=current_user.is_email_verified,
-        verification_pending=verification_pending
+        verification_pending=verification_pending,
+        resend_count=resend_count,
+        next_resend_available_at=next_resend_at,
+        cooldown_seconds=seconds_remaining
     )
 
 
@@ -247,6 +331,8 @@ async def remove_secondary_email(
     current_user.email_otp_expires_at = None
     current_user.email_verification_token = None
     current_user.email_verification_sent_at = None
+    current_user.email_otp_resend_count = 0  # Reset counter
+    current_user.email_otp_last_resend_at = None
 
     db.commit()
 
