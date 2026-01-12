@@ -10,10 +10,12 @@ import { friendsApi, type FriendDetails, type FriendRequest } from '@/api/endpoi
 import { reportsApi } from '@/api/endpoints/reports.api';
 import { formatDistanceToNow } from 'date-fns';
 import { useWebSocket } from '@/contexts/WebSocketContext';
+import { useDashboard } from '@/contexts/DashboardContext';
 
 type FriendsTab = 'friends' | 'received' | 'sent';
 
 export function FriendsSection() {
+  const { openChatWith } = useDashboard();
   const [showAddFriendModal, setShowAddFriendModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<FriendDetails[]>([]);
@@ -190,9 +192,14 @@ export function FriendsSection() {
     }
   };
 
-  const handleMessageFriend = (_friendId: number, username: string) => {
-    // TODO: Navigate to messages section with this friend selected
-    toast.success(`Opening chat with ${username}...`);
+  const handleMessageFriend = (friend: FriendDetails) => {
+    openChatWith({
+      id: friend.id,
+      username: friend.username,
+      full_name: friend.full_name,
+      profile_picture: friend.profile_picture,
+      is_online: isFriendOnline(friend.id, friend.is_online),
+    });
   };
 
   const openReportModal = async (friend: FriendDetails) => {
@@ -385,7 +392,7 @@ export function FriendsSection() {
                   <div className="flex gap-2">
                     <button
                       type="button"
-                      onClick={() => handleMessageFriend(friend.id, friend.username)}
+                      onClick={() => handleMessageFriend(friend)}
                       className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1"
                     >
                       <MdMessage size={16} />

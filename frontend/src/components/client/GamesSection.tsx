@@ -61,8 +61,18 @@ export function GamesSection() {
       // Get client's selected games
       const clientGamesData = await gamesApi.getClientGames();
       setClientGames(clientGamesData);
-      const selected = new Set(clientGamesData.map(cg => cg.game_id));
-      setSelectedGameIds(selected);
+
+      // Only include game IDs that exist in the available games list
+      const validGameIds = new Set<number>();
+      const availableGameIds = new Set(allGamesData.map(g => g.id));
+
+      clientGamesData.forEach(cg => {
+        if (availableGameIds.has(cg.game_id)) {
+          validGameIds.add(cg.game_id);
+        }
+      });
+
+      setSelectedGameIds(validGameIds);
 
       // Log for debugging
       if (allGamesData.length === 0) {
@@ -94,13 +104,27 @@ export function GamesSection() {
   const handleSaveSelection = async () => {
     setSaving(true);
     try {
-      await gamesApi.selectGames(Array.from(selectedGameIds));
+      // Only send game IDs that exist in the current available games list
+      const validGameIds = Array.from(selectedGameIds).filter(id =>
+        allGames.some(game => game.id === id && game.is_active)
+      );
+
+      if (validGameIds.length !== selectedGameIds.size) {
+        // Some games were filtered out, update the selection
+        setSelectedGameIds(new Set(validGameIds));
+        toast.error('Some games are no longer available and were removed from selection');
+      }
+
+      await gamesApi.selectGames(validGameIds);
       toast.success('Game selection updated successfully');
       loadGamesData();
       setActiveTab('my-games');
-    } catch (error) {
-      toast.error('Failed to update game selection');
+    } catch (error: any) {
+      const errorMessage = error?.detail || error?.message || 'Failed to update game selection';
+      toast.error(errorMessage);
       console.error(error);
+      // Reload to get fresh data
+      loadGamesData();
     } finally {
       setSaving(false);
     }
