@@ -116,6 +116,17 @@ from app.schemas.ticket import (
     TicketMessageCreate,
     TicketStatsResponse
 )
+from app.schemas.community import (
+    PostVisibility,
+    PostAuthor,
+    CreatePostRequest,
+    UpdatePostRequest,
+    CreateCommentRequest,
+    CommentResponse,
+    PostResponse,
+    PostWithCommentsResponse,
+    PaginatedPostsResponse
+)
 
 __all__ = [
     # Common
@@ -239,4 +250,14 @@ __all__ = [
     "TicketListResponse",
     "TicketMessageCreate",
     "TicketStatsResponse",
+    # Community
+    "PostVisibility",
+    "PostAuthor",
+    "CreatePostRequest",
+    "UpdatePostRequest",
+    "CreateCommentRequest",
+    "CommentResponse",
+    "PostResponse",
+    "PostWithCommentsResponse",
+    "PaginatedPostsResponse",
 ]

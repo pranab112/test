@@ -10,6 +10,7 @@ import { RewardsSection } from '@/components/player/RewardsSection';
 import { ReviewsSection } from '@/components/player/ReviewsSection';
 import { ReportsSection } from '@/components/player/ReportsSection';
 import { SettingsSection } from '@/components/player/SettingsSection';
+import { CommunitySection } from '@/components/common/CommunitySection';
 
 const STORAGE_KEY = 'player_active_section';
 
@@ -40,6 +41,8 @@ export default function PlayerDashboard() {
         return <ReviewsSection />;
       case 'reports':
         return <ReportsSection />;
+      case 'community':
+        return <CommunitySection userType="player" />;
       case 'settings':
         return <SettingsSection />;
       default:

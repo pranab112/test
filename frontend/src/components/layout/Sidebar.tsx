@@ -3,7 +3,8 @@ import { GiCardAceSpades } from 'react-icons/gi';
 import {
   MdDashboard, MdPeople, MdSettings, MdMessage,
   MdCheckCircle, MdFlag, MdStar, MdCardGiftcard,
-  MdBroadcastOnPersonal, MdGroup, MdVideogameAsset, MdSupport
+  MdBroadcastOnPersonal, MdGroup, MdVideogameAsset, MdSupport,
+  MdForum
 } from 'react-icons/md';
 import { FiLogOut, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { FaUsers, FaGamepad, FaChartLine, FaGift } from 'react-icons/fa';
@@ -90,6 +91,7 @@ export function Sidebar({ activeSection, onSectionChange, isMobile = false }: Si
         { id: 'games', label: 'Games Library', icon: FaGamepad },
         { id: 'promotions', label: 'Promotions', icon: MdCardGiftcard },
         { id: 'analytics', label: 'Analytics', icon: FaChartLine },
+        { id: 'community', label: 'Community', icon: MdForum },
         { id: 'friends', label: 'Friends', icon: MdGroup },
         { id: 'messages', label: 'Messages', icon: MdMessage },
         { id: 'reports', label: 'Reports', icon: MdFlag },
@@ -100,6 +102,7 @@ export function Sidebar({ activeSection, onSectionChange, isMobile = false }: Si
       return [
         { id: 'home', label: 'Home', icon: MdDashboard },
         { id: 'clients', label: 'Clients', icon: FaUsers },
+        { id: 'community', label: 'Community', icon: MdForum },
         { id: 'friends', label: 'Friends', icon: MdGroup },
         { id: 'messages', label: 'Messages', icon: MdMessage },
         { id: 'promotions', label: 'Promotions', icon: MdCardGiftcard },

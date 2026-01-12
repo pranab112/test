@@ -120,3 +120,16 @@ export {
 
 // Tickets API
 export { ticketsApi } from './tickets.api';
+
+// Community API
+export {
+  communityApi,
+  type PostAuthor,
+  type PostComment,
+  type CommunityPost,
+  type PaginatedPostsResponse,
+  type CreatePostRequest,
+  type CreateCommentRequest,
+  type LikeResponse,
+  type ImageUploadResponse,
+} from './community.api';

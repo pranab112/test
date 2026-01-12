@@ -36,6 +36,7 @@ from app.models.offer import PlatformOffer, OfferClaim
 from app.models.ticket import Ticket, TicketMessage
 from app.models.referral import Referral, REFERRAL_BONUS_CREDITS
 from app.models.bet_transaction import BetTransaction
+from app.models.community import CommunityPost, PostComment, PostLike, PostVisibility
 
 __all__ = [
     # Base
@@ -81,4 +82,8 @@ __all__ = [
     "Referral",
     "REFERRAL_BONUS_CREDITS",
     "BetTransaction",
+    "CommunityPost",
+    "PostComment",
+    "PostLike",
+    "PostVisibility",
 ]
