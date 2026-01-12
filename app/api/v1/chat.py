@@ -530,3 +530,84 @@ async def get_message_stats(
         "unread_messages": unread_messages,
         "unique_conversations": unique_conversations
     }
+
+
+# ===== BROADCASTS ENDPOINTS =====
+
+@router.get("/broadcasts")
+async def get_broadcasts(
+    skip: int = 0,
+    limit: int = 50,
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Get broadcast messages received by the current user"""
+    # Broadcasts are messages from admin containing [ADMIN BROADCAST] prefix
+    broadcasts = db.query(models.Message).filter(
+        models.Message.receiver_id == current_user.id,
+        models.Message.content.like("[ADMIN BROADCAST]%")
+    ).order_by(models.Message.created_at.desc()).offset(skip).limit(limit).all()
+
+    total = db.query(models.Message).filter(
+        models.Message.receiver_id == current_user.id,
+        models.Message.content.like("[ADMIN BROADCAST]%")
+    ).count()
+
+    unread = db.query(models.Message).filter(
+        models.Message.receiver_id == current_user.id,
+        models.Message.content.like("[ADMIN BROADCAST]%"),
+        models.Message.is_read == False
+    ).count()
+
+    return {
+        "broadcasts": [
+            {
+                "id": b.id,
+                "content": b.content.replace("[ADMIN BROADCAST] ", ""),
+                "is_read": b.is_read,
+                "created_at": b.created_at.isoformat() if b.created_at else None
+            }
+            for b in broadcasts
+        ],
+        "total": total,
+        "unread": unread
+    }
+
+
+@router.put("/broadcasts/{broadcast_id}/read")
+async def mark_broadcast_read(
+    broadcast_id: int,
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Mark a broadcast as read"""
+    broadcast = db.query(models.Message).filter(
+        models.Message.id == broadcast_id,
+        models.Message.receiver_id == current_user.id,
+        models.Message.content.like("[ADMIN BROADCAST]%")
+    ).first()
+
+    if not broadcast:
+        raise HTTPException(status_code=404, detail="Broadcast not found")
+
+    broadcast.is_read = True
+    db.commit()
+
+    return {"message": "Broadcast marked as read"}
+
+
+@router.put("/broadcasts/read-all")
+async def mark_all_broadcasts_read(
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Mark all broadcasts as read"""
+    db.query(models.Message).filter(
+        models.Message.receiver_id == current_user.id,
+        models.Message.content.like("[ADMIN BROADCAST]%"),
+        models.Message.is_read == False
+    ).update({"is_read": True}, synchronize_session=False)
+
+    db.commit()
+
+    return {"message": "All broadcasts marked as read"}

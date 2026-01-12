@@ -12,6 +12,7 @@ import { ReviewsSection } from '@/components/client/ReviewsSection';
 import { ReportsSection } from '@/components/client/ReportsSection';
 import { SettingsSection } from '@/components/client/SettingsSection';
 import { CommunitySection } from '@/components/common/CommunitySection';
+import { BroadcastSection } from '@/components/common/BroadcastSection';
 
 const STORAGE_KEY = 'client_active_section';
 
@@ -40,6 +41,8 @@ export default function ClientDashboard() {
         return <AnalyticsSection />;
       case 'community':
         return <CommunitySection userType="client" />;
+      case 'broadcasts':
+        return <BroadcastSection />;
       case 'friends':
         return <FriendsSection />;
       case 'messages':

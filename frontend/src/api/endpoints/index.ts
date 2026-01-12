@@ -45,6 +45,8 @@ export {
   type MessageListResponse,
   type SendMessageRequest,
   type ChatStats,
+  type Broadcast,
+  type BroadcastsResponse,
 } from './chat.api';
 
 // Friends API
