@@ -33,9 +33,13 @@ export const API_ENDPOINTS = {
   USERS: {
     BASE: '/users',
     SEARCH: '/users/search',
+    ALL: '/users/all',
+    PROFILE: '/users',
+    ONLINE_STATUS: '/users/online-status',
   },
   FRIENDS: {
     BASE: '/friends',
+    LIST: '/friends/list',
     REQUESTS: '/friends/requests/pending',
     SEND: '/friends/send',
     ACCEPT: '/friends/accept',
@@ -50,6 +54,9 @@ export const API_ENDPOINTS = {
     SEND_IMAGE: '/chat/send/image',
     SEND_VOICE: '/chat/send/voice',
     STATS: '/chat/stats',
+    BROADCASTS: '/chat/broadcasts',
+    BROADCAST_READ: '/chat/broadcasts',
+    BROADCAST_READ_ALL: '/chat/broadcasts/read-all',
   },
   GAMES: {
     BASE: '/games',
@@ -68,10 +75,50 @@ export const API_ENDPOINTS = {
   },
   PROMOTIONS: {
     BASE: '/promotions',
+    CREATE: '/promotions/create',
+    MY_PROMOTIONS: '/promotions/my-promotions',
+    AVAILABLE: '/promotions/available',
+    CLAIM: '/promotions',
+    STATS: '/promotions/stats',
   },
   CLIENT: {
     DASHBOARD: '/client/dashboard',
     PLAYERS: '/client/players',
     ANALYTICS: '/client/analytics',
+  },
+  COMMUNITY: {
+    POSTS: '/community/posts',
+    POST: '/community/posts',
+    LIKE: '/community/posts',
+    COMMENTS: '/community/posts',
+  },
+  SETTINGS: {
+    PROFILE: '/settings/profile',
+    NOTIFICATIONS: '/settings/notifications',
+    DELETE_ACCOUNT: '/settings/delete-account',
+    PROFILE_PICTURE: '/settings/profile-picture',
+    EMAIL_VERIFICATION: '/settings/email-verification',
+    VERIFY_EMAIL_OTP: '/settings/verify-email-otp',
+    RESEND_EMAIL_OTP: '/settings/resend-email-otp',
+    EMAIL_STATUS: '/settings/email-verification-status',
+    PAYMENT_METHODS: '/settings/payment-methods',
+    MY_PAYMENT_PREFERENCES: '/settings/my-payment-preferences',
+  },
+  REFERRALS: {
+    MY_CODE: '/referrals/my-code',
+    GENERATE_CODE: '/referrals/generate-code',
+    STATS: '/referrals/stats',
+    LIST: '/referrals/list',
+  },
+  TICKETS: {
+    BASE: '/tickets',
+    MESSAGES: '/tickets',
+  },
+  REVIEWS: {
+    BASE: '/reviews',
+    USER: '/reviews/user',
+  },
+  REPORTS: {
+    BASE: '/reports',
   },
 } as const;

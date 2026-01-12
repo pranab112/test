@@ -16,32 +16,61 @@ import { Button, Input } from '../src/components/ui';
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../src/constants/theme';
 import { UserType } from '../src/types';
 
+interface FormData {
+  email: string;
+  username: string;
+  password: string;
+  confirmPassword: string;
+  full_name: string;
+  company_name: string;
+  client_identifier: string;
+  referral_code: string;
+}
+
+interface FormErrors {
+  email?: string;
+  username?: string;
+  password?: string;
+  confirmPassword?: string;
+  company_name?: string;
+  client_identifier?: string;
+}
+
 export default function RegisterScreen() {
   const { register, isLoading } = useAuth();
   const [selectedType, setSelectedType] = useState<UserType>(UserType.PLAYER);
-  const [formData, setFormData] = useState({
-    username: '',
+  const [formData, setFormData] = useState<FormData>({
     email: '',
+    username: '',
     password: '',
     confirmPassword: '',
-    fullName: '',
-    companyName: '',
+    full_name: '',
+    company_name: '',
+    client_identifier: '',
+    referral_code: '',
   });
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<FormErrors>({});
+
+  const updateField = (field: keyof FormData, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (errors[field as keyof FormErrors]) {
+      setErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
+  };
 
   const validate = (): boolean => {
-    const newErrors: Record<string, string> = {};
+    const newErrors: FormErrors = {};
+
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Invalid email address';
+    }
 
     if (!formData.username.trim()) {
       newErrors.username = 'Username is required';
     } else if (formData.username.length < 3) {
       newErrors.username = 'Username must be at least 3 characters';
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email';
     }
 
     if (!formData.password) {
@@ -54,8 +83,8 @@ export default function RegisterScreen() {
       newErrors.confirmPassword = 'Passwords do not match';
     }
 
-    if (selectedType === UserType.CLIENT && !formData.companyName.trim()) {
-      newErrors.companyName = 'Company name is required for clients';
+    if (selectedType === UserType.PLAYER && !formData.client_identifier.trim()) {
+      newErrors.client_identifier = 'Client username or company name is required';
     }
 
     setErrors(newErrors);
@@ -66,31 +95,56 @@ export default function RegisterScreen() {
     if (!validate()) return;
 
     try {
-      await register({
-        username: formData.username.trim(),
+      const registerData: any = {
         email: formData.email.trim(),
+        username: formData.username.trim(),
         password: formData.password,
-        full_name: formData.fullName.trim() || undefined,
         user_type: selectedType,
-        company_name: selectedType === UserType.CLIENT ? formData.companyName.trim() : undefined,
-      });
+      };
 
-      // Navigation is handled by auth context
+      if (formData.full_name.trim()) {
+        registerData.full_name = formData.full_name.trim();
+      }
+
+      if (selectedType === UserType.CLIENT && formData.company_name.trim()) {
+        registerData.company_name = formData.company_name.trim();
+      }
+
       if (selectedType === UserType.PLAYER) {
-        router.replace('/(player)/home');
-      } else if (selectedType === UserType.CLIENT) {
-        router.replace('/(client)/dashboard');
+        registerData.client_identifier = formData.client_identifier.trim();
+      }
+
+      if (formData.referral_code.trim()) {
+        registerData.referral_code = formData.referral_code.trim();
+      }
+
+      await register(registerData);
+
+      if (selectedType === UserType.CLIENT) {
+        Alert.alert(
+          'Registration Successful',
+          'Your client account is pending admin approval. You will be notified when approved.',
+          [{ text: 'OK', onPress: () => router.replace('/login') }]
+        );
+      } else {
+        Alert.alert(
+          'Registration Successful',
+          'Your player account is pending client approval. The client will review your request.',
+          [{ text: 'OK', onPress: () => router.replace('/login') }]
+        );
       }
     } catch (error: any) {
-      const message = error?.detail || error?.error?.message || 'Registration failed. Please try again.';
-      Alert.alert('Registration Failed', message);
-    }
-  };
+      let message = 'Registration failed. Please try again.';
 
-  const updateFormData = (key: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [key]: value }));
-    if (errors[key]) {
-      setErrors((prev) => ({ ...prev, [key]: '' }));
+      if (error?.detail) {
+        message = error.detail;
+      } else if (error?.error?.message) {
+        message = error.error.message;
+      } else if (error?.message) {
+        message = error.message;
+      }
+
+      Alert.alert('Registration Failed', message);
     }
   };
 
@@ -102,6 +156,7 @@ export default function RegisterScreen() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={Colors.text} />
@@ -160,61 +215,111 @@ export default function RegisterScreen() {
 
         <View style={styles.form}>
           <Input
-            label="Username"
-            placeholder="Choose a username"
-            value={formData.username}
-            onChangeText={(v) => updateFormData('username', v)}
-            autoCapitalize="none"
-            autoCorrect={false}
-            leftIcon="person-outline"
-            error={errors.username}
-          />
-          <Input
             label="Email"
-            placeholder="Enter your email"
+            placeholder="your@email.com"
             value={formData.email}
-            onChangeText={(v) => updateFormData('email', v)}
+            onChangeText={(v) => updateField('email', v)}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
             leftIcon="mail-outline"
             error={errors.email}
           />
+
+          <Input
+            label="Username"
+            placeholder="Choose a username"
+            value={formData.username}
+            onChangeText={(v) => updateField('username', v)}
+            autoCapitalize="none"
+            autoCorrect={false}
+            leftIcon="person-outline"
+            error={errors.username}
+          />
+
           <Input
             label="Full Name (Optional)"
-            placeholder="Enter your full name"
-            value={formData.fullName}
-            onChangeText={(v) => updateFormData('fullName', v)}
-            leftIcon="text-outline"
+            placeholder="Your full name"
+            value={formData.full_name}
+            onChangeText={(v) => updateField('full_name', v)}
+            leftIcon="person-circle-outline"
           />
+
           {selectedType === UserType.CLIENT && (
             <Input
-              label="Company Name"
-              placeholder="Enter your company name"
-              value={formData.companyName}
-              onChangeText={(v) => updateFormData('companyName', v)}
+              label="Company Name (Optional)"
+              placeholder="Your company name"
+              value={formData.company_name}
+              onChangeText={(v) => updateField('company_name', v)}
               leftIcon="business-outline"
-              error={errors.companyName}
+              error={errors.company_name}
             />
           )}
+
+          {selectedType === UserType.PLAYER && (
+            <Input
+              label="Client Username or Company"
+              placeholder="Enter client username or company"
+              value={formData.client_identifier}
+              onChangeText={(v) => updateField('client_identifier', v)}
+              autoCapitalize="none"
+              leftIcon="business-outline"
+              error={errors.client_identifier}
+            />
+          )}
+
           <Input
             label="Password"
             placeholder="Create a password"
             value={formData.password}
-            onChangeText={(v) => updateFormData('password', v)}
+            onChangeText={(v) => updateField('password', v)}
             secureTextEntry
             leftIcon="lock-closed-outline"
             error={errors.password}
           />
+
           <Input
             label="Confirm Password"
             placeholder="Confirm your password"
             value={formData.confirmPassword}
-            onChangeText={(v) => updateFormData('confirmPassword', v)}
+            onChangeText={(v) => updateField('confirmPassword', v)}
             secureTextEntry
             leftIcon="lock-closed-outline"
             error={errors.confirmPassword}
           />
+
+          <Input
+            label="Referral Code (Optional)"
+            placeholder="Enter referral code for bonus"
+            value={formData.referral_code}
+            onChangeText={(v) => updateField('referral_code', v)}
+            autoCapitalize="characters"
+            leftIcon="gift-outline"
+          />
+
+          {selectedType === UserType.CLIENT && (
+            <View style={[styles.infoBox, styles.infoBoxWarning]}>
+              <Ionicons name="shield-checkmark" size={20} color={Colors.warning} />
+              <Text style={styles.infoBoxText}>
+                Client accounts require admin approval before you can login.
+              </Text>
+            </View>
+          )}
+
+          {selectedType === UserType.PLAYER && (
+            <View style={[styles.infoBox, styles.infoBoxInfo]}>
+              <Ionicons name="information-circle" size={20} color={Colors.info} />
+              <View style={styles.infoBoxContent}>
+                <Text style={[styles.infoBoxText, styles.infoBoxTitle]}>
+                  Player Registration
+                </Text>
+                <Text style={styles.infoBoxText}>
+                  Enter the username or company name of the client you want to register under.
+                  The client will need to approve your account.
+                </Text>
+              </View>
+            </View>
+          )}
 
           <Button
             title="Create Account"
@@ -225,7 +330,7 @@ export default function RegisterScreen() {
 
           <View style={styles.loginContainer}>
             <Text style={styles.loginText}>Already have an account?</Text>
-            <TouchableOpacity onPress={() => router.back()}>
+            <TouchableOpacity onPress={() => router.push('/login')}>
               <Text style={styles.loginLink}>Sign In</Text>
             </TouchableOpacity>
           </View>
@@ -243,6 +348,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     padding: Spacing.lg,
+    paddingTop: Spacing.xl,
   },
   backButton: {
     marginBottom: Spacing.md,
@@ -292,6 +398,35 @@ const styles = StyleSheet.create({
   form: {
     gap: Spacing.sm,
   },
+  infoBox: {
+    flexDirection: 'row',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.sm,
+    marginTop: Spacing.sm,
+  },
+  infoBoxWarning: {
+    backgroundColor: Colors.warning + '15',
+    borderWidth: 1,
+    borderColor: Colors.warning + '30',
+  },
+  infoBoxInfo: {
+    backgroundColor: Colors.info + '15',
+    borderWidth: 1,
+    borderColor: Colors.info + '30',
+  },
+  infoBoxContent: {
+    flex: 1,
+  },
+  infoBoxTitle: {
+    fontWeight: FontWeight.semibold,
+    marginBottom: Spacing.xs,
+  },
+  infoBoxText: {
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+    flex: 1,
+  },
   registerButton: {
     marginTop: Spacing.md,
   },
@@ -300,6 +435,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: Spacing.lg,
+    marginBottom: Spacing.xl,
     gap: Spacing.xs,
   },
   loginText: {

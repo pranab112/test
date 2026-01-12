@@ -13,6 +13,65 @@ export const chatApi = {
     return response as any;
   },
 
+  // Send image message
+  sendImageMessage: async (
+    receiverId: number,
+    imageUri: string,
+    caption?: string
+  ): Promise<Message> => {
+    const formData = new FormData();
+    formData.append('receiver_id', receiverId.toString());
+
+    // Get filename and type from URI
+    const filename = imageUri.split('/').pop() || 'image.jpg';
+    const match = /\.(\w+)$/.exec(filename);
+    const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+    formData.append('file', {
+      uri: imageUri,
+      name: filename,
+      type,
+    } as any);
+
+    if (caption) {
+      formData.append('caption', caption);
+    }
+
+    const response = await api.post(API_ENDPOINTS.CHAT.SEND_IMAGE, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response as any;
+  },
+
+  // Send voice message
+  sendVoiceMessage: async (
+    receiverId: number,
+    audioUri: string,
+    duration: number
+  ): Promise<Message> => {
+    const formData = new FormData();
+    formData.append('receiver_id', receiverId.toString());
+    formData.append('duration', duration.toString());
+
+    // Get filename from URI
+    const filename = audioUri.split('/').pop() || 'audio.m4a';
+
+    formData.append('file', {
+      uri: audioUri,
+      name: filename,
+      type: 'audio/m4a',
+    } as any);
+
+    const response = await api.post(API_ENDPOINTS.CHAT.SEND_VOICE, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response as any;
+  },
+
   // Get conversations
   getConversations: async (): Promise<Conversation[]> => {
     const response = await api.get(API_ENDPOINTS.CHAT.CONVERSATIONS);

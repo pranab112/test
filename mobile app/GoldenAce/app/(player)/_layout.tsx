@@ -76,6 +76,25 @@ export default function PlayerTabLayout() {
         }}
       />
       <Tabs.Screen
+        name="community"
+        options={{
+          title: 'Community',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="globe" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="broadcasts"
+        options={{
+          title: 'News',
+          headerTitle: 'Announcements',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="megaphone" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',

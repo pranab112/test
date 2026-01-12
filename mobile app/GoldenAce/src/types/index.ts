@@ -199,6 +199,126 @@ export interface DashboardStats {
   pending_claims: number;
 }
 
+// Community Types
+export interface CommunityPost {
+  id: number;
+  content: string;
+  image_url?: string;
+  author_id: number;
+  author_username: string;
+  author_full_name?: string;
+  author_profile_picture?: string;
+  author_user_type: string;
+  likes_count: number;
+  comments_count: number;
+  is_liked_by_me: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PostComment {
+  id: number;
+  content: string;
+  post_id: number;
+  author_id: number;
+  author_username: string;
+  author_full_name?: string;
+  author_profile_picture?: string;
+  created_at: string;
+}
+
+// Referral Types
+export interface ReferralCode {
+  code: string;
+  created_at: string;
+}
+
+export interface ReferralStats {
+  total_referrals: number;
+  completed_referrals: number;
+  pending_referrals: number;
+  total_credits_earned: number;
+}
+
+export interface Referral {
+  id: number;
+  referred_user_id: number;
+  referred_username: string;
+  referred_full_name?: string;
+  referred_profile_picture?: string;
+  status: 'pending' | 'completed' | 'expired';
+  bonus_amount: number;
+  created_at: string;
+  completed_at?: string;
+}
+
+// Broadcast Types
+export interface Broadcast {
+  id: number;
+  title: string;
+  content: string;
+  broadcast_type: 'announcement' | 'promotion' | 'maintenance' | 'update';
+  priority: 'low' | 'medium' | 'high';
+  is_read: boolean;
+  created_at: string;
+  expires_at?: string;
+  sender_id?: number;
+  sender_username?: string;
+}
+
+// Ticket/Support Types
+export type TicketCategory =
+  | 'account'
+  | 'payment'
+  | 'technical'
+  | 'game'
+  | 'report'
+  | 'other';
+
+export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
+export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
+
+export interface Ticket {
+  id: number;
+  subject: string;
+  description: string;
+  category: TicketCategory;
+  status: TicketStatus;
+  priority: TicketPriority;
+  user_id: number;
+  assigned_to?: number;
+  assigned_to_username?: string;
+  created_at: string;
+  updated_at: string;
+  resolved_at?: string;
+}
+
+export interface TicketMessage {
+  id: number;
+  ticket_id: number;
+  sender_id: number;
+  sender_username: string;
+  sender_full_name?: string;
+  sender_profile_picture?: string;
+  content: string;
+  is_staff: boolean;
+  created_at: string;
+}
+
+// Review Types
+export interface Review {
+  id: number;
+  reviewer_id: number;
+  reviewer_username: string;
+  reviewer_full_name?: string;
+  reviewer_profile_picture?: string;
+  reviewee_id: number;
+  rating: number;
+  text: string;
+  is_approved: boolean;
+  created_at: string;
+}
+
 // API Response Types
 export interface ApiError {
   success: false;
