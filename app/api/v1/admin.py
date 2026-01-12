@@ -1,13 +1,21 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from pydantic import BaseModel
 import secrets
 import string
+import os
+import uuid
+import shutil
 from app import models, schemas, auth
 from app.database import get_db
-from app.models import UserType
+from app.models import UserType, ReferralStatus, REFERRAL_BONUS_CREDITS
+from app.services import send_referral_bonus_email
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_, or_
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -153,11 +161,47 @@ def approve_user(
         )
 
     user.is_approved = True
+
+    # Process referral bonus if this user was referred
+    referral_bonus_credited = False
+    referral = db.query(models.Referral).filter(
+        models.Referral.referred_id == user.id,
+        models.Referral.status == ReferralStatus.PENDING
+    ).first()
+
+    if referral:
+        # Get the referrer and credit their bonus
+        referrer = db.query(models.User).filter(
+            models.User.id == referral.referrer_id
+        ).first()
+
+        if referrer:
+            referrer.credits = (referrer.credits or 0) + referral.bonus_amount
+            referral.status = ReferralStatus.COMPLETED
+            referral.completed_at = func.now()
+            referral_bonus_credited = True
+
+            # Send email notification to referrer about bonus
+            try:
+                if referrer.email:
+                    send_referral_bonus_email(
+                        to_email=referrer.email,
+                        username=referrer.username,
+                        referred_username=user.username,
+                        bonus_amount=referral.bonus_amount
+                    )
+            except Exception as e:
+                logger.error(f"Failed to send referral bonus email: {e}")
+
     db.commit()
     db.refresh(user)
 
+    message = f"User {user.username} approved successfully"
+    if referral_bonus_credited:
+        message += f". Referral bonus of {REFERRAL_BONUS_CREDITS} credits credited to referrer."
+
     return {
-        "message": f"User {user.username} approved successfully",
+        "message": message,
         "user": user
     }
 
@@ -243,7 +287,7 @@ def delete_user(
     admin: models.User = Depends(get_admin_user),
     db: Session = Depends(get_db)
 ):
-    """Delete a user account"""
+    """Delete a user account and all related data"""
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -263,10 +307,86 @@ def delete_user(
         )
 
     username = user.username
-    db.delete(user)
-    db.commit()
 
-    return {"message": f"User {username} deleted successfully"}
+    try:
+        # Delete related records in order to avoid foreign key constraint violations
+
+        # Delete messages (sent and received)
+        db.query(models.Message).filter(
+            or_(models.Message.sender_id == user_id, models.Message.receiver_id == user_id)
+        ).delete(synchronize_session=False)
+
+        # Delete friend requests (sent and received)
+        db.query(models.FriendRequest).filter(
+            or_(models.FriendRequest.sender_id == user_id, models.FriendRequest.receiver_id == user_id)
+        ).delete(synchronize_session=False)
+
+        # Delete reports (reported by or reported user)
+        db.query(models.Report).filter(
+            or_(models.Report.reporter_id == user_id, models.Report.reported_user_id == user_id)
+        ).delete(synchronize_session=False)
+
+        # Delete reviews
+        if hasattr(models, 'Review'):
+            db.query(models.Review).filter(
+                or_(models.Review.reviewer_id == user_id, models.Review.reviewed_user_id == user_id)
+            ).delete(synchronize_session=False)
+
+        # Delete tickets and ticket messages
+        if hasattr(models, 'TicketMessage'):
+            db.query(models.TicketMessage).filter(models.TicketMessage.sender_id == user_id).delete(synchronize_session=False)
+        if hasattr(models, 'Ticket'):
+            db.query(models.Ticket).filter(models.Ticket.user_id == user_id).delete(synchronize_session=False)
+
+        # Delete bet transactions
+        if hasattr(models, 'BetTransaction'):
+            db.query(models.BetTransaction).filter(models.BetTransaction.user_id == user_id).delete(synchronize_session=False)
+
+        # Delete game credentials (both as client and player)
+        if hasattr(models, 'GameCredential'):
+            db.query(models.GameCredential).filter(
+                or_(models.GameCredential.client_id == user_id, models.GameCredential.player_id == user_id)
+            ).delete(synchronize_session=False)
+
+        # Delete client games
+        if hasattr(models, 'ClientGame'):
+            db.query(models.ClientGame).filter(models.ClientGame.client_id == user_id).delete(synchronize_session=False)
+
+        # Delete promotion claims
+        if hasattr(models, 'PromotionClaim'):
+            db.query(models.PromotionClaim).filter(models.PromotionClaim.player_id == user_id).delete(synchronize_session=False)
+
+        # Delete promotions (if client)
+        if hasattr(models, 'Promotion'):
+            db.query(models.Promotion).filter(models.Promotion.client_id == user_id).delete(synchronize_session=False)
+
+        # Delete offer claims
+        if hasattr(models, 'OfferClaim'):
+            db.query(models.OfferClaim).filter(models.OfferClaim.player_id == user_id).delete(synchronize_session=False)
+
+        # Delete notifications
+        if hasattr(models, 'Notification'):
+            db.query(models.Notification).filter(models.Notification.user_id == user_id).delete(synchronize_session=False)
+
+        # Delete referrals (as referrer or referee)
+        if hasattr(models, 'Referral'):
+            db.query(models.Referral).filter(
+                or_(models.Referral.referrer_id == user_id, models.Referral.referee_id == user_id)
+            ).delete(synchronize_session=False)
+
+        # Finally delete the user
+        db.delete(user)
+        db.commit()
+
+        return {"message": f"User {username} and all related data deleted successfully"}
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to delete user {user_id}: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete user: {str(e)}"
+        )
 
 @router.get("/messages")
 def get_all_messages(
@@ -276,14 +396,41 @@ def get_all_messages(
     db: Session = Depends(get_db)
 ):
     """Get all messages in the system"""
+    from sqlalchemy.orm import joinedload
+
     messages = db.query(models.Message)\
+        .options(joinedload(models.Message.sender), joinedload(models.Message.receiver))\
         .order_by(models.Message.created_at.desc())\
         .offset(skip).limit(limit).all()
 
     total = db.query(models.Message).count()
 
+    # Format messages with sender and receiver info
+    formatted_messages = []
+    for msg in messages:
+        formatted_messages.append({
+            "id": msg.id,
+            "content": msg.content,
+            "is_read": msg.is_read,
+            "created_at": msg.created_at,
+            "sender_id": msg.sender_id,
+            "receiver_id": msg.receiver_id,
+            "sender": {
+                "id": msg.sender.id,
+                "username": msg.sender.username,
+                "full_name": msg.sender.full_name,
+                "user_type": msg.sender.user_type
+            } if msg.sender else None,
+            "receiver": {
+                "id": msg.receiver.id,
+                "username": msg.receiver.username,
+                "full_name": msg.receiver.full_name,
+                "user_type": msg.receiver.user_type
+            } if msg.receiver else None
+        })
+
     return {
-        "messages": messages,
+        "messages": formatted_messages,
         "total": total,
         "skip": skip,
         "limit": limit
@@ -477,18 +624,91 @@ def reset_user_password(
         temp_password=new_password if request.generate_random else None
     )
 
+@router.post("/users/{user_id}/add-credits")
+def add_credits_to_user(
+    user_id: int,
+    amount: int,
+    reason: Optional[str] = None,
+    admin: models.User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Add or subtract credits from a user account (admin only).
+    Use positive amount to add credits, negative to subtract.
+    """
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Cannot modify admin credits
+    if user.user_type == UserType.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot modify admin credits"
+        )
+
+    # Calculate new balance
+    current_credits = user.credits or 0
+    new_credits = current_credits + amount
+
+    # Prevent negative balance
+    if new_credits < 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot set negative credits. Current balance: {current_credits}, trying to subtract: {abs(amount)}"
+        )
+
+    # Update credits
+    user.credits = new_credits
+
+    # Send notification message to user
+    action = "added to" if amount > 0 else "deducted from"
+    abs_amount = abs(amount)
+    dollar_value = abs_amount / 100  # 100 credits = $1
+
+    message_content = f"💰 Credit Update\n\n{abs_amount} credits (${dollar_value:.2f}) have been {action} your account by admin."
+    if reason:
+        message_content += f"\n\nReason: {reason}"
+    message_content += f"\n\nYour new balance: {new_credits} credits (${new_credits/100:.2f})"
+
+    notification = models.Message(
+        sender_id=admin.id,
+        receiver_id=user.id,
+        message_type=models.MessageType.TEXT,
+        content=message_content,
+        is_read=False
+    )
+    db.add(notification)
+
+    db.commit()
+    db.refresh(user)
+
+    return {
+        "message": f"Successfully {'added' if amount > 0 else 'deducted'} {abs_amount} credits {'to' if amount > 0 else 'from'} {user.username}",
+        "user_id": user.id,
+        "username": user.username,
+        "previous_balance": current_credits,
+        "amount_changed": amount,
+        "new_balance": new_credits,
+        "reason": reason
+    }
+
+
+class BroadcastRequest(BaseModel):
+    message: str
+    user_type: Optional[UserType] = None
+
 @router.post("/broadcast-message")
 def broadcast_message(
-    message: str,
-    user_type: Optional[UserType] = None,
+    request: BroadcastRequest,
     admin: models.User = Depends(get_admin_user),
     db: Session = Depends(get_db)
 ):
     """Send a broadcast message to all users or specific user type"""
     query = db.query(models.User).filter(models.User.id != admin.id)
 
-    if user_type:
-        query = query.filter(models.User.user_type == user_type)
+    if request.user_type:
+        query = query.filter(models.User.user_type == request.user_type)
 
     users = query.all()
 
@@ -498,7 +718,7 @@ def broadcast_message(
             sender_id=admin.id,
             receiver_id=user.id,
             message_type=models.MessageType.TEXT,
-            content=f"[ADMIN BROADCAST] {message}",
+            content=f"[ADMIN BROADCAST] {request.message}",
             is_read=False
         )
         db.add(new_message)
@@ -626,4 +846,49 @@ def delete_game(
     db.commit()
 
     return {"message": f"Game '{game_name}' deleted successfully"}
+
+
+@router.post("/games/{game_id}/image")
+async def upload_game_image(
+    game_id: int,
+    image: UploadFile = File(...),
+    admin: models.User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Upload an image for a game"""
+    db_game = db.query(models.Game).filter(models.Game.id == game_id).first()
+    if not db_game:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    # Validate file type
+    allowed_types = ["image/jpeg", "image/png", "image/gif", "image/webp"]
+    if image.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file type. Allowed: {', '.join(allowed_types)}"
+        )
+
+    # Create uploads directory if it doesn't exist
+    upload_dir = "uploads/games"
+    os.makedirs(upload_dir, exist_ok=True)
+
+    # Generate unique filename
+    file_ext = os.path.splitext(image.filename)[1] if image.filename else ".png"
+    unique_filename = f"{uuid.uuid4()}{file_ext}"
+    file_path = os.path.join(upload_dir, unique_filename)
+
+    # Save file
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(image.file, buffer)
+    except Exception as e:
+        logger.error(f"Failed to save game image: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save image")
+
+    # Update game icon_url
+    icon_url = f"/uploads/games/{unique_filename}"
+    db_game.icon_url = icon_url
+    db.commit()
+
+    return {"icon_url": icon_url, "message": "Game image uploaded successfully"}
 

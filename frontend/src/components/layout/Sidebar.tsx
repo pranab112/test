@@ -3,11 +3,13 @@ import { GiCardAceSpades } from 'react-icons/gi';
 import {
   MdDashboard, MdPeople, MdSettings, MdMessage,
   MdCheckCircle, MdFlag, MdStar, MdCardGiftcard,
-  MdBroadcastOnPersonal, MdGroup, MdVideogameAsset
+  MdBroadcastOnPersonal, MdGroup, MdVideogameAsset, MdSupport,
+  MdForum, MdCampaign
 } from 'react-icons/md';
 import { FiLogOut, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { FaUsers, FaGamepad, FaChartLine, FaGift } from 'react-icons/fa';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications, type NotificationCounts } from '@/contexts/NotificationContext';
 import { UserType } from '@/types';
 
 interface NavItem {
@@ -26,7 +28,44 @@ interface SidebarProps {
 
 export function Sidebar({ activeSection, onSectionChange, isMobile = false }: SidebarProps) {
   const { user, logout } = useAuth();
+  const { counts, clearCount } = useNotifications();
   const [isCollapsed, setIsCollapsed] = useState(!isMobile ? false : false);
+
+  // Map section IDs to notification count keys
+  const sectionToCountKey: Record<string, keyof NotificationCounts | null> = {
+    messages: 'messages',
+    promotions: 'promotions',
+    friends: 'friends',
+    reports: 'reports',
+    approvals: 'approvals',
+  };
+
+  // Handle section change with notification clearing
+  const handleSectionChange = (sectionId: string) => {
+    const countKey = sectionToCountKey[sectionId];
+    if (countKey) {
+      clearCount(countKey);
+    }
+    onSectionChange(sectionId);
+  };
+
+  // Get badge count for a section
+  const getBadge = (sectionId: string): number | undefined => {
+    switch (sectionId) {
+      case 'messages':
+        return counts.messages > 0 ? counts.messages : undefined;
+      case 'promotions':
+        return counts.promotions > 0 ? counts.promotions : undefined;
+      case 'friends':
+        return counts.friends > 0 ? counts.friends : undefined;
+      case 'reports':
+        return counts.reports > 0 ? counts.reports : undefined;
+      case 'approvals':
+        return counts.approvals > 0 ? counts.approvals : undefined;
+      default:
+        return undefined;
+    }
+  };
 
   // Navigation items based on user type
   const getNavItems = (): NavItem[] => {
@@ -37,6 +76,7 @@ export function Sidebar({ activeSection, onSectionChange, isMobile = false }: Si
         { id: 'games', label: 'Game Library', icon: MdVideogameAsset },
         { id: 'approvals', label: 'Approvals', icon: MdCheckCircle },
         { id: 'messages', label: 'Messages', icon: MdMessage },
+        { id: 'tickets', label: 'Support Tickets', icon: MdSupport },
         { id: 'promotions', label: 'Promotions', icon: MdCardGiftcard },
         { id: 'reports', label: 'Reports', icon: MdFlag },
         { id: 'reviews', label: 'Reviews', icon: MdStar },
@@ -47,9 +87,12 @@ export function Sidebar({ activeSection, onSectionChange, isMobile = false }: Si
       return [
         { id: 'dashboard', label: 'Dashboard', icon: MdDashboard },
         { id: 'players', label: 'Players', icon: MdPeople },
+        { id: 'approvals', label: 'Approvals', icon: MdCheckCircle },
         { id: 'games', label: 'Games Library', icon: FaGamepad },
         { id: 'promotions', label: 'Promotions', icon: MdCardGiftcard },
         { id: 'analytics', label: 'Analytics', icon: FaChartLine },
+        { id: 'community', label: 'Community', icon: MdForum },
+        { id: 'broadcasts', label: 'Broadcasts', icon: MdCampaign },
         { id: 'friends', label: 'Friends', icon: MdGroup },
         { id: 'messages', label: 'Messages', icon: MdMessage },
         { id: 'reports', label: 'Reports', icon: MdFlag },
@@ -60,6 +103,8 @@ export function Sidebar({ activeSection, onSectionChange, isMobile = false }: Si
       return [
         { id: 'home', label: 'Home', icon: MdDashboard },
         { id: 'clients', label: 'Clients', icon: FaUsers },
+        { id: 'community', label: 'Community', icon: MdForum },
+        { id: 'broadcasts', label: 'Broadcasts', icon: MdCampaign },
         { id: 'friends', label: 'Friends', icon: MdGroup },
         { id: 'messages', label: 'Messages', icon: MdMessage },
         { id: 'promotions', label: 'Promotions', icon: MdCardGiftcard },
@@ -122,12 +167,13 @@ export function Sidebar({ activeSection, onSectionChange, isMobile = false }: Si
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeSection === item.id;
+          const badge = getBadge(item.id);
 
           return (
             <button
               key={item.id}
-              onClick={() => onSectionChange(item.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
+              onClick={() => handleSectionChange(item.id)}
+              className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
                 isActive
                   ? 'bg-gold-gradient text-dark-700 shadow-gold'
                   : 'text-gray-300 hover:bg-dark-300 hover:text-gold-500'
@@ -138,12 +184,16 @@ export function Sidebar({ activeSection, onSectionChange, isMobile = false }: Si
               {!isCollapsed && (
                 <>
                   <span className="flex-1 text-left font-medium">{item.label}</span>
-                  {item.badge !== undefined && item.badge > 0 && (
-                    <span className="bg-gold-500 text-dark-700 text-xs font-bold px-2 py-0.5 rounded-full">
-                      {item.badge}
+                  {badge !== undefined && badge > 0 && (
+                    <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center animate-pulse">
+                      {badge > 99 ? '99+' : badge}
                     </span>
                   )}
                 </>
+              )}
+              {/* Show badge dot when collapsed */}
+              {isCollapsed && badge !== undefined && badge > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
               )}
             </button>
           );

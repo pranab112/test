@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Enum, UniqueConstraint
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Enum, UniqueConstraint, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.models.base import Base
@@ -16,6 +16,7 @@ class PlatformOffer(Base):
 
     # Conditions
     requirement_description = Column(String(500), nullable=True)  # e.g., "Add and verify your email address"
+    requires_screenshot = Column(Boolean, default=False, nullable=False)  # Whether player must submit screenshot proof
     max_claims = Column(Integer, nullable=True)  # Max total claims (null = unlimited)
     max_claims_per_player = Column(Integer, default=1)  # How many times a player can claim
 
@@ -41,13 +42,14 @@ class OfferClaim(Base):
     id = Column(Integer, primary_key=True, index=True)
     offer_id = Column(Integer, ForeignKey("platform_offers.id"), nullable=False)
     player_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    client_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # Client they claim with
+    client_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # Client they claim with (optional)
 
     status = Column(Enum(OfferClaimStatus), default=OfferClaimStatus.PENDING)
     bonus_amount = Column(Integer, nullable=False)  # Amount at time of claim
 
     # For verification-based offers
     verification_data = Column(Text, nullable=True)  # e.g., email address that was verified
+    screenshot_url = Column(String(500), nullable=True)  # Screenshot proof URL if required by offer
 
     claimed_at = Column(DateTime(timezone=True), server_default=func.now())
     processed_at = Column(DateTime(timezone=True), nullable=True)  # When approved/rejected
@@ -59,7 +61,7 @@ class OfferClaim(Base):
     client = relationship("User", foreign_keys=[client_id], backref="received_claims")
     processor = relationship("User", foreign_keys=[processed_by])
 
-    # Constraints - one claim per offer per player per client
+    # Constraints - one claim per offer per player
     __table_args__ = (
-        UniqueConstraint('offer_id', 'player_id', 'client_id', name='unique_offer_claim'),
+        UniqueConstraint('offer_id', 'player_id', name='unique_offer_claim_per_player'),
     )

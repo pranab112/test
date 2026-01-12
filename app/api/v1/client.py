@@ -4,9 +4,13 @@ from sqlalchemy import func
 from typing import List, Optional
 from app import models, schemas, auth
 from app.database import get_db
-from app.models import UserType
+from app.models import UserType, ReferralStatus, REFERRAL_BONUS_CREDITS
+from app.services import send_referral_bonus_email
 import random
 import string
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/client", tags=["client"])
 
@@ -74,6 +78,41 @@ def register_player(
     db.add(new_player)
     db.commit()
     db.refresh(new_player)
+
+    # Handle referral code if provided
+    if player.referral_code:
+        # Find the referrer by their referral code
+        referrer = db.query(models.User).filter(
+            models.User.referral_code == player.referral_code,
+            models.User.is_active == True
+        ).first()
+
+        if referrer and referrer.id != new_player.id:
+            # Since client-created players are auto-approved, credit the bonus immediately
+            referrer.credits = (referrer.credits or 0) + REFERRAL_BONUS_CREDITS
+
+            # Create a completed referral record
+            referral = models.Referral(
+                referrer_id=referrer.id,
+                referred_id=new_player.id,
+                status=ReferralStatus.COMPLETED,
+                bonus_amount=REFERRAL_BONUS_CREDITS
+            )
+            db.add(referral)
+            db.commit()
+            logger.info(f"Referral bonus credited: {referrer.username} referred {new_player.username}, {REFERRAL_BONUS_CREDITS} credits added")
+
+            # Send email notification to referrer about bonus
+            try:
+                if referrer.email:
+                    send_referral_bonus_email(
+                        to_email=referrer.email,
+                        username=referrer.username,
+                        referred_username=new_player.username,
+                        bonus_amount=REFERRAL_BONUS_CREDITS
+                    )
+            except Exception as e:
+                logger.error(f"Failed to send referral bonus email: {e}")
 
     # Automatically create a friend connection between client and player
     # This allows them to communicate
@@ -299,6 +338,234 @@ def bulk_register_players(
         "failed_players": failed_players
     }
 
+@router.get("/analytics", response_model=schemas.AnalyticsResponse)
+async def get_analytics(
+    current_user: models.User = Depends(get_client_user),
+    db: Session = Depends(get_db)
+):
+    """Get comprehensive analytics data for the client dashboard"""
+    from datetime import datetime, timedelta
+    from sqlalchemy import or_
+
+    today = datetime.utcnow().date()
+    yesterday = today - timedelta(days=1)
+    last_week = today - timedelta(days=7)
+    two_weeks_ago = today - timedelta(days=14)
+
+    # --- Total Friends ---
+    total_friends = len(current_user.friends) if current_user.friends else 0
+
+    # Friends added in last week vs week before for trend
+    # Note: We'll approximate trends based on available data
+    friends_trend = {"value": "+0%", "is_positive": True}
+
+    # --- Total Messages ---
+    total_messages_sent = db.query(models.Message).filter(
+        models.Message.sender_id == current_user.id
+    ).count()
+    total_messages_received = db.query(models.Message).filter(
+        models.Message.receiver_id == current_user.id
+    ).count()
+    total_messages = total_messages_sent + total_messages_received
+
+    # Messages in last week vs week before for trend
+    messages_this_week = db.query(models.Message).filter(
+        or_(
+            models.Message.sender_id == current_user.id,
+            models.Message.receiver_id == current_user.id
+        ),
+        func.date(models.Message.created_at) >= last_week
+    ).count()
+    messages_last_week = db.query(models.Message).filter(
+        or_(
+            models.Message.sender_id == current_user.id,
+            models.Message.receiver_id == current_user.id
+        ),
+        func.date(models.Message.created_at) >= two_weeks_ago,
+        func.date(models.Message.created_at) < last_week
+    ).count()
+
+    if messages_last_week > 0:
+        msg_change = ((messages_this_week - messages_last_week) / messages_last_week) * 100
+        messages_trend = {
+            "value": f"{'+' if msg_change >= 0 else ''}{int(msg_change)}%",
+            "is_positive": msg_change >= 0
+        }
+    else:
+        messages_trend = {"value": f"+{messages_this_week}", "is_positive": True}
+
+    # --- Active Players ---
+    direct_active = db.query(models.User).filter(
+        models.User.created_by_client_id == current_user.id,
+        models.User.user_type == models.UserType.PLAYER,
+        models.User.is_active == True
+    ).count()
+
+    credential_active = db.query(models.User).join(
+        models.GameCredentials,
+        models.GameCredentials.player_id == models.User.id
+    ).filter(
+        models.GameCredentials.created_by_client_id == current_user.id,
+        models.User.user_type == models.UserType.PLAYER,
+        models.User.is_active == True,
+        models.User.created_by_client_id != current_user.id
+    ).distinct().count()
+
+    active_players = direct_active + credential_active
+    players_trend = {"value": "+0%", "is_positive": True}
+
+    # --- New Signups (today) ---
+    new_signups = db.query(models.User).filter(
+        models.User.created_by_client_id == current_user.id,
+        models.User.user_type == models.UserType.PLAYER,
+        func.date(models.User.created_at) == today
+    ).count()
+
+    signups_yesterday = db.query(models.User).filter(
+        models.User.created_by_client_id == current_user.id,
+        models.User.user_type == models.UserType.PLAYER,
+        func.date(models.User.created_at) == yesterday
+    ).count()
+
+    if signups_yesterday > 0:
+        signup_change = ((new_signups - signups_yesterday) / signups_yesterday) * 100
+        signups_trend = {
+            "value": f"{'+' if signup_change >= 0 else ''}{int(signup_change)}%",
+            "is_positive": signup_change >= 0
+        }
+    else:
+        signups_trend = {"value": f"+{new_signups}", "is_positive": True}
+
+    # --- Avg Session Time (placeholder - would need session tracking) ---
+    avg_session_time = "N/A"
+    session_time_trend = {"value": "N/A", "is_positive": True}
+
+    # --- Quick Stats ---
+    # Response rate: messages responded to / messages received
+    unread_messages = db.query(models.Message).filter(
+        models.Message.receiver_id == current_user.id,
+        models.Message.is_read == False
+    ).count()
+
+    if total_messages_received > 0:
+        response_rate = ((total_messages_received - unread_messages) / total_messages_received) * 100
+    else:
+        response_rate = 100.0
+
+    # Player retention: active players / total players
+    total_direct = db.query(models.User).filter(
+        models.User.created_by_client_id == current_user.id,
+        models.User.user_type == models.UserType.PLAYER
+    ).count()
+
+    if total_direct > 0:
+        player_retention = (direct_active / total_direct) * 100
+    else:
+        player_retention = 100.0
+
+    # Avg rating from reviews
+    avg_rating_result = db.query(func.avg(models.Review.rating)).filter(
+        models.Review.reviewee_id == current_user.id
+    ).scalar()
+    avg_rating = float(avg_rating_result) if avg_rating_result else 5.0
+
+    quick_stats = {
+        "response_rate": round(response_rate, 1),
+        "player_retention": round(player_retention, 1),
+        "avg_rating": round(avg_rating, 1)
+    }
+
+    # --- Recent Activity ---
+    activities = []
+
+    # Friend requests received
+    friend_requests = db.query(models.FriendRequest).filter(
+        models.FriendRequest.receiver_id == current_user.id
+    ).order_by(models.FriendRequest.created_at.desc()).limit(3).all()
+
+    for fr in friend_requests:
+        activities.append({
+            "activity_type": "friend_request",
+            "description": "sent a friend request",
+            "user": fr.sender.username,
+            "timestamp": fr.created_at,
+            "status": fr.status.value.title()
+        })
+
+    # Recent player registrations
+    recent_players = db.query(models.User).filter(
+        models.User.created_by_client_id == current_user.id,
+        models.User.user_type == models.UserType.PLAYER
+    ).order_by(models.User.created_at.desc()).limit(3).all()
+
+    for player in recent_players:
+        activities.append({
+            "activity_type": "signup",
+            "description": "signed up",
+            "user": player.username,
+            "timestamp": player.created_at,
+            "status": "Active" if player.is_active else "Inactive"
+        })
+
+    # Recent messages
+    recent_msgs = db.query(models.Message).filter(
+        models.Message.receiver_id == current_user.id
+    ).order_by(models.Message.created_at.desc()).limit(3).all()
+
+    for msg in recent_msgs:
+        activities.append({
+            "activity_type": "message",
+            "description": "sent you a message",
+            "user": msg.sender.username,
+            "timestamp": msg.created_at,
+            "status": "Unread" if not msg.is_read else "Read"
+        })
+
+    # Sort and limit activities
+    activities.sort(key=lambda x: x["timestamp"], reverse=True)
+    activities = activities[:4]
+
+    # --- Top Performing Promotions ---
+    top_promotions = []
+    promotions = db.query(models.Promotion).filter(
+        models.Promotion.client_id == current_user.id,
+        models.Promotion.status == models.PromotionStatus.ACTIVE
+    ).order_by(models.Promotion.created_at.desc()).limit(3).all()
+
+    for promo in promotions:
+        claim_count = db.query(models.PromotionClaim).filter(
+            models.PromotionClaim.promotion_id == promo.id
+        ).count()
+
+        # Calculate engagement rate based on budget usage
+        if promo.total_budget and promo.total_budget > 0:
+            rate = (promo.used_budget / promo.total_budget) * 100
+        else:
+            rate = 0
+
+        top_promotions.append({
+            "name": promo.title,
+            "claims": claim_count,
+            "rate": round(rate, 1)
+        })
+
+    return {
+        "total_friends": total_friends,
+        "total_messages": total_messages,
+        "active_players": active_players,
+        "new_signups": new_signups,
+        "avg_session_time": avg_session_time,
+        "friends_trend": friends_trend,
+        "messages_trend": messages_trend,
+        "players_trend": players_trend,
+        "signups_trend": signups_trend,
+        "session_time_trend": session_time_trend,
+        "quick_stats": quick_stats,
+        "recent_activity": activities,
+        "top_promotions": top_promotions
+    }
+
+
 @router.get("/recent-activity", response_model=schemas.RecentActivityResponse)
 async def get_recent_activity(
     current_user: models.User = Depends(get_client_user),
@@ -372,3 +639,226 @@ async def get_recent_activity(
     activities = activities[:limit]
 
     return {"activities": activities}
+
+
+@router.get("/pending-players", response_model=List[schemas.UserResponse])
+def get_pending_players(
+    client: models.User = Depends(get_client_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get all players waiting for approval from this client.
+    These are players who self-registered and specified this client.
+    """
+    pending_players = db.query(models.User).filter(
+        models.User.created_by_client_id == client.id,
+        models.User.user_type == UserType.PLAYER,
+        models.User.is_approved == False
+    ).order_by(models.User.created_at.desc()).all()
+
+    return pending_players
+
+
+@router.patch("/approve-player/{player_id}")
+def approve_player(
+    player_id: int,
+    client: models.User = Depends(get_client_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Approve a pending player registration.
+    The player must have registered under this client.
+    Also processes referral bonus if applicable.
+    """
+    # Find the player
+    player = db.query(models.User).filter(
+        models.User.id == player_id,
+        models.User.user_type == UserType.PLAYER
+    ).first()
+
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+
+    # Check if this client can approve this player
+    if player.created_by_client_id != client.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only approve players who registered under your account"
+        )
+
+    if player.is_approved:
+        raise HTTPException(status_code=400, detail="Player is already approved")
+
+    # Approve the player
+    player.is_approved = True
+
+    # Automatically create friend connection between client and player
+    if client.id not in [f.id for f in player.friends]:
+        player.friends.append(client)
+        client.friends.append(player)
+
+    # Process referral bonus if this player was referred
+    referral_bonus_credited = False
+    referral = db.query(models.Referral).filter(
+        models.Referral.referred_id == player.id,
+        models.Referral.status == ReferralStatus.PENDING
+    ).first()
+
+    if referral:
+        # Get the referrer and credit their bonus
+        referrer = db.query(models.User).filter(
+            models.User.id == referral.referrer_id
+        ).first()
+
+        if referrer:
+            referrer.credits = (referrer.credits or 0) + referral.bonus_amount
+            referral.status = ReferralStatus.COMPLETED
+            referral.completed_at = func.now()
+            referral_bonus_credited = True
+
+            # Send email notification to referrer about bonus
+            try:
+                if referrer.email:
+                    send_referral_bonus_email(
+                        to_email=referrer.email,
+                        username=referrer.username,
+                        referred_username=player.username,
+                        bonus_amount=referral.bonus_amount
+                    )
+            except Exception as e:
+                logger.error(f"Failed to send referral bonus email: {e}")
+
+    db.commit()
+    db.refresh(player)
+
+    message = f"Player {player.username} approved successfully"
+    if referral_bonus_credited:
+        message += f". Referral bonus of {REFERRAL_BONUS_CREDITS} credits credited to referrer."
+
+    return {
+        "message": message,
+        "player": player
+    }
+
+
+@router.patch("/reject-player/{player_id}")
+def reject_player(
+    player_id: int,
+    client: models.User = Depends(get_client_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Reject a pending player registration.
+    This deletes the player account and marks any referral as expired.
+    """
+    # Find the player
+    player = db.query(models.User).filter(
+        models.User.id == player_id,
+        models.User.user_type == UserType.PLAYER
+    ).first()
+
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+
+    # Check if this client can reject this player
+    if player.created_by_client_id != client.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only reject players who registered under your account"
+        )
+
+    if player.is_approved:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot reject an already approved player. Use deactivation instead."
+        )
+
+    # Mark any pending referral as expired
+    referral = db.query(models.Referral).filter(
+        models.Referral.referred_id == player.id,
+        models.Referral.status == ReferralStatus.PENDING
+    ).first()
+
+    if referral:
+        referral.status = ReferralStatus.EXPIRED
+
+    # Delete the player account
+    username = player.username
+    db.delete(player)
+    db.commit()
+
+    return {"message": f"Player registration for {username} has been rejected"}
+
+
+@router.patch("/block-player/{player_id}")
+def block_player(
+    player_id: int,
+    client: models.User = Depends(get_client_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Block/unblock a player. Blocked players cannot access the platform.
+    """
+    player = db.query(models.User).filter(
+        models.User.id == player_id,
+        models.User.user_type == UserType.PLAYER
+    ).first()
+
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+
+    # Check if this client can block this player
+    if player.created_by_client_id != client.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only block players who are registered under your account"
+        )
+
+    # Toggle the is_active status (block/unblock)
+    player.is_active = not player.is_active
+    action = "unblocked" if player.is_active else "blocked"
+
+    db.commit()
+    db.refresh(player)
+
+    return {
+        "message": f"Player {player.username} has been {action}",
+        "is_active": player.is_active
+    }
+
+
+@router.post("/reset-player-password/{player_id}")
+def reset_player_password(
+    player_id: int,
+    new_password: Optional[str] = None,
+    client: models.User = Depends(get_client_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Reset a player's password. If no password provided, generates username@135.
+    """
+    player = db.query(models.User).filter(
+        models.User.id == player_id,
+        models.User.user_type == UserType.PLAYER
+    ).first()
+
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+
+    # Check if this client can reset this player's password
+    if player.created_by_client_id != client.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only reset passwords for players registered under your account"
+        )
+
+    # Generate password as username@135 if not provided
+    password = new_password if new_password else f"{player.username}@135"
+    player.hashed_password = auth.get_password_hash(password)
+
+    db.commit()
+
+    return {
+        "message": f"Password reset for {player.username}",
+        "temp_password": password if not new_password else None
+    }

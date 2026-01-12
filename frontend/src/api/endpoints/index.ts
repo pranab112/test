@@ -45,6 +45,8 @@ export {
   type MessageListResponse,
   type SendMessageRequest,
   type ChatStats,
+  type Broadcast,
+  type BroadcastsResponse,
 } from './chat.api';
 
 // Friends API
@@ -81,6 +83,8 @@ export {
   type TwoFactorSetupResponse,
   type EmailVerificationStatus,
   type ActiveSession,
+  type PaymentMethod,
+  type PlayerPaymentPreferences,
 } from './settings.api';
 
 // Game Credentials API
@@ -105,3 +109,29 @@ export {
   type ClaimOfferRequest,
   type ProcessClaimRequest,
 } from './offers.api';
+
+// Referrals API
+export {
+  referralsApi,
+  type ReferralCodeResponse,
+  type ReferralStats,
+  type ReferredUser,
+  type ReferralListResponse,
+  type ReferralBonusInfo,
+} from './referrals.api';
+
+// Tickets API
+export { ticketsApi } from './tickets.api';
+
+// Community API
+export {
+  communityApi,
+  type PostAuthor,
+  type PostComment,
+  type CommunityPost,
+  type PaginatedPostsResponse,
+  type CreatePostRequest,
+  type CreateCommentRequest,
+  type LikeResponse,
+  type ImageUploadResponse,
+} from './community.api';

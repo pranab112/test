@@ -140,6 +140,22 @@ export const gamesApi = {
   },
 
   // Client endpoints
+
+  // Get all available games (for clients to browse library)
+  getAvailableGames: async (): Promise<Game[]> => {
+    try {
+      const response = await apiClient.get<never, Game[]>('/games/');
+      return response;
+    } catch (error: any) {
+      if (error?.response?.status === 404 || error?.error?.code === 'NOT_FOUND') {
+        console.log('No games available, returning empty array');
+        return [];
+      }
+      console.error('Failed to fetch available games:', error);
+      return [];
+    }
+  },
+
   getClientGames: async (): Promise<ClientGame[]> => {
     try {
       const response = await apiClient.get('/games/my-games-details');
@@ -194,4 +210,39 @@ export const gamesApi = {
       return [];
     }
   },
+
+  // Mini game betting
+  placeMiniGameBet: async (data: MiniGameBetRequest): Promise<MiniGameBetResponse> => {
+    try {
+      const response = await apiClient.post<never, MiniGameBetResponse>('/games/mini-game/bet', data);
+      return response;
+    } catch (error: any) {
+      console.error('Failed to place bet:', error);
+      throw error;
+    }
+  },
 };
+
+// Mini game betting interfaces
+export interface MiniGameBetRequest {
+  game_type: 'dice' | 'slots';
+  bet_amount: number;
+  prediction?: number; // For dice: 2-12
+}
+
+export interface MiniGameBetResponse {
+  success: boolean;
+  game_type: string;
+  bet_amount: number;
+  win_amount: number;
+  result: 'win' | 'lose' | 'jackpot';
+  details: {
+    dice1?: number;
+    dice2?: number;
+    total?: number;
+    prediction?: number;
+    reels?: string[];
+  };
+  new_balance: number;
+  message: string;
+}

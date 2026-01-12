@@ -6,7 +6,7 @@ import { Modal } from '@/components/common/Modal';
 import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import toast from 'react-hot-toast';
-import { MdBlock, MdCheck, MdDelete, MdLock, MdContentCopy } from 'react-icons/md';
+import { MdBlock, MdCheck, MdDelete, MdLock, MdContentCopy, MdAccountBalanceWallet, MdWarning } from 'react-icons/md';
 import { adminApi, type User } from '@/api/endpoints';
 import { UserType } from '@/types';
 
@@ -22,6 +22,16 @@ export function UsersSection() {
   const [newPassword, setNewPassword] = useState('');
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
   const [resettingPassword, setResettingPassword] = useState(false);
+
+  // Credits modal state
+  const [creditsModalOpen, setCreditsModalOpen] = useState(false);
+  const [creditAmount, setCreditAmount] = useState('');
+  const [creditReason, setCreditReason] = useState('');
+  const [addingCredits, setAddingCredits] = useState(false);
+
+  // Delete user confirmation modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [pendingDeleteUser, setPendingDeleteUser] = useState<{ id: number; username: string } | null>(null);
 
   useEffect(() => {
     loadUsers();
@@ -54,17 +64,23 @@ export function UsersSection() {
     }
   };
 
-  const handleDeleteUser = async (userId: number, username: string) => {
-    if (!confirm(`Are you sure you want to delete user "${username}"? This action cannot be undone.`)) {
-      return;
-    }
+  const handleDeleteUser = (userId: number, username: string) => {
+    setPendingDeleteUser({ id: userId, username });
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!pendingDeleteUser) return;
 
     try {
-      await adminApi.deleteUser(userId);
+      await adminApi.deleteUser(pendingDeleteUser.id);
       toast.success('User deleted successfully');
       loadUsers();
     } catch (error: any) {
       toast.error(error.response?.data?.detail || 'Failed to delete user');
+    } finally {
+      setShowDeleteModal(false);
+      setPendingDeleteUser(null);
     }
   };
 
@@ -110,6 +126,40 @@ export function UsersSection() {
     toast.success('Password copied to clipboard');
   };
 
+  const openCreditsModal = (user: User) => {
+    setSelectedUser(user);
+    setCreditAmount('');
+    setCreditReason('');
+    setCreditsModalOpen(true);
+  };
+
+  const handleAddCredits = async () => {
+    if (!selectedUser) return;
+
+    const amount = parseInt(creditAmount, 10);
+    if (isNaN(amount) || amount === 0) {
+      toast.error('Please enter a valid amount (positive to add, negative to subtract)');
+      return;
+    }
+
+    setAddingCredits(true);
+    try {
+      const result = await adminApi.addCreditsToUser(
+        selectedUser.id,
+        amount,
+        creditReason || undefined
+      );
+      toast.success(result.message);
+      setCreditsModalOpen(false);
+      loadUsers();
+    } catch (error: any) {
+      const errorMessage = error?.detail || error?.message || 'Failed to update credits';
+      toast.error(errorMessage);
+    } finally {
+      setAddingCredits(false);
+    }
+  };
+
   const columns = [
     {
       key: 'username',
@@ -153,6 +203,21 @@ export function UsersSection() {
       ),
     },
     {
+      key: 'credits',
+      label: 'Credits',
+      render: (user: User) => {
+        if (user.user_type === 'admin') return '-';
+        const credits = user.credits || 0;
+        const dollars = (credits / 100).toFixed(2);
+        return (
+          <div className="text-right">
+            <div className="text-gold-500 font-medium">{credits.toLocaleString()}</div>
+            <div className="text-xs text-gray-400">${dollars}</div>
+          </div>
+        );
+      },
+    },
+    {
       key: 'created_at',
       label: 'Joined',
       render: (user: User) => new Date(user.created_at).toLocaleDateString(),
@@ -172,6 +237,14 @@ export function UsersSection() {
 
         return (
           <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => openCreditsModal(user)}
+              className="bg-gold-600 hover:bg-gold-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-1"
+              title="Manage Credits"
+            >
+              <MdAccountBalanceWallet size={14} />
+            </button>
             <button
               type="button"
               onClick={() => openPasswordModal(user)}
@@ -253,6 +326,103 @@ export function UsersSection() {
           columns={columns}
           emptyMessage="No users found"
         />
+      )}
+
+      {/* Credits Management Modal */}
+      {creditsModalOpen && selectedUser && (
+        <Modal
+          isOpen={creditsModalOpen}
+          onClose={() => setCreditsModalOpen(false)}
+          title={`Manage Credits - ${selectedUser.username}`}
+        >
+          <div className="space-y-6">
+            {/* Current Balance Display */}
+            <div className="bg-dark-300 rounded-lg p-4">
+              <p className="text-sm text-gray-400 mb-1">Current Balance</p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-bold text-gold-500">
+                  {(selectedUser.credits || 0).toLocaleString()}
+                </span>
+                <span className="text-gray-400">credits</span>
+                <span className="text-sm text-gray-500">
+                  (${((selectedUser.credits || 0) / 100).toFixed(2)})
+                </span>
+              </div>
+            </div>
+
+            {/* Add/Subtract Credits Form */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Amount to Add/Subtract
+                </label>
+                <Input
+                  type="number"
+                  value={creditAmount}
+                  onChange={(e) => setCreditAmount(e.target.value)}
+                  placeholder="Enter amount (positive to add, negative to subtract)"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  100 credits = $1.00. Use negative numbers to subtract credits.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Reason (Optional)
+                </label>
+                <Input
+                  type="text"
+                  value={creditReason}
+                  onChange={(e) => setCreditReason(e.target.value)}
+                  placeholder="e.g., Bonus reward, Refund, Adjustment..."
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  The user will be notified with this reason.
+                </p>
+              </div>
+
+              {/* Preview */}
+              {creditAmount && !isNaN(parseInt(creditAmount, 10)) && parseInt(creditAmount, 10) !== 0 && (
+                <div className={`rounded-lg p-4 ${parseInt(creditAmount, 10) > 0 ? 'bg-green-900/20 border border-green-700' : 'bg-red-900/20 border border-red-700'}`}>
+                  <p className={`font-medium ${parseInt(creditAmount, 10) > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    Preview:
+                  </p>
+                  <p className="text-white mt-1">
+                    {parseInt(creditAmount, 10) > 0 ? 'Adding' : 'Subtracting'}{' '}
+                    <span className="font-bold">{Math.abs(parseInt(creditAmount, 10)).toLocaleString()}</span> credits
+                    (${(Math.abs(parseInt(creditAmount, 10)) / 100).toFixed(2)})
+                  </p>
+                  <p className="text-sm text-gray-400 mt-1">
+                    New balance will be:{' '}
+                    <span className="text-gold-500 font-medium">
+                      {((selectedUser.credits || 0) + parseInt(creditAmount, 10)).toLocaleString()} credits
+                    </span>
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-4">
+              <Button
+                variant="secondary"
+                onClick={() => setCreditsModalOpen(false)}
+                fullWidth
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAddCredits}
+                loading={addingCredits}
+                disabled={!creditAmount || isNaN(parseInt(creditAmount, 10)) || parseInt(creditAmount, 10) === 0}
+                fullWidth
+              >
+                {parseInt(creditAmount, 10) > 0 ? 'Add Credits' : parseInt(creditAmount, 10) < 0 ? 'Subtract Credits' : 'Update Credits'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {/* Password Reset Modal */}
@@ -352,6 +522,47 @@ export function UsersSection() {
           </div>
         </Modal>
       )}
+
+      {/* Delete User Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setPendingDeleteUser(null);
+        }}
+        title="Delete User"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <MdWarning className="text-red-500 text-2xl flex-shrink-0" />
+            <p className="text-gray-300">
+              Are you sure you want to delete user{' '}
+              <span className="text-white font-medium">"{pendingDeleteUser?.username}"</span>?
+              This action cannot be undone.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => {
+                setShowDeleteModal(false);
+                setPendingDeleteUser(null);
+              }}
+              variant="secondary"
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmDeleteUser}
+              variant="primary"
+              fullWidth
+              className="!bg-red-600 hover:!bg-red-700"
+            >
+              Delete User
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

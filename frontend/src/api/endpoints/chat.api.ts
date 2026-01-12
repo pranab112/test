@@ -56,6 +56,19 @@ export interface ChatStats {
   unique_conversations: number;
 }
 
+export interface Broadcast {
+  id: number;
+  content: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface BroadcastsResponse {
+  broadcasts: Broadcast[];
+  total: number;
+  unread: number;
+}
+
 export const chatApi = {
   // Send text message
   sendTextMessage: async (receiverId: number, content: string): Promise<MessageResponse> => {
@@ -68,11 +81,14 @@ export const chatApi = {
     return response as any;
   },
 
-  // Send image message
-  sendImageMessage: async (receiverId: number, file: File): Promise<MessageResponse> => {
+  // Send image message with optional caption
+  sendImageMessage: async (receiverId: number, file: File, caption?: string): Promise<MessageResponse> => {
     const formData = new FormData();
     formData.append('receiver_id', receiverId.toString());
     formData.append('file', file);
+    if (caption?.trim()) {
+      formData.append('content', caption.trim());
+    }
 
     // Don't set Content-Type header manually - axios will set it with proper boundary for FormData
     const response = await apiClient.post('/chat/send/image', formData);
@@ -124,5 +140,23 @@ export const chatApi = {
   getChatStats: async (): Promise<ChatStats> => {
     const response = await apiClient.get('/chat/stats');
     return response as any;
+  },
+
+  // Get broadcasts
+  getBroadcasts: async (skip = 0, limit = 50): Promise<BroadcastsResponse> => {
+    const response = await apiClient.get('/chat/broadcasts', {
+      params: { skip, limit },
+    });
+    return response as any;
+  },
+
+  // Mark broadcast as read
+  markBroadcastAsRead: async (broadcastId: number): Promise<void> => {
+    await apiClient.put(`/chat/broadcasts/${broadcastId}/read`);
+  },
+
+  // Mark all broadcasts as read
+  markAllBroadcastsAsRead: async (): Promise<void> => {
+    await apiClient.put('/chat/broadcasts/read-all');
   },
 };

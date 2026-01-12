@@ -14,6 +14,7 @@ class UserCreate(UserBase):
     password: str
     company_name: Optional[str] = None  # For clients
     client_identifier: Optional[str] = None  # For players - username or company of their client
+    referral_code: Optional[str] = None  # Optional referral code from another user
 
 class PlayerCreateByClient(BaseModel):
     username: str
@@ -483,14 +484,19 @@ class PlatformOfferResponse(BaseModel):
 
 class OfferClaimCreate(BaseModel):
     offer_id: int
-    client_id: int
+    client_id: Optional[int] = None  # Optional - player can claim without client
     verification_data: Optional[str] = None  # e.g., email for email verification offer
+
+class CreditTransfer(BaseModel):
+    """Schema for transferring credits from player to client (one-way)"""
+    client_id: int
+    amount: int  # Amount in credits (100 credits = $1)
 
 class OfferClaimResponse(BaseModel):
     id: int
     offer_id: int
     player_id: int
-    client_id: int
+    client_id: Optional[int] = None  # Optional - claims can be made without client
     status: OfferClaimStatus
     bonus_amount: int
     verification_data: Optional[str]

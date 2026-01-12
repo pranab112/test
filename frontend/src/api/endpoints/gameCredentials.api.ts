@@ -11,6 +11,11 @@ export interface GameCredential {
   created_by_client_id: number;
   created_at: string;
   updated_at?: string;
+  // Aliases for backward compatibility with UI components
+  username?: string;
+  password?: string;
+  login_url?: string;
+  client_name?: string;
 }
 
 export interface GameCredentialListResponse {
@@ -20,13 +25,19 @@ export interface GameCredentialListResponse {
 export interface CreateGameCredentialRequest {
   player_id: number;
   game_id: number;
-  game_username: string;
-  game_password: string;
+  game_username?: string;
+  game_password?: string;
+  // Aliases for backward compatibility
+  username?: string;
+  password?: string;
 }
 
 export interface UpdateGameCredentialRequest {
-  game_username: string;
-  game_password: string;
+  game_username?: string;
+  game_password?: string;
+  // Aliases for backward compatibility
+  username?: string;
+  password?: string;
 }
 
 export const gameCredentialsApi = {

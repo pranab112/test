@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Enum, Table
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Enum, Table, CheckConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.models.base import Base
@@ -14,6 +14,9 @@ friends_association = Table(
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (
+        CheckConstraint('credits >= 0', name='check_credits_non_negative'),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=True)  # Nullable for client-created players
@@ -57,7 +60,7 @@ class User(Base):
 
     # Player-specific fields
     player_level = Column(Integer, default=1)
-    credits = Column(Integer, default=1000)
+    credits = Column(Integer, default=1000, nullable=False)
 
     # Profile picture
     profile_picture = Column(String, nullable=True)
@@ -84,3 +87,18 @@ class User(Base):
 
     # Track which client created this player
     created_by_client_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+    # Moderation tracking
+    malicious_reports_count = Column(Integer, default=0)  # Count of false/malicious reports made by this user
+    is_trusted_reviewer = Column(Boolean, default=True)  # Can be set to False if user makes fake reviews
+    is_suspended = Column(Boolean, default=False)  # Account suspension status
+    suspension_reason = Column(String(500), nullable=True)
+    suspended_until = Column(DateTime(timezone=True), nullable=True)
+
+    # Referral system
+    referral_code = Column(String(12), unique=True, index=True, nullable=True)  # Unique code for referring others
+
+    # Community relationships
+    community_posts = relationship("CommunityPost", back_populates="author", cascade="all, delete-orphan")
+    post_comments = relationship("PostComment", back_populates="author", cascade="all, delete-orphan")
+    post_likes = relationship("PostLike", back_populates="user", cascade="all, delete-orphan")

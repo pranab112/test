@@ -5,15 +5,31 @@ import { Button } from '@/components/common/Button';
 import { Avatar } from '@/components/common/Avatar';
 import { StatCard } from '@/components/common/StatCard';
 import toast from 'react-hot-toast';
-import { MdStar, MdStarBorder, MdEdit, MdDelete, MdRateReview, MdTrendingUp, MdRefresh } from 'react-icons/md';
-import { reviewsApi, type Review } from '@/api/endpoints/reviews.api';
+import { MdStar, MdStarBorder, MdEdit, MdDelete, MdRateReview, MdTrendingUp, MdRefresh, MdGavel, MdWarning, MdCheck, MdPending, MdClose } from 'react-icons/md';
+import { reviewsApi, type Review, type ReviewStatus } from '@/api/endpoints/reviews.api';
 import { friendsApi, type Friend } from '@/api/endpoints/friends.api';
+
+const STATUS_COLORS: Record<ReviewStatus, string> = {
+  pending: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50',
+  approved: 'bg-green-500/20 text-green-400 border-green-500/50',
+  rejected: 'bg-red-500/20 text-red-400 border-red-500/50',
+  disputed: 'bg-purple-500/20 text-purple-400 border-purple-500/50',
+};
+
+const STATUS_ICONS: Record<ReviewStatus, React.ReactNode> = {
+  pending: <MdPending className="inline" />,
+  approved: <MdCheck className="inline" />,
+  rejected: <MdClose className="inline" />,
+  disputed: <MdGavel className="inline" />,
+};
 
 export function ReviewsSection() {
   const [activeTab, setActiveTab] = useState<'given' | 'received' | 'review_clients'>('given');
   const [showWriteReviewModal, setShowWriteReviewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showAppealModal, setShowAppealModal] = useState(false);
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
+  const [appealReason, setAppealReason] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingReviews, setLoadingReviews] = useState(true);
 
@@ -37,17 +53,15 @@ export function ReviewsSection() {
     comment: '',
   });
 
-  // Load reviews on mount
+  // Delete confirmation modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [pendingDeleteReview, setPendingDeleteReview] = useState<{ id: number; revieweeName: string } | null>(null);
+
+  // Load reviews and friends on mount
   useEffect(() => {
     loadReviews();
+    loadFriends(); // Pre-load friends so dropdown works immediately
   }, []);
-
-  // Load friends when review_clients tab is selected
-  useEffect(() => {
-    if (activeTab === 'review_clients' && friends.length === 0) {
-      loadFriends();
-    }
-  }, [activeTab]);
 
   const loadReviews = async () => {
     setLoadingReviews(true);
@@ -145,20 +159,57 @@ export function ReviewsSection() {
     }
   };
 
-  const handleDeleteReview = async (reviewId: number, revieweeName: string) => {
-    if (!confirm(`Delete your review for ${revieweeName}?`)) {
-      return;
-    }
+  const handleDeleteReview = (reviewId: number, revieweeName: string) => {
+    setPendingDeleteReview({ id: reviewId, revieweeName });
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteReview = async () => {
+    if (!pendingDeleteReview) return;
 
     try {
-      await reviewsApi.deleteReview(reviewId);
-      setGivenReviews(prev => prev.filter(r => r.id !== reviewId));
+      await reviewsApi.deleteReview(pendingDeleteReview.id);
+      setGivenReviews(prev => prev.filter(r => r.id !== pendingDeleteReview.id));
       setGivenTotal(prev => prev - 1);
       toast.success('Review deleted');
     } catch (error: any) {
       toast.error(error.detail || 'Failed to delete review');
       console.error(error);
+    } finally {
+      setShowDeleteModal(false);
+      setPendingDeleteReview(null);
     }
+  };
+
+  const handleAppealReview = async () => {
+    if (!selectedReview || !appealReason.trim()) {
+      toast.error('Please provide a reason for your appeal');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await reviewsApi.appealReview(selectedReview.id, appealReason);
+      toast.success(`Appeal submitted! Ticket: ${result.ticket_number}`);
+      // Update review status to disputed
+      setReceivedReviews(prev => prev.map(r =>
+        r.id === selectedReview.id ? { ...r, status: 'disputed' as ReviewStatus } : r
+      ));
+      setShowAppealModal(false);
+      setSelectedReview(null);
+      setAppealReason('');
+    } catch (error: any) {
+      toast.error(error.detail || 'Failed to submit appeal');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openAppealModal = (review: Review) => {
+    setSelectedReview(review);
+    setAppealReason('');
+    setShowAppealModal(true);
   };
 
   const openEditModal = (review: Review) => {
@@ -178,7 +229,18 @@ export function ReviewsSection() {
     try {
       const canReview = await reviewsApi.canReviewUser(friend.id);
       if (!canReview.can_review) {
-        toast.error(canReview.reason || 'Cannot review this client');
+        // If already reviewed, offer to edit the existing review
+        if (canReview.existing_review_id) {
+          const existingReview = givenReviews.find(r => r.id === canReview.existing_review_id);
+          if (existingReview && existingReview.status === 'pending') {
+            toast('You have already reviewed this client. Opening edit mode...', { icon: '📝' });
+            openEditModal(existingReview);
+          } else {
+            toast.error('You have already reviewed this client and the review is being processed.');
+          }
+        } else {
+          toast.error(canReview.reason || 'Cannot review this client');
+        }
         return;
       }
 
@@ -364,7 +426,7 @@ export function ReviewsSection() {
                       onClick={() => openWriteReviewForClient(friend)}
                       variant="primary"
                       fullWidth
-                      size="sm"
+                      className="py-2 text-sm"
                     >
                       <MdRateReview className="mr-1" />
                       Write Review
@@ -385,6 +447,8 @@ export function ReviewsSection() {
             const isGiven = activeTab === 'given';
             const displayUser = isGiven ? review.reviewee : review.reviewer;
             const displayName = displayUser?.username || (isGiven ? 'Unknown Client' : 'Unknown User');
+            const status = review.status || 'pending';
+            const canAppeal = !isGiven && (status === 'approved' || status === 'pending') && !review.appeal_ticket_id;
 
             return (
               <div
@@ -400,9 +464,14 @@ export function ReviewsSection() {
                   <div className="flex-1">
                     <div className="flex items-start justify-between mb-2">
                       <div>
-                        <h3 className="text-lg font-bold text-white">
-                          {review.title || 'Review'}
-                        </h3>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-lg font-bold text-white">
+                            {review.title || 'Review'}
+                          </h3>
+                          <span className={`px-2 py-0.5 rounded-full text-xs border ${STATUS_COLORS[status]}`}>
+                            {STATUS_ICONS[status]} {status.toUpperCase()}
+                          </span>
+                        </div>
                         <p className="text-sm text-gray-400">
                           {isGiven ? 'To' : 'From'}:{' '}
                           <span className="text-gold-500">{displayName}</span>
@@ -414,30 +483,69 @@ export function ReviewsSection() {
                       </div>
                     </div>
                     <p className="text-gray-300 mb-3">{review.comment}</p>
+
+                    {/* Status-specific messages */}
+                    {isGiven && status === 'pending' && (
+                      <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-3 mb-3">
+                        <p className="text-sm text-yellow-400 flex items-center gap-2">
+                          <MdPending /> Your review is pending admin approval
+                        </p>
+                      </div>
+                    )}
+                    {isGiven && status === 'rejected' && (
+                      <div className="bg-red-900/20 border border-red-700 rounded-lg p-3 mb-3">
+                        <p className="text-sm text-red-400 flex items-center gap-2">
+                          <MdClose /> Your review was rejected by admin
+                        </p>
+                        {review.admin_notes && (
+                          <p className="text-xs text-gray-400 mt-1">Reason: {review.admin_notes}</p>
+                        )}
+                      </div>
+                    )}
+                    {!isGiven && status === 'disputed' && (
+                      <div className="bg-purple-900/20 border border-purple-700 rounded-lg p-3 mb-3">
+                        <p className="text-sm text-purple-400 flex items-center gap-2">
+                          <MdGavel /> You have appealed this review
+                        </p>
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between">
                       <p className="text-xs text-gray-500">
                         {formatDate(review.created_at)}
                       </p>
-                      {isGiven && (
-                        <div className="flex gap-2">
+                      <div className="flex gap-2">
+                        {isGiven && status === 'pending' && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => openEditModal(review)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
+                            >
+                              <MdEdit size={14} />
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteReview(review.id, displayName)}
+                              className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
+                            >
+                              <MdDelete size={14} />
+                              Delete
+                            </button>
+                          </>
+                        )}
+                        {canAppeal && (
                           <button
                             type="button"
-                            onClick={() => openEditModal(review)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
+                            onClick={() => openAppealModal(review)}
+                            className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
                           >
-                            <MdEdit size={14} />
-                            Edit
+                            <MdGavel size={14} />
+                            Appeal
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteReview(review.id, displayName)}
-                            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
-                          >
-                            <MdDelete size={14} />
-                            Delete
-                          </button>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -578,6 +686,130 @@ export function ReviewsSection() {
             </Button>
             <Button onClick={handleEditReview} loading={loading} fullWidth>
               Save Changes
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Appeal Review Modal */}
+      <Modal
+        isOpen={showAppealModal}
+        onClose={() => {
+          setShowAppealModal(false);
+          setSelectedReview(null);
+          setAppealReason('');
+        }}
+        title="Appeal Review"
+        size="lg"
+      >
+        <div className="space-y-4">
+          {selectedReview && (
+            <>
+              <div className="bg-dark-300 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-gray-400">Review from:</span>
+                  <span className="text-gold-500 font-medium">
+                    {selectedReview.reviewer?.username || 'Unknown'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-gray-400">Rating:</span>
+                  <div className="flex items-center gap-1">
+                    {renderStars(selectedReview.rating)}
+                    <span className="text-white font-bold ml-2">{selectedReview.rating}/5</span>
+                  </div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-dark-400">
+                  <p className="text-gray-400 text-sm mb-1">Review Content:</p>
+                  <p className="text-white">{selectedReview.comment}</p>
+                </div>
+              </div>
+
+              <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-4">
+                <div className="flex items-start gap-2">
+                  <MdWarning className="text-yellow-500 mt-0.5" size={20} />
+                  <div>
+                    <p className="text-yellow-400 font-medium">Before you appeal</p>
+                    <p className="text-sm text-gray-400 mt-1">
+                      Appeals should only be made for reviews that violate community guidelines,
+                      contain false information, or are abusive. A support ticket will be created
+                      for admin review.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Why do you want to appeal this review? *
+                </label>
+                <textarea
+                  value={appealReason}
+                  onChange={(e) => setAppealReason(e.target.value)}
+                  placeholder="Explain why this review should be removed or reconsidered..."
+                  rows={4}
+                  className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-gold-500"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setShowAppealModal(false);
+                    setSelectedReview(null);
+                    setAppealReason('');
+                  }}
+                  fullWidth
+                >
+                  Cancel
+                </Button>
+                <Button onClick={handleAppealReview} loading={loading} fullWidth>
+                  <MdGavel className="mr-1" />
+                  Submit Appeal
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </Modal>
+
+      {/* Delete Review Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setPendingDeleteReview(null);
+        }}
+        title="Delete Review"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <MdWarning className="text-red-500 text-2xl flex-shrink-0" />
+            <p className="text-gray-300">
+              Are you sure you want to delete your review for{' '}
+              <span className="text-white font-medium">{pendingDeleteReview?.revieweeName}</span>?
+              This action cannot be undone.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => {
+                setShowDeleteModal(false);
+                setPendingDeleteReview(null);
+              }}
+              variant="secondary"
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmDeleteReview}
+              variant="primary"
+              fullWidth
+              className="!bg-red-600 hover:!bg-red-700"
+            >
+              Delete Review
             </Button>
           </div>
         </div>

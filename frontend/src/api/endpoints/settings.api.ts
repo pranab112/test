@@ -5,6 +5,7 @@ export interface ProfileUpdateRequest {
   full_name?: string;
   company_name?: string;
   bio?: string;
+  phone?: string;
 }
 
 export interface NotificationSettings {
@@ -38,6 +39,36 @@ export interface ActiveSession {
   location: string;
   last_active: string;
   is_current: boolean;
+}
+
+// Payment Method Types
+export interface PaymentMethod {
+  id: number;
+  name: string;
+  display_name: string;
+  icon_url?: string;
+  is_active: boolean;
+}
+
+export interface PaymentMethodDetail {
+  method_id: number;
+  method_name: string;
+  method_display_name: string;
+  account_info?: string;
+}
+
+export interface PlayerPaymentPreferences {
+  player_id: number;
+  receive_methods: PaymentMethodDetail[];
+  send_methods: PaymentMethodDetail[];
+  updated_at?: string;
+}
+
+export interface PlayerPaymentPreferencesUpdate {
+  receive_methods: number[];
+  send_methods: number[];
+  receive_details?: Record<string, string>;
+  send_details?: Record<string, string>;
 }
 
 export const settingsApi = {
@@ -137,6 +168,32 @@ export const settingsApi = {
 
   logoutSession: async (sessionId: string): Promise<{ message: string }> => {
     const response = await apiClient.delete(`/auth/sessions/${sessionId}`);
+    return response as any;
+  },
+
+  // Payment Methods
+  getAllPaymentMethods: async (): Promise<PaymentMethod[]> => {
+    const response = await apiClient.get('/payment-methods/');
+    return response as any;
+  },
+
+  getMyPaymentPreferences: async (): Promise<PlayerPaymentPreferences> => {
+    const response = await apiClient.get('/payment-methods/player/my-preferences');
+    return response as any;
+  },
+
+  updateMyPaymentPreferences: async (
+    data: PlayerPaymentPreferencesUpdate
+  ): Promise<PlayerPaymentPreferences> => {
+    const response = await apiClient.put('/payment-methods/player/my-preferences', data);
+    return response as any;
+  },
+
+  // Account Deletion
+  deleteMyAccount: async (password: string): Promise<{ message: string }> => {
+    const response = await apiClient.delete('/users/me', {
+      data: { password },
+    });
     return response as any;
   },
 };

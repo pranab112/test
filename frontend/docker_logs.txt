@@ -1,0 +1,24 @@
+Starting Container
+./scripts/start.sh: line 4: $'\r': command not found
+./scripts/start.sh: line 6: $'\r': command not found
+./scripts/start.sh: line 4: $'\r': command not found
+./scripts/start.sh: line 6: $'\r': command not found
+./scripts/start.sh: line 4: $'\r': command not found
+./scripts/start.sh: line 6: $'\r': command not found
+./scripts/start.sh: line 4: $'\r': command not found
+./scripts/start.sh: line 6: $'\r': command not found
+./scripts/start.sh: line 4: $'\r': command not found
+./scripts/start.sh: line 6: $'\r': command not found
+./scripts/start.sh: line 4: $'\r': command not found
+./scripts/start.sh: line 6: $'\r': command not found
+./scripts/start.sh: line 4: $'\r': command not found
+./scripts/start.sh: line 6: $'\r': command not found
+./scripts/start.sh: line 4: $'\r': command not found
+./scripts/start.sh: line 6: $'\r': command not found
+./scripts/start.sh: line 4: $'\r': command not found
+./scripts/start.sh: line 6: $'\r': command not found
+./scripts/start.sh: line 4: $'\r': command not found
+./scripts/start.sh: line 6: $'\r': command not found
+./scripts/start.sh: line 4: $'\r': command not found
+./scripts/start.sh: line 6: $'\r': command not found
+Stopping Container

@@ -5,6 +5,7 @@ import { UsersSection } from '@/components/admin/UsersSection';
 import { GamesSection } from '@/components/admin/GamesSection';
 import { ApprovalsSection } from '@/components/admin/ApprovalsSection';
 import { MessagesSection } from '@/components/admin/MessagesSection';
+import { TicketsSection } from '@/components/admin/TicketsSection';
 import { PromotionsSection } from '@/components/admin/PromotionsSection';
 import { ReportsSection } from '@/components/admin/ReportsSection';
 import { ReviewsSection } from '@/components/admin/ReviewsSection';
@@ -25,7 +26,7 @@ export default function AdminDashboard() {
   const renderContent = () => {
     switch (activeSection) {
       case 'overview':
-        return <OverviewSection />;
+        return <OverviewSection onNavigate={setActiveSection} />;
       case 'users':
         return <UsersSection />;
       case 'games':
@@ -34,6 +35,8 @@ export default function AdminDashboard() {
         return <ApprovalsSection />;
       case 'messages':
         return <MessagesSection />;
+      case 'tickets':
+        return <TicketsSection />;
       case 'promotions':
         return <PromotionsSection />;
       case 'reports':

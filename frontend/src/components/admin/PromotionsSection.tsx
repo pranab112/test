@@ -1,13 +1,20 @@
 import { useState, useEffect } from 'react';
 import { DataTable } from '@/components/common/DataTable';
 import { Badge } from '@/components/common/Badge';
+import { Modal } from '@/components/common/Modal';
+import { Button } from '@/components/common/Button';
 import toast from 'react-hot-toast';
+import { MdWarning } from 'react-icons/md';
 import { adminApi, type AdminPromotion as Promotion } from '@/api/endpoints';
 
 export function PromotionsSection() {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
+
+  // Cancel confirmation modal state
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [pendingCancelPromotion, setPendingCancelPromotion] = useState<{ id: number; title: string } | null>(null);
 
   useEffect(() => {
     loadPromotions();
@@ -27,17 +34,23 @@ export function PromotionsSection() {
     }
   };
 
-  const handleCancelPromotion = async (promotionId: number, title: string) => {
-    if (!confirm(`Are you sure you want to cancel the promotion "${title}"?`)) {
-      return;
-    }
+  const handleCancelPromotion = (promotionId: number, title: string) => {
+    setPendingCancelPromotion({ id: promotionId, title });
+    setShowCancelModal(true);
+  };
+
+  const confirmCancelPromotion = async () => {
+    if (!pendingCancelPromotion) return;
 
     try {
-      await adminApi.cancelPromotion(promotionId);
+      await adminApi.cancelPromotion(pendingCancelPromotion.id);
       toast.success('Promotion cancelled');
       loadPromotions();
     } catch (error: any) {
       toast.error(error.response?.data?.detail || 'Failed to cancel promotion');
+    } finally {
+      setShowCancelModal(false);
+      setPendingCancelPromotion(null);
     }
   };
 
@@ -46,11 +59,15 @@ export function PromotionsSection() {
     {
       key: 'promotion_type',
       label: 'Type',
-      render: (promo: Promotion) => (
-        <Badge variant="info">{promo.promotion_type.toUpperCase()}</Badge>
+      render: (_promo: Promotion) => (
+        <Badge variant="info">GC BONUS</Badge>
       ),
     },
-    { key: 'value', label: 'Value' },
+    {
+      key: 'value',
+      label: 'Value',
+      render: (promo: Promotion) => `${promo.value} GC`,
+    },
     {
       key: 'total_claims',
       label: 'Claims',
@@ -110,6 +127,46 @@ export function PromotionsSection() {
           emptyMessage="No promotions found"
         />
       )}
+
+      {/* Cancel Promotion Confirmation Modal */}
+      <Modal
+        isOpen={showCancelModal}
+        onClose={() => {
+          setShowCancelModal(false);
+          setPendingCancelPromotion(null);
+        }}
+        title="Cancel Promotion"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <MdWarning className="text-red-500 text-2xl flex-shrink-0" />
+            <p className="text-gray-300">
+              Are you sure you want to cancel the promotion{' '}
+              <span className="text-white font-medium">"{pendingCancelPromotion?.title}"</span>?
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => {
+                setShowCancelModal(false);
+                setPendingCancelPromotion(null);
+              }}
+              variant="secondary"
+              fullWidth
+            >
+              Keep Active
+            </Button>
+            <Button
+              onClick={confirmCancelPromotion}
+              variant="primary"
+              fullWidth
+              className="!bg-red-600 hover:!bg-red-700"
+            >
+              Cancel Promotion
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 from typing import List, Optional
@@ -12,6 +12,7 @@ from app import models, schemas, auth
 from app.database import get_db
 from app.websocket import manager, WSMessage, WSMessageType
 from app.s3_storage import s3_storage, save_upload_file_locally
+from app.rate_limit import conditional_rate_limit, RateLimits
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,24 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 UPLOAD_DIR = "uploads"
 os.makedirs(f"{UPLOAD_DIR}/images", exist_ok=True)
 os.makedirs(f"{UPLOAD_DIR}/voice", exist_ok=True)
+
+# File size limits (in bytes)
+MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10 MB
+MAX_VOICE_SIZE = 25 * 1024 * 1024  # 25 MB
+MAX_TEXT_LENGTH = 10000  # 10K characters
+
+async def validate_file_size(file: UploadFile, max_size: int, file_type: str):
+    """Validate file size doesn't exceed maximum"""
+    # Read file content to check size
+    content = await file.read()
+    await file.seek(0)  # Reset file pointer
+    if len(content) > max_size:
+        max_mb = max_size / (1024 * 1024)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"{file_type} file too large. Maximum size is {max_mb:.0f}MB"
+        )
+    return content
 
 def check_friendship(user1_id: int, user2_id: int, db: Session) -> bool:
     """Check if two users are friends"""
@@ -33,13 +52,28 @@ def check_friendship(user1_id: int, user2_id: int, db: Session) -> bool:
     return user2 in user1.friends
 
 @router.post("/send/text", response_model=schemas.MessageResponse)
+@conditional_rate_limit(RateLimits.SEND_MESSAGE)
 async def send_text_message(
+    request: Request,
     receiver_id: int = Form(...),
     content: str = Form(...),
     current_user: models.User = Depends(auth.get_current_active_user),
     db: Session = Depends(get_db)
 ):
     """Send a text message to a friend"""
+
+    # Validate content - empty strings not allowed
+    if not content or not content.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Message content cannot be empty"
+        )
+
+    if len(content) > MAX_TEXT_LENGTH:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Message too long. Maximum length is {MAX_TEXT_LENGTH} characters"
+        )
 
     # Check if they are friends
     if not check_friendship(current_user.id, receiver_id, db):
@@ -81,13 +115,16 @@ async def send_text_message(
     return message
 
 @router.post("/send/image", response_model=schemas.MessageResponse)
+@conditional_rate_limit(RateLimits.SEND_IMAGE)
 async def send_image_message(
+    request: Request,
     receiver_id: int = Form(...),
     file: UploadFile = File(...),
+    content: str = Form(None),  # Optional caption for the image
     current_user: models.User = Depends(auth.get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Send an image message to a friend"""
+    """Send an image message to a friend with optional caption"""
 
     # Check if they are friends
     if not check_friendship(current_user.id, receiver_id, db):
@@ -104,8 +141,14 @@ async def send_image_message(
             detail="Invalid image format. Allowed: JPEG, PNG, GIF, WebP"
         )
 
-    # Save file (S3 or local fallback)
-    file_extension = file.filename.split(".")[-1]
+    # Validate file size
+    await validate_file_size(file, MAX_IMAGE_SIZE, "Image")
+
+    # Sanitize filename - only allow safe extensions
+    allowed_extensions = ["jpg", "jpeg", "png", "gif", "webp"]
+    file_extension = file.filename.split(".")[-1].lower() if "." in file.filename else ""
+    if file_extension not in allowed_extensions:
+        file_extension = "jpg"  # Default to jpg if extension is invalid
     unique_filename = f"{uuid.uuid4()}.{file_extension}"
 
     file_url = None
@@ -139,11 +182,12 @@ async def send_image_message(
         file_url = f"/uploads/images/{unique_filename}"
         logger.warning(f"Image saved locally (ephemeral): {file_url}")
 
-    # Create message
+    # Create message with optional caption
     message = models.Message(
         sender_id=current_user.id,
         receiver_id=receiver_id,
         message_type=models.MessageType.IMAGE,
+        content=content.strip() if content else None,  # Caption text
         file_url=file_url,
         file_name=file.filename
     )
@@ -174,7 +218,9 @@ async def send_image_message(
     return message
 
 @router.post("/send/voice", response_model=schemas.MessageResponse)
+@conditional_rate_limit(RateLimits.SEND_VOICE)
 async def send_voice_message(
+    request: Request,
     receiver_id: int = Form(...),
     duration: int = Form(...),
     file: UploadFile = File(...),
@@ -182,6 +228,18 @@ async def send_voice_message(
     db: Session = Depends(get_db)
 ):
     """Send a voice message to a friend"""
+
+    # Validate duration
+    if duration <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Voice message duration must be greater than 0"
+        )
+    if duration > 300:  # Max 5 minutes
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Voice message cannot exceed 5 minutes"
+        )
 
     # Check if they are friends
     if not check_friendship(current_user.id, receiver_id, db):
@@ -198,8 +256,14 @@ async def send_voice_message(
             detail="Invalid audio format"
         )
 
-    # Save file (S3 or local fallback)
-    file_extension = file.filename.split(".")[-1] if "." in file.filename else "webm"
+    # Validate file size
+    await validate_file_size(file, MAX_VOICE_SIZE, "Voice")
+
+    # Sanitize filename - only allow safe extensions
+    allowed_extensions = ["webm", "mp4", "mp3", "ogg", "wav"]
+    file_extension = file.filename.split(".")[-1].lower() if "." in file.filename else "webm"
+    if file_extension not in allowed_extensions:
+        file_extension = "webm"  # Default to webm
     unique_filename = f"{uuid.uuid4()}.{file_extension}"
 
     file_url = None
@@ -302,12 +366,13 @@ async def get_conversations(
             "unread_count": unread_count
         })
 
-    # Sort by last message time
-    from datetime import timezone
-    conversations.sort(
-        key=lambda x: x["last_message"].created_at if x["last_message"] else datetime.min.replace(tzinfo=timezone.utc),
-        reverse=True
-    )
+    # Sort by last message time (handle both timezone-aware and naive datetimes)
+    def get_sort_key(x):
+        if x["last_message"] is None:
+            return datetime.min
+        return x["last_message"].created_at.replace(tzinfo=None) if x["last_message"].created_at.tzinfo else x["last_message"].created_at
+
+    conversations.sort(key=get_sort_key, reverse=True)
 
     return conversations
 
@@ -398,11 +463,27 @@ async def delete_message(
             detail="Message not found or you don't have permission to delete it"
         )
 
-    # Delete associated file if exists
-    if message.file_url:
+    # Delete associated file if exists (local files only, not S3)
+    if message.file_url and not message.file_url.startswith("http"):
+        # Sanitize path to prevent traversal attacks
         file_path = message.file_url.lstrip("/")
-        if os.path.exists(file_path):
-            os.remove(file_path)
+        # Get absolute paths for comparison
+        abs_upload_dir = os.path.abspath(UPLOAD_DIR)
+        abs_file_path = os.path.abspath(file_path)
+        # Only delete if file is within upload directory (prevent path traversal)
+        if abs_file_path.startswith(abs_upload_dir) and os.path.exists(abs_file_path):
+            try:
+                os.remove(abs_file_path)
+                logger.info(f"Deleted local file: {abs_file_path}")
+            except OSError as e:
+                logger.error(f"Failed to delete file {abs_file_path}: {e}")
+        elif s3_storage.enabled and message.file_url.startswith("http"):
+            # Handle S3 file deletion
+            try:
+                s3_storage.delete_file(message.file_url)
+                logger.info(f"Deleted S3 file: {message.file_url}")
+            except Exception as e:
+                logger.error(f"Failed to delete S3 file: {e}")
 
     db.delete(message)
     db.commit()
@@ -449,3 +530,84 @@ async def get_message_stats(
         "unread_messages": unread_messages,
         "unique_conversations": unique_conversations
     }
+
+
+# ===== BROADCASTS ENDPOINTS =====
+
+@router.get("/broadcasts")
+async def get_broadcasts(
+    skip: int = 0,
+    limit: int = 50,
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Get broadcast messages received by the current user"""
+    # Broadcasts are messages from admin containing [ADMIN BROADCAST] prefix
+    broadcasts = db.query(models.Message).filter(
+        models.Message.receiver_id == current_user.id,
+        models.Message.content.like("[ADMIN BROADCAST]%")
+    ).order_by(models.Message.created_at.desc()).offset(skip).limit(limit).all()
+
+    total = db.query(models.Message).filter(
+        models.Message.receiver_id == current_user.id,
+        models.Message.content.like("[ADMIN BROADCAST]%")
+    ).count()
+
+    unread = db.query(models.Message).filter(
+        models.Message.receiver_id == current_user.id,
+        models.Message.content.like("[ADMIN BROADCAST]%"),
+        models.Message.is_read == False
+    ).count()
+
+    return {
+        "broadcasts": [
+            {
+                "id": b.id,
+                "content": b.content.replace("[ADMIN BROADCAST] ", ""),
+                "is_read": b.is_read,
+                "created_at": b.created_at.isoformat() if b.created_at else None
+            }
+            for b in broadcasts
+        ],
+        "total": total,
+        "unread": unread
+    }
+
+
+@router.put("/broadcasts/{broadcast_id}/read")
+async def mark_broadcast_read(
+    broadcast_id: int,
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Mark a broadcast as read"""
+    broadcast = db.query(models.Message).filter(
+        models.Message.id == broadcast_id,
+        models.Message.receiver_id == current_user.id,
+        models.Message.content.like("[ADMIN BROADCAST]%")
+    ).first()
+
+    if not broadcast:
+        raise HTTPException(status_code=404, detail="Broadcast not found")
+
+    broadcast.is_read = True
+    db.commit()
+
+    return {"message": "Broadcast marked as read"}
+
+
+@router.put("/broadcasts/read-all")
+async def mark_all_broadcasts_read(
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Mark all broadcasts as read"""
+    db.query(models.Message).filter(
+        models.Message.receiver_id == current_user.id,
+        models.Message.content.like("[ADMIN BROADCAST]%"),
+        models.Message.is_read == False
+    ).update({"is_read": True}, synchronize_session=False)
+
+    db.commit()
+
+    return {"message": "All broadcasts marked as read"}

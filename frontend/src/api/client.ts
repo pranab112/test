@@ -59,16 +59,59 @@ api.interceptors.response.use(
       window.location.href = redirectPath;
     }
 
-    // Handle other errors
-    const errorMessage = error.response?.data || {
-      success: false,
-      error: {
-        code: 'UNKNOWN_ERROR',
-        message: error.message || 'An unexpected error occurred',
-      },
-    };
+    // Handle other errors - normalize FastAPI error format
+    const responseData = error.response?.data;
 
-    return Promise.reject(errorMessage);
+    // FastAPI returns errors as { "detail": "message" }
+    // Normalize to { message: "...", detail: "..." } for consistency
+    let normalizedError;
+
+    if (typeof responseData === 'string') {
+      // Error is a plain string
+      normalizedError = {
+        message: responseData,
+        detail: responseData,
+        status: error.response?.status,
+      };
+    } else if (typeof responseData === 'object' && responseData && 'detail' in responseData) {
+      const detail = (responseData as any).detail;
+      // FastAPI validation error format: { "detail": [{ "loc": [...], "msg": "...", "type": "..." }] }
+      if (Array.isArray(detail)) {
+        const messages = detail.map((err: any) => {
+          const field = err.loc?.slice(1).join('.') || 'field';
+          return `${field}: ${err.msg}`;
+        }).join(', ');
+        normalizedError = {
+          message: messages || 'Validation error',
+          detail: messages || 'Validation error',
+          status: error.response?.status,
+        };
+      } else {
+        // FastAPI format: { "detail": "message" }
+        normalizedError = {
+          message: detail,
+          detail: detail,
+          status: error.response?.status,
+        };
+      }
+    } else if (typeof responseData === 'object' && responseData && 'error' in responseData && typeof (responseData as any).error === 'object' && (responseData as any).error && 'message' in (responseData as any).error) {
+      // Custom format: { "error": { "message": "..." } }
+      normalizedError = {
+        message: (responseData as any).error.message,
+        detail: (responseData as any).error.message,
+        code: (responseData as any).error.code,
+        status: error.response?.status,
+      };
+    } else {
+      // Unknown format - use axios error message
+      normalizedError = {
+        message: error.message || 'An unexpected error occurred',
+        detail: error.message || 'An unexpected error occurred',
+        status: error.response?.status,
+      };
+    }
+
+    return Promise.reject(normalizedError);
   }
 );
 

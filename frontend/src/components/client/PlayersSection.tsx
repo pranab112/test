@@ -6,8 +6,10 @@ import { Modal } from '@/components/common/Modal';
 import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import toast from 'react-hot-toast';
-import { FaUserPlus, FaUsers } from 'react-icons/fa';
+import { FaUserPlus, FaUsers, FaEllipsisV, FaGift } from 'react-icons/fa';
+import { MdBlock, MdLockReset, MdWarning } from 'react-icons/md';
 import { clientApi, type Player, type PlayerCreateRequest, type BulkPlayerCreate } from '@/api/endpoints';
+import { apiClient } from '@/api/client';
 
 export function PlayersSection() {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -15,10 +17,66 @@ export function PlayersSection() {
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [registering, setRegistering] = useState(false);
+  const [actionMenuId, setActionMenuId] = useState<number | null>(null);
+  const [processingAction, setProcessingAction] = useState<number | null>(null);
+
+  // Confirmation modal state
+  const [showBlockModal, setShowBlockModal] = useState(false);
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
 
   useEffect(() => {
     loadPlayers();
   }, []);
+
+  const handleBlockPlayer = (player: Player) => {
+    setSelectedPlayer(player);
+    setShowBlockModal(true);
+    setActionMenuId(null);
+  };
+
+  const confirmBlockPlayer = async () => {
+    if (!selectedPlayer) return;
+
+    const action = selectedPlayer.is_active ? 'block' : 'unblock';
+    setProcessingAction(selectedPlayer.id);
+    setShowBlockModal(false);
+
+    try {
+      await apiClient.patch(`/client/block-player/${selectedPlayer.id}`);
+      toast.success(`Player ${selectedPlayer.username} has been ${action}ed`);
+      loadPlayers();
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || `Failed to ${action} player`);
+    } finally {
+      setProcessingAction(null);
+      setSelectedPlayer(null);
+    }
+  };
+
+  const handleResetPassword = (player: Player) => {
+    setSelectedPlayer(player);
+    setShowResetPasswordModal(true);
+    setActionMenuId(null);
+  };
+
+  const confirmResetPassword = async () => {
+    if (!selectedPlayer) return;
+
+    setProcessingAction(selectedPlayer.id);
+    setShowResetPasswordModal(false);
+
+    try {
+      const result = await apiClient.post(`/client/reset-player-password/${selectedPlayer.id}`) as { message: string; temp_password?: string };
+      toast.success(`Password reset! New password: ${result.temp_password || `${selectedPlayer.username}@135`}`, { duration: 10000 });
+      loadPlayers();
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to reset password');
+    } finally {
+      setProcessingAction(null);
+      setSelectedPlayer(null);
+    }
+  };
 
   const loadPlayers = async () => {
     setLoading(true);
@@ -108,6 +166,41 @@ export function PlayersSection() {
       label: 'Registered',
       render: (player: Player) => new Date(player.created_at).toLocaleDateString(),
     },
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (player: Player) => (
+        <div className="relative">
+          <button
+            onClick={() => setActionMenuId(actionMenuId === player.id ? null : player.id)}
+            className="p-2 text-gray-400 hover:text-gold-500 transition-colors"
+            disabled={processingAction === player.id}
+          >
+            <FaEllipsisV />
+          </button>
+          {actionMenuId === player.id && (
+            <div className="absolute right-0 top-full mt-1 bg-dark-300 border border-gold-700 rounded-lg shadow-lg z-10 min-w-[160px]">
+              <button
+                onClick={() => handleBlockPlayer(player)}
+                disabled={processingAction === player.id}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-dark-400 flex items-center gap-2 text-gray-300 hover:text-white"
+              >
+                <MdBlock className={player.is_active ? 'text-red-500' : 'text-green-500'} />
+                {player.is_active ? 'Block Player' : 'Unblock Player'}
+              </button>
+              <button
+                onClick={() => handleResetPassword(player)}
+                disabled={processingAction === player.id}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-dark-400 flex items-center gap-2 text-gray-300 hover:text-white"
+              >
+                <MdLockReset className="text-yellow-500" />
+                Reset Password
+              </button>
+            </div>
+          )}
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -155,6 +248,90 @@ export function PlayersSection() {
         onClose={() => setShowBulkModal(false)}
         onSuccess={loadPlayers}
       />
+
+      {/* Block/Unblock Player Confirmation Modal */}
+      <Modal
+        isOpen={showBlockModal}
+        onClose={() => {
+          setShowBlockModal(false);
+          setSelectedPlayer(null);
+        }}
+        title={selectedPlayer?.is_active ? 'Block Player' : 'Unblock Player'}
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <MdWarning className="text-red-500 text-2xl flex-shrink-0" />
+            <p className="text-gray-300">
+              Are you sure you want to {selectedPlayer?.is_active ? 'block' : 'unblock'}{' '}
+              <span className="text-white font-medium">{selectedPlayer?.username}</span>?
+              {selectedPlayer?.is_active && ' They will no longer be able to access the platform.'}
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => {
+                setShowBlockModal(false);
+                setSelectedPlayer(null);
+              }}
+              variant="secondary"
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmBlockPlayer}
+              variant="primary"
+              fullWidth
+              className={selectedPlayer?.is_active ? '!bg-red-600 hover:!bg-red-700' : '!bg-green-600 hover:!bg-green-700'}
+            >
+              {selectedPlayer?.is_active ? 'Block Player' : 'Unblock Player'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Reset Password Confirmation Modal */}
+      <Modal
+        isOpen={showResetPasswordModal}
+        onClose={() => {
+          setShowResetPasswordModal(false);
+          setSelectedPlayer(null);
+        }}
+        title="Reset Player Password"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+            <MdLockReset className="text-yellow-500 text-2xl flex-shrink-0" />
+            <div className="text-gray-300">
+              <p>
+                Reset password for <span className="text-white font-medium">{selectedPlayer?.username}</span>?
+              </p>
+              <p className="text-sm mt-1">
+                The new password will be: <code className="bg-dark-400 px-2 py-0.5 rounded text-gold-500">{selectedPlayer?.username}@135</code>
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => {
+                setShowResetPasswordModal(false);
+                setSelectedPlayer(null);
+              }}
+              variant="secondary"
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmResetPassword}
+              variant="primary"
+              fullWidth
+            >
+              Reset Password
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -173,6 +350,7 @@ function RegisterPlayerModal({
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [useAutoPassword, setUseAutoPassword] = useState(true);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -186,12 +364,14 @@ function RegisterPlayerModal({
       username: username.trim(),
       full_name: fullName.trim(),
       password: useAutoPassword ? undefined : password.trim() || undefined,
+      referral_code: referralCode.trim() || undefined,
     });
 
     // Reset form
     setUsername('');
     setFullName('');
     setPassword('');
+    setReferralCode('');
     setUseAutoPassword(true);
   };
 
@@ -236,6 +416,19 @@ function RegisterPlayerModal({
             placeholder="Enter password"
           />
         )}
+
+        <div className="relative">
+          <div className="absolute left-3 top-[38px] text-gold-600">
+            <FaGift />
+          </div>
+          <Input
+            label="Referral Code (Optional)"
+            value={referralCode}
+            onChange={(e) => setReferralCode(e.target.value)}
+            placeholder="Enter referral code for bonus credits"
+            className="pl-10"
+          />
+        </div>
 
         <div className="flex gap-2 pt-4">
           <Button type="button" onClick={onClose} className="flex-1 bg-dark-300">
@@ -291,16 +484,16 @@ function BulkRegisterModal({
     setProcessing(true);
     try {
       const result = await clientApi.bulkRegisterPlayers(preview);
-      toast.success(`Successfully registered ${result.total_created} players!`);
-      if (result.total_failed > 0) {
-        toast.error(`Failed to register ${result.total_failed} players`);
+      toast.success(`Successfully registered ${result.success} players!`);
+      if (result.failed > 0) {
+        toast.error(`Failed to register ${result.failed} players`);
       }
       onClose();
       onSuccess();
       setCsvText('');
       setPreview([]);
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Failed to bulk register');
+      toast.error(error?.detail || error.response?.data?.detail || 'Failed to bulk register');
     } finally {
       setProcessing(false);
     }

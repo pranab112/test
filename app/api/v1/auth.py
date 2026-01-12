@@ -9,6 +9,7 @@ from app import models, schemas, auth
 from app.database import get_db
 from app.config import settings
 from app.rate_limit import conditional_rate_limit, RateLimits
+from app.models import ReferralStatus, REFERRAL_BONUS_CREDITS
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +111,27 @@ def register(request: Request, user: schemas.UserCreate, db: Session = Depends(g
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
+
+    # Handle referral code if provided
+    referral_code = getattr(user, "referral_code", None)
+    if referral_code:
+        # Find the referrer by their referral code
+        referrer = db.query(models.User).filter(
+            models.User.referral_code == referral_code,
+            models.User.is_active == True
+        ).first()
+
+        if referrer and referrer.id != db_user.id:
+            # Create a referral record (pending until user is approved)
+            referral = models.Referral(
+                referrer_id=referrer.id,
+                referred_id=db_user.id,
+                status=ReferralStatus.PENDING,
+                bonus_amount=REFERRAL_BONUS_CREDITS
+            )
+            db.add(referral)
+            db.commit()
+            logger.info(f"Referral created: {referrer.username} referred {db_user.username}")
 
     return db_user
 

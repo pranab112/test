@@ -6,7 +6,7 @@ import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import { BulkGameImport } from './BulkGameImport';
 import toast from 'react-hot-toast';
-import { MdAdd, MdEdit, MdDelete, MdImage, MdCategory, MdUploadFile } from 'react-icons/md';
+import { MdAdd, MdEdit, MdDelete, MdImage, MdCategory, MdUploadFile, MdWarning } from 'react-icons/md';
 import { FaGamepad } from 'react-icons/fa';
 import { gamesApi, type Game, type CreateGameRequest } from '@/api/endpoints';
 
@@ -19,6 +19,10 @@ export function GamesSection() {
   const [saving, setSaving] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
+
+  // Delete confirmation modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [pendingDeleteGame, setPendingDeleteGame] = useState<{ id: number; name: string } | null>(null);
 
   useEffect(() => {
     loadGames();
@@ -97,28 +101,41 @@ export function GamesSection() {
     }
   };
 
-  const handleDeleteGame = async (id: number, name: string) => {
-    if (!confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
-      return;
-    }
+  const handleDeleteGame = (id: number, name: string) => {
+    setPendingDeleteGame({ id, name });
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteGame = async () => {
+    if (!pendingDeleteGame) return;
 
     try {
-      await gamesApi.deleteGame(id);
+      await gamesApi.deleteGame(pendingDeleteGame.id);
       toast.success('Game deleted successfully');
       loadGames();
     } catch (error) {
       toast.error('Failed to delete game');
       console.error(error);
+    } finally {
+      setShowDeleteModal(false);
+      setPendingDeleteGame(null);
     }
   };
 
-  const handleImageSelect = (file: File) => {
-    setSelectedImage(file);
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+  const handleImageSelect = (file: File | null) => {
+    if (file) {
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleClearImage = () => {
+    setSelectedImage(null);
+    setImagePreview('');
   };
 
   const columns = [
@@ -287,6 +304,7 @@ export function GamesSection() {
           selectedImage={selectedImage}
           imagePreview={imagePreview || editingGame?.icon_url || ''}
           onImageSelect={handleImageSelect}
+          onClearImage={handleClearImage}
         />
       )}
 
@@ -296,6 +314,47 @@ export function GamesSection() {
         onClose={() => setShowBulkImport(false)}
         onImportComplete={loadGames}
       />
+
+      {/* Delete Game Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setPendingDeleteGame(null);
+        }}
+        title="Delete Game"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <MdWarning className="text-red-500 text-2xl flex-shrink-0" />
+            <p className="text-gray-300">
+              Are you sure you want to delete{' '}
+              <span className="text-white font-medium">"{pendingDeleteGame?.name}"</span>?
+              This action cannot be undone.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => {
+                setShowDeleteModal(false);
+                setPendingDeleteGame(null);
+              }}
+              variant="secondary"
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmDeleteGame}
+              variant="primary"
+              fullWidth
+              className="!bg-red-600 hover:!bg-red-700"
+            >
+              Delete Game
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -309,7 +368,8 @@ interface GameFormModalProps {
   categories: string[];
   selectedImage: File | null;
   imagePreview: string;
-  onImageSelect: (file: File) => void;
+  onImageSelect: (file: File | null) => void;
+  onClearImage: () => void;
 }
 
 function GameFormModal({
@@ -322,6 +382,7 @@ function GameFormModal({
   selectedImage,
   imagePreview,
   onImageSelect,
+  onClearImage,
 }: GameFormModalProps) {
   const [formData, setFormData] = useState<CreateGameRequest>({
     name: game?.name || '',
@@ -330,6 +391,7 @@ function GameFormModal({
     category: game?.category || 'slots',
     is_active: game?.is_active ?? true,
   });
+  const [imageError, setImageError] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -406,18 +468,20 @@ function GameFormModal({
             <div>
               <label className="label">Game Cover Image</label>
               <div className="bg-dark-300 border-2 border-dashed border-gold-700 rounded-lg p-4">
-                {imagePreview ? (
+                {(imagePreview && !imageError) ? (
                   <div className="space-y-3">
                     <img
                       src={imagePreview}
                       alt="Preview"
                       className="w-full h-48 object-cover rounded-lg"
+                      onError={() => setImageError(true)}
                     />
                     <button
                       type="button"
                       onClick={() => {
-                        onImageSelect(null as any);
+                        onClearImage();
                         setFormData({ ...formData, icon_url: '' });
+                        setImageError(false);
                       }}
                       className="w-full text-red-500 hover:text-red-400 text-sm"
                     >
@@ -435,7 +499,12 @@ function GameFormModal({
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={(e) => e.target.files?.[0] && onImageSelect(e.target.files[0])}
+                      onChange={(e) => {
+                        if (e.target.files?.[0]) {
+                          onImageSelect(e.target.files[0]);
+                          setImageError(false);
+                        }
+                      }}
                     />
                   </label>
                 )}

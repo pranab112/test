@@ -95,16 +95,21 @@ async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) 
 
     Returns a consistent error response with retry information
     """
+    # Handle case where exc.headers might be None
+    headers = exc.headers or {}
+    retry_after = headers.get("Retry-After", "60") if headers else "60"
+
     response = JSONResponse(
         status_code=429,
         content={
             "detail": "Rate limit exceeded",
             "message": f"Too many requests. {exc.detail}",
-            "retry_after": exc.headers.get("Retry-After", "60")
+            "retry_after": retry_after
         }
     )
-    # Add standard rate limit headers
-    response.headers.update(exc.headers)
+    # Add standard rate limit headers if available
+    if headers:
+        response.headers.update(headers)
     return response
 
 
@@ -136,7 +141,7 @@ class RateLimits:
     """Common rate limit configurations"""
 
     # Authentication endpoints
-    LOGIN = "5/minute"  # Prevent brute force attacks
+    LOGIN = "20/minute"  # Prevent brute force attacks (increased for better UX)
     REGISTER = "3/hour"  # Prevent spam accounts
     PASSWORD_RESET = "3/hour"  # Prevent abuse
 

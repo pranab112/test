@@ -16,6 +16,8 @@ export interface RegisterRequest {
   full_name?: string;
   user_type: UserType;
   company_name?: string;
+  client_identifier?: string;
+  referral_code?: string;
 }
 
 export interface TokenResponse {
@@ -43,4 +45,6 @@ export interface User {
   secondary_email?: string;
   two_factor_enabled?: boolean;
   bio?: string;
+  phone?: string;
+  level?: number;
 }

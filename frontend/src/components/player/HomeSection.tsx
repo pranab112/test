@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { StatCard } from '@/components/common/StatCard';
 import { Badge } from '@/components/common/Badge';
 import { Modal } from '@/components/common/Modal';
@@ -13,6 +13,7 @@ import { authApi } from '@/api/endpoints/auth.api';
 import { friendsApi } from '@/api/endpoints/friends.api';
 import { offersApi, type PlatformOffer, type OfferClaim } from '@/api/endpoints/offers.api';
 import { promotionsApi } from '@/api/endpoints/promotions.api';
+import { gamesApi } from '@/api/endpoints/games.api';
 import type { User } from '@/types';
 
 interface DashboardStats {
@@ -47,6 +48,8 @@ export function HomeSection() {
   });
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
   const [availableOffers, setAvailableOffers] = useState<PlatformOffer[]>([]);
+  const [claimedOfferIds, setClaimedOfferIds] = useState<Set<number>>(new Set());
+  const [claimingOfferId, setClaimingOfferId] = useState<number | null>(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -64,7 +67,18 @@ export function HomeSection() {
       ]);
 
       setUser(userData);
-      setAvailableOffers((offersData || []).slice(0, 3)); // Show top 3 offers
+
+      // Track claimed offer IDs from claims data
+      const claimedIds = new Set<number>(
+        (claimsData || []).map((claim: OfferClaim) => claim.offer_id)
+      );
+      setClaimedOfferIds(claimedIds);
+
+      // Filter only active offers and show top 3
+      const activeOffers = (offersData || []).filter(
+        (offer: PlatformOffer) => offer.status === 'active'
+      );
+      setAvailableOffers(activeOffers.slice(0, 3));
 
       // Calculate stats - count active promotions available to the player
       const activePromos = (promotionsData || []).filter((p: any) => p.is_active).length;
@@ -119,6 +133,23 @@ export function HomeSection() {
       toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleClaimOffer = async (offerId: number) => {
+    setClaimingOfferId(offerId);
+    try {
+      await offersApi.claimOffer({ offer_id: offerId });
+      toast.success('Offer claimed successfully! Waiting for approval.');
+      // Add to claimed offers
+      setClaimedOfferIds(prev => new Set([...prev, offerId]));
+      // Reload dashboard to update stats
+      loadDashboardData();
+    } catch (error: any) {
+      const errorMessage = error?.message || error?.detail || 'Failed to claim offer';
+      toast.error(errorMessage);
+    } finally {
+      setClaimingOfferId(null);
     }
   };
 
@@ -284,6 +315,9 @@ export function HomeSection() {
                   description={offer.description}
                   value={offer.bonus_amount}
                   expiry={offer.end_date ? `Expires ${new Date(offer.end_date).toLocaleDateString()}` : 'No expiry'}
+                  isClaimed={claimedOfferIds.has(offer.id)}
+                  isClaiming={claimingOfferId === offer.id}
+                  onClaim={() => handleClaimOffer(offer.id)}
                 />
               ))
             )}
@@ -299,7 +333,10 @@ export function HomeSection() {
           title="Lucky Dice Game"
           size="lg"
         >
-          <LuckyDiceGame />
+          <LuckyDiceGame
+            credits={dashboardStats.credits}
+            onBalanceUpdate={(newBalance) => setDashboardStats(prev => ({ ...prev, credits: newBalance }))}
+          />
         </Modal>
       )}
 
@@ -310,7 +347,10 @@ export function HomeSection() {
           title="Lucky Slots Game"
           size="lg"
         >
-          <LuckySlotsGame />
+          <LuckySlotsGame
+            credits={dashboardStats.credits}
+            onBalanceUpdate={(newBalance) => setDashboardStats(prev => ({ ...prev, credits: newBalance }))}
+          />
         </Modal>
       )}
 
@@ -329,53 +369,160 @@ export function HomeSection() {
 }
 
 // Lucky Dice Game Component
-function LuckyDiceGame() {
-  const [bet, setBet] = useState<number>(7);
+function LuckyDiceGame({ credits, onBalanceUpdate }: { credits: number; onBalanceUpdate: (balance: number) => void }) {
+  const [prediction, setPrediction] = useState<number>(7);
+  const [betAmount, setBetAmount] = useState<number>(10);
   const [dice1, setDice1] = useState(1);
   const [dice2, setDice2] = useState(1);
   const [rolling, setRolling] = useState(false);
   const [result, setResult] = useState<'win' | 'lose' | null>(null);
   const [winStreak, setWinStreak] = useState(0);
+  const [lastWin, setLastWin] = useState<number>(0);
+  const [currentCredits, setCurrentCredits] = useState(credits);
+  const [cooldown, setCooldown] = useState(false);
+  const lastBetTime = useRef<number>(0);
 
-  const rollDice = () => {
-    if (bet < 2 || bet > 12) {
-      toast.error('Bet must be between 2 and 12');
+  // Sync local credits state when props change (fixes desync issue)
+  useEffect(() => {
+    setCurrentCredits(credits);
+  }, [credits]);
+
+  // Cleanup interval on unmount
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
+
+  // Game configuration constants
+  const MIN_BET = 10;
+  const MAX_BET = 10000;
+
+  // Quick prediction selection options - common betting values
+  const quickPredictionOptions = [2, 5, 7, 9, 12];
+  // Quick bet amount options
+  const quickBetAmounts = [10, 25, 50, 100, 250];
+
+  // Validate and set prediction value
+  const handlePredictionChange = (value: number) => {
+    const validPrediction = Math.min(12, Math.max(2, value || 2));
+    setPrediction(validPrediction);
+  };
+
+  // Validate and set bet amount
+  const handleBetAmountChange = (value: number) => {
+    const validAmount = Math.max(MIN_BET, Math.min(value || MIN_BET, Math.min(currentCredits, MAX_BET)));
+    setBetAmount(validAmount);
+  };
+
+  const rollDice = async () => {
+    // Debounce: Prevent rapid clicking (500ms cooldown)
+    const now = Date.now();
+    if (now - lastBetTime.current < 500) {
+      toast.error('Please wait before placing another bet');
+      return;
+    }
+
+    // Validate prediction before rolling
+    if (prediction < 2 || prediction > 12) {
+      toast.error('Prediction must be between 2 and 12');
+      handlePredictionChange(7);
+      return;
+    }
+
+    // Validate bet amount
+    if (betAmount < MIN_BET) {
+      toast.error(`Minimum bet is ${MIN_BET} credits`);
+      return;
+    }
+
+    if (betAmount > MAX_BET) {
+      toast.error(`Maximum bet is ${MAX_BET} credits`);
+      return;
+    }
+
+    if (betAmount > currentCredits) {
+      toast.error('Insufficient credits');
       return;
     }
 
     setRolling(true);
+    setCooldown(true);
+    lastBetTime.current = Date.now();
     setResult(null);
+    setLastWin(0);
 
     // Animate dice rolling
-    const interval = setInterval(() => {
+    intervalRef.current = setInterval(() => {
       setDice1(Math.floor(Math.random() * 6) + 1);
       setDice2(Math.floor(Math.random() * 6) + 1);
     }, 100);
 
-    setTimeout(() => {
-      clearInterval(interval);
-      const final1 = Math.floor(Math.random() * 6) + 1;
-      const final2 = Math.floor(Math.random() * 6) + 1;
-      setDice1(final1);
-      setDice2(final2);
+    try {
+      // Call the API to place the bet
+      const response = await gamesApi.placeMiniGameBet({
+        game_type: 'dice',
+        bet_amount: betAmount,
+        prediction: prediction,
+      });
 
-      const total = final1 + final2;
-      if (total === bet) {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+
+      // Update dice with actual result from API
+      setDice1(response.details.dice1 || 1);
+      setDice2(response.details.dice2 || 1);
+
+      // Update credits
+      setCurrentCredits(response.new_balance);
+      onBalanceUpdate(response.new_balance);
+
+      if (response.result === 'win') {
         setResult('win');
         setWinStreak(prev => prev + 1);
-        toast.success(`You won! Rolled ${total}`);
+        setLastWin(response.win_amount);
+        toast.success(response.message);
       } else {
         setResult('lose');
         setWinStreak(0);
-        toast.error(`You lost. Rolled ${total}, bet ${bet}`);
+        toast.error(response.message);
+      }
+    } catch (error: any) {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
 
+      // Reset game state on error
+      setResult(null);
+      setLastWin(0);
+
+      // Show error message (properly extracted from FastAPI response)
+      const errorMessage = error?.message || error?.detail || 'Failed to place bet. Please try again.';
+      toast.error(errorMessage);
+
+      // Note: Credits are NOT restored because they were never deducted
+      // We only update credits on successful API response
+    } finally {
       setRolling(false);
-    }, 2000);
+      // Reset cooldown after a brief delay
+      setTimeout(() => setCooldown(false), 500);
+    }
   };
 
   return (
     <div className="space-y-6">
+      {/* Credits Display */}
+      <div className="bg-gradient-to-r from-gold-600 to-yellow-600 rounded-lg p-4 text-center">
+        <p className="text-sm text-dark-700 font-medium">Your Credits</p>
+        <p className="text-3xl font-bold text-dark-700">{currentCredits.toLocaleString()}</p>
+      </div>
+
       <div className="bg-dark-300 border-2 border-gold-700 rounded-lg p-6">
         <div className="flex items-center justify-center gap-8 mb-6">
           <Dice value={dice1} rolling={rolling} />
@@ -388,16 +535,74 @@ function LuckyDiceGame() {
           </p>
         </div>
 
+        {/* Bet Amount Input */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-300 mb-2">
-            Your Bet (2-12)
+            Bet Amount (Credits)
           </label>
+
+          <div className="flex gap-2 mb-3 justify-center flex-wrap">
+            {quickBetAmounts.map((amount) => (
+              <button
+                key={amount}
+                type="button"
+                onClick={() => handleBetAmountChange(amount)}
+                disabled={rolling || amount > currentCredits}
+                className={`px-3 py-1 rounded-lg font-bold text-sm transition-all ${
+                  betAmount === amount
+                    ? 'bg-green-500 text-white scale-105'
+                    : amount > currentCredits
+                    ? 'bg-dark-400 text-gray-600 cursor-not-allowed'
+                    : 'bg-dark-200 text-white hover:bg-dark-400 border border-green-700'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                {amount}
+              </button>
+            ))}
+          </div>
+
+          <input
+            type="number"
+            min="1"
+            max={currentCredits}
+            value={betAmount}
+            onChange={(e) => handleBetAmountChange(parseInt(e.target.value))}
+            disabled={rolling}
+            className="w-full bg-dark-200 border-2 border-green-700 rounded-lg px-4 py-2 text-white text-center text-lg font-bold focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+        </div>
+
+        {/* Prediction Input */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Your Prediction (2-12)
+          </label>
+
+          <div className="flex gap-2 mb-3 justify-center flex-wrap">
+            {quickPredictionOptions.map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => handlePredictionChange(value)}
+                disabled={rolling}
+                className={`px-4 py-2 rounded-lg font-bold transition-all ${
+                  prediction === value
+                    ? 'bg-gold-500 text-dark-700 scale-105'
+                    : 'bg-dark-200 text-white hover:bg-dark-400 border border-gold-700'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
+
           <input
             type="number"
             min="2"
             max="12"
-            value={bet}
-            onChange={(e) => setBet(parseInt(e.target.value) || 2)}
+            value={prediction}
+            onChange={(e) => handlePredictionChange(parseInt(e.target.value))}
+            onBlur={(e) => handlePredictionChange(parseInt(e.target.value))}
             disabled={rolling}
             className="w-full bg-dark-200 border-2 border-gold-700 rounded-lg px-4 py-3 text-white text-center text-xl font-bold focus:outline-none focus:ring-2 focus:ring-gold-500"
           />
@@ -405,11 +610,11 @@ function LuckyDiceGame() {
 
         <Button
           onClick={rollDice}
-          disabled={rolling}
+          disabled={rolling || cooldown || prediction < 2 || prediction > 12 || betAmount <= 0 || betAmount > currentCredits}
           fullWidth
           variant="primary"
         >
-          {rolling ? 'Rolling...' : 'Roll Dice'}
+          {rolling ? 'Rolling...' : `Roll Dice (Bet ${betAmount} Credits)`}
         </Button>
 
         {result && (
@@ -417,7 +622,7 @@ function LuckyDiceGame() {
             result === 'win' ? 'bg-green-900/30 border-2 border-green-500' : 'bg-red-900/30 border-2 border-red-500'
           }`}>
             <p className={`text-xl font-bold ${result === 'win' ? 'text-green-400' : 'text-red-400'}`}>
-              {result === 'win' ? 'YOU WIN!' : 'YOU LOSE!'}
+              {result === 'win' ? `YOU WIN ${lastWin} CREDITS!` : 'YOU LOSE!'}
             </p>
           </div>
         )}
@@ -432,10 +637,11 @@ function LuckyDiceGame() {
       <div className="bg-dark-300 rounded-lg p-4">
         <h3 className="font-bold text-gold-500 mb-2">How to Play</h3>
         <ul className="text-sm text-gray-400 space-y-1">
+          <li>• Enter how many credits you want to bet</li>
           <li>• Choose a number between 2 and 12</li>
           <li>• Click Roll Dice</li>
-          <li>• If the dice sum equals your bet, you win!</li>
-          <li>• Build your win streak by winning consecutive games</li>
+          <li>• If the dice sum equals your prediction, you win!</li>
+          <li>• Rarer numbers (2, 12) pay more than common ones (7)</li>
         </ul>
       </div>
     </div>
@@ -496,56 +702,159 @@ function Dice({ value, rolling }: { value: number; rolling: boolean }) {
 }
 
 // Lucky Slots Game Component
-function LuckySlotsGame() {
-  const symbols = ['🍒', '🍋', '🍊', '🍇', '⭐', '7️⃣', '💎'];
-  const [reels, setReels] = useState([symbols[0], symbols[0], symbols[0]]);
-  const [spinning, setSpinning] = useState(false);
-  const [result, setResult] = useState<'win' | 'lose' | null>(null);
-  const [winStreak, setWinStreak] = useState(0);
+function LuckySlotsGame({ credits, onBalanceUpdate }: { credits: number; onBalanceUpdate: (balance: number) => void }) {
+  const symbolsDisplay = ['🍒', '🍋', '🍊', '🍇', '⭐', '7️⃣', '💎'];
+  const symbolMap: Record<string, string> = {
+    'cherry': '🍒', 'lemon': '🍋', 'orange': '🍊', 'grape': '🍇',
+    'star': '⭐', 'seven': '7️⃣', 'diamond': '💎'
+  };
 
-  const spin = () => {
+  const [reels, setReels] = useState([symbolsDisplay[0], symbolsDisplay[0], symbolsDisplay[0]]);
+  const [spinning, setSpinning] = useState(false);
+  const [result, setResult] = useState<'win' | 'lose' | 'jackpot' | null>(null);
+  const [winStreak, setWinStreak] = useState(0);
+  const [betAmount, setBetAmount] = useState<number>(10);
+  const [lastWin, setLastWin] = useState<number>(0);
+  const [currentCredits, setCurrentCredits] = useState(credits);
+  const [cooldown, setCooldown] = useState(false);
+  const lastBetTime = useRef<number>(0);
+
+  // Sync local credits state when props change (fixes desync issue)
+  useEffect(() => {
+    setCurrentCredits(credits);
+  }, [credits]);
+
+  // Cleanup interval on unmount
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
+
+  // Game configuration constants
+  const MIN_BET = 10;
+  const MAX_BET = 10000;
+
+  // Quick bet amount options
+  const quickBetAmounts = [10, 25, 50, 100, 250];
+
+  // Validate and set bet amount
+  const handleBetAmountChange = (value: number) => {
+    const validAmount = Math.max(MIN_BET, Math.min(value || MIN_BET, Math.min(currentCredits, MAX_BET)));
+    setBetAmount(validAmount);
+  };
+
+  const spin = async () => {
+    // Debounce: Prevent rapid clicking (500ms cooldown)
+    const now = Date.now();
+    if (now - lastBetTime.current < 500) {
+      toast.error('Please wait before placing another bet');
+      return;
+    }
+
+    // Validate bet amount
+    if (betAmount < MIN_BET) {
+      toast.error(`Minimum bet is ${MIN_BET} credits`);
+      return;
+    }
+
+    if (betAmount > MAX_BET) {
+      toast.error(`Maximum bet is ${MAX_BET} credits`);
+      return;
+    }
+
+    if (betAmount > currentCredits) {
+      toast.error('Insufficient credits');
+      return;
+    }
+
     setSpinning(true);
+    setCooldown(true);
+    lastBetTime.current = Date.now();
     setResult(null);
+    setLastWin(0);
 
     // Animate spinning
-    const interval = setInterval(() => {
+    intervalRef.current = setInterval(() => {
       setReels([
-        symbols[Math.floor(Math.random() * symbols.length)],
-        symbols[Math.floor(Math.random() * symbols.length)],
-        symbols[Math.floor(Math.random() * symbols.length)],
+        symbolsDisplay[Math.floor(Math.random() * symbolsDisplay.length)],
+        symbolsDisplay[Math.floor(Math.random() * symbolsDisplay.length)],
+        symbolsDisplay[Math.floor(Math.random() * symbolsDisplay.length)],
       ]);
     }, 100);
 
-    setTimeout(() => {
-      clearInterval(interval);
-      const finalReels = [
-        symbols[Math.floor(Math.random() * symbols.length)],
-        symbols[Math.floor(Math.random() * symbols.length)],
-        symbols[Math.floor(Math.random() * symbols.length)],
-      ];
-      setReels(finalReels);
+    try {
+      // Call the API to place the bet
+      const response = await gamesApi.placeMiniGameBet({
+        game_type: 'slots',
+        bet_amount: betAmount,
+      });
 
-      // Check for win
-      if (finalReels[0] === finalReels[1] && finalReels[1] === finalReels[2]) {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+
+      // Map API symbols to display emojis
+      if (response.details.reels) {
+        const displayReels = response.details.reels.map(s => symbolMap[s] || '❓');
+        setReels(displayReels);
+      }
+
+      // Update credits
+      setCurrentCredits(response.new_balance);
+      onBalanceUpdate(response.new_balance);
+
+      if (response.result === 'jackpot') {
+        setResult('jackpot');
+        setWinStreak(prev => prev + 1);
+        setLastWin(response.win_amount);
+        toast.success(response.message);
+      } else if (response.result === 'win') {
         setResult('win');
         setWinStreak(prev => prev + 1);
-        toast.success('Jackpot! All three match!');
-      } else if (finalReels[0] === finalReels[1] || finalReels[1] === finalReels[2]) {
-        setResult('win');
-        setWinStreak(prev => prev + 1);
-        toast.success('Nice! Two symbols match!');
+        setLastWin(response.win_amount);
+        toast.success(response.message);
       } else {
         setResult('lose');
         setWinStreak(0);
-        toast.error('No match. Try again!');
+        toast.error(response.message);
+      }
+    } catch (error: any) {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
 
+      // Reset game state on error
+      setResult(null);
+      setLastWin(0);
+      setWinStreak(0);
+
+      // Show error message (properly extracted from FastAPI response)
+      const errorMessage = error?.message || error?.detail || 'Failed to place bet. Please try again.';
+      toast.error(errorMessage);
+
+      // Note: Credits are NOT restored because they were never deducted
+      // We only update credits on successful API response
+    } finally {
       setSpinning(false);
-    }, 2000);
+      // Reset cooldown after a brief delay
+      setTimeout(() => setCooldown(false), 500);
+    }
   };
 
   return (
     <div className="space-y-6">
+      {/* Credits Display */}
+      <div className="bg-gradient-to-r from-gold-600 to-yellow-600 rounded-lg p-4 text-center">
+        <p className="text-sm text-dark-700 font-medium">Your Credits</p>
+        <p className="text-3xl font-bold text-dark-700">{currentCredits.toLocaleString()}</p>
+      </div>
+
       <div className="bg-dark-300 border-2 border-gold-700 rounded-lg p-6">
         <div className="flex items-center justify-center gap-4 mb-6 bg-dark-200 p-8 rounded-lg">
           {reels.map((symbol, index) => (
@@ -560,21 +869,63 @@ function LuckySlotsGame() {
           ))}
         </div>
 
+        {/* Bet Amount Input */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Bet Amount (Credits)
+          </label>
+
+          <div className="flex gap-2 mb-3 justify-center flex-wrap">
+            {quickBetAmounts.map((amount) => (
+              <button
+                key={amount}
+                type="button"
+                onClick={() => handleBetAmountChange(amount)}
+                disabled={spinning || amount > currentCredits}
+                className={`px-3 py-1 rounded-lg font-bold text-sm transition-all ${
+                  betAmount === amount
+                    ? 'bg-green-500 text-white scale-105'
+                    : amount > currentCredits
+                    ? 'bg-dark-400 text-gray-600 cursor-not-allowed'
+                    : 'bg-dark-200 text-white hover:bg-dark-400 border border-green-700'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                {amount}
+              </button>
+            ))}
+          </div>
+
+          <input
+            type="number"
+            min="1"
+            max={currentCredits}
+            value={betAmount}
+            onChange={(e) => handleBetAmountChange(parseInt(e.target.value))}
+            disabled={spinning}
+            className="w-full bg-dark-200 border-2 border-green-700 rounded-lg px-4 py-2 text-white text-center text-lg font-bold focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+        </div>
+
         <Button
           onClick={spin}
-          disabled={spinning}
+          disabled={spinning || cooldown || betAmount <= 0 || betAmount > currentCredits}
           fullWidth
           variant="primary"
         >
-          {spinning ? 'Spinning...' : 'SPIN'}
+          {spinning ? 'Spinning...' : `SPIN (Bet ${betAmount} Credits)`}
         </Button>
 
         {result && (
           <div className={`mt-4 p-4 rounded-lg text-center ${
+            result === 'jackpot' ? 'bg-yellow-900/30 border-2 border-yellow-500' :
             result === 'win' ? 'bg-green-900/30 border-2 border-green-500' : 'bg-red-900/30 border-2 border-red-500'
           }`}>
-            <p className={`text-xl font-bold ${result === 'win' ? 'text-green-400' : 'text-red-400'}`}>
-              {result === 'win' ? 'WINNER!' : 'TRY AGAIN!'}
+            <p className={`text-xl font-bold ${
+              result === 'jackpot' ? 'text-yellow-400' :
+              result === 'win' ? 'text-green-400' : 'text-red-400'
+            }`}>
+              {result === 'jackpot' ? `🎰 JACKPOT! ${lastWin} CREDITS! 🎰` :
+               result === 'win' ? `WINNER! +${lastWin} CREDITS!` : 'TRY AGAIN!'}
             </p>
           </div>
         )}
@@ -589,10 +940,11 @@ function LuckySlotsGame() {
       <div className="bg-dark-300 rounded-lg p-4">
         <h3 className="font-bold text-gold-500 mb-2">How to Play</h3>
         <ul className="text-sm text-gray-400 space-y-1">
+          <li>• Enter how many credits you want to bet</li>
           <li>• Click SPIN to start</li>
-          <li>• Match 3 symbols for a jackpot!</li>
-          <li>• Match 2 symbols for a small win</li>
-          <li>• Build your win streak!</li>
+          <li>• Match 3 symbols for a jackpot! (5x - 50x)</li>
+          <li>• Match 2 symbols for a small win (2x)</li>
+          <li>• 💎 Diamond pays the most!</li>
         </ul>
       </div>
     </div>
@@ -608,6 +960,7 @@ function MemoryMatchGame() {
   const [timer, setTimer] = useState(0);
   const [gameStarted, setGameStarted] = useState(false);
   const [gameWon, setGameWon] = useState(false);
+  const [timerStarted, setTimerStarted] = useState(false);
 
   const initializeGame = () => {
     const shuffled = [...cardSymbols, ...cardSymbols]
@@ -624,22 +977,37 @@ function MemoryMatchGame() {
     setTimer(0);
     setGameStarted(true);
     setGameWon(false);
+    setTimerStarted(false); // Timer starts on first move
   };
 
-  // Timer effect
-  useState(() => {
-    if (gameStarted && !gameWon) {
-      const interval = setInterval(() => {
+  // Timer effect - properly using useEffect with correct dependencies
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    // Only run timer when game has started, timer has been triggered by first move, and game is not won
+    if (timerStarted && !gameWon) {
+      interval = setInterval(() => {
         setTimer(prev => prev + 1);
       }, 1000);
-      return () => clearInterval(interval);
     }
-  });
+
+    // Cleanup function
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [timerStarted, gameWon]);
 
   const handleCardClick = (index: number) => {
     if (!gameStarted) return;
     if (cards[index].flipped || cards[index].matched) return;
     if (flippedIndices.length === 2) return;
+
+    // Start timer on first valid move
+    if (!timerStarted) {
+      setTimerStarted(true);
+    }
 
     const newCards = [...cards];
     newCards[index].flipped = true;
@@ -661,11 +1029,10 @@ function MemoryMatchGame() {
           setCards(matchedCards);
           setFlippedIndices([]);
 
-          // Check if game is won
+          // Check if game is won - need to use functional update to get correct timer value
           if (matchedCards.every(card => card.matched)) {
             setGameWon(true);
             setGameStarted(false);
-            toast.success(`You won in ${moves + 1} moves and ${timer} seconds!`);
           }
         }, 500);
       } else {
@@ -680,6 +1047,13 @@ function MemoryMatchGame() {
       }
     }
   };
+
+  // Effect to show win message with correct timer value
+  useEffect(() => {
+    if (gameWon) {
+      toast.success(`You won in ${moves} moves and ${timer} seconds!`);
+    }
+  }, [gameWon, moves, timer]);
 
   if (cards.length === 0) {
     return (
@@ -776,12 +1150,18 @@ function OfferCard({
   title,
   description,
   value,
-  expiry
+  expiry,
+  isClaimed,
+  isClaiming,
+  onClaim
 }: {
   title: string;
   description: string;
   value: number;
   expiry: string;
+  isClaimed: boolean;
+  isClaiming: boolean;
+  onClaim: () => void;
 }) {
   return (
     <div className="p-4 bg-dark-300 border border-gold-700 rounded-lg hover:shadow-gold transition-all">
@@ -794,9 +1174,20 @@ function OfferCard({
       </div>
       <div className="flex items-center justify-between mt-3">
         <span className="text-xs text-gray-500">{expiry}</span>
-        <button className="bg-gold-gradient text-dark-700 font-bold px-4 py-1 rounded text-sm hover:shadow-gold transition-all">
-          Claim
-        </button>
+        {isClaimed ? (
+          <span className="bg-gray-600 text-gray-300 font-bold px-4 py-1 rounded text-sm">
+            Claimed
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={onClaim}
+            disabled={isClaiming}
+            className="bg-gold-gradient text-dark-700 font-bold px-4 py-1 rounded text-sm hover:shadow-gold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isClaiming ? 'Claiming...' : 'Claim'}
+          </button>
+        )}
       </div>
     </div>
   );

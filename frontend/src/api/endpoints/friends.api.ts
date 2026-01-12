@@ -2,6 +2,7 @@ import { apiClient } from '../client';
 
 export interface Friend {
   id: number;
+  user_id: string;
   username: string;
   full_name: string;
   email?: string;
@@ -11,6 +12,7 @@ export interface Friend {
   player_level?: number;
   credits?: number;
   created_at: string;
+  company_name?: string;
 }
 
 // Alias for use in player ClientsSection
@@ -39,46 +41,59 @@ export interface FriendRequest {
 export const friendsApi = {
   // Get all friends
   getFriends: async (): Promise<Friend[]> => {
-    const response = await apiClient.get('/friends/');
-    // Backend returns { friends: [...] }, extract the array
-    return (response as any).friends || [];
+    const response = await apiClient.get('/friends/list');
+    // API returns { friends: [...] }, extract the array
+    return (response as any)?.friends || [];
   },
 
-  // Send friend request
-  sendFriendRequest: async (userId: number): Promise<{ message: string }> => {
-    const response = await apiClient.post(`/friends/send/${userId}`);
+  // Send friend request (userId is the user_id string like "A4D2EGUZ")
+  sendFriendRequest: async (userIdString: string): Promise<{ message: string }> => {
+    const response = await apiClient.post('/friends/request', { receiver_user_id: userIdString });
     return response as any;
   },
 
-  // Get pending friend requests
+  // Get pending friend requests (received)
   getPendingRequests: async (): Promise<FriendRequest[]> => {
-    const response = await apiClient.get('/friends/requests/pending');
+    const response = await apiClient.get('/friends/requests/received');
+    return response as any;
+  },
+
+  // Get sent friend requests
+  getSentRequests: async (): Promise<FriendRequest[]> => {
+    const response = await apiClient.get('/friends/requests/sent');
     return response as any;
   },
 
   // Accept friend request
   acceptRequest: async (requestId: number): Promise<{ message: string }> => {
-    const response = await apiClient.post(`/friends/accept/${requestId}`);
+    const response = await apiClient.put(`/friends/requests/${requestId}`, { status: 'accepted' });
     return response as any;
   },
 
   // Reject friend request
   rejectRequest: async (requestId: number): Promise<{ message: string }> => {
-    const response = await apiClient.post(`/friends/reject/${requestId}`);
+    const response = await apiClient.put(`/friends/requests/${requestId}`, { status: 'rejected' });
     return response as any;
   },
 
   // Remove friend
   removeFriend: async (friendId: number): Promise<{ message: string }> => {
-    const response = await apiClient.delete(`/friends/remove/${friendId}`);
+    const response = await apiClient.delete(`/friends/${friendId}`);
     return response as any;
   },
 
-  // Search users for friend requests
+  // Search users for friend requests (uses friends/search which filters by role)
   searchUsers: async (query: string): Promise<Friend[]> => {
     const response = await apiClient.get('/friends/search', {
       params: { q: query },
     });
+    // API returns an array directly
+    return response as any || [];
+  },
+
+  // Send friend request by numeric user ID
+  sendFriendRequestById: async (userId: number): Promise<{ message: string }> => {
+    const response = await apiClient.post(`/friends/send/${userId}`);
     return response as any;
   },
 };

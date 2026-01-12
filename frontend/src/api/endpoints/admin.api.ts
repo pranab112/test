@@ -106,21 +106,35 @@ export interface ReportsResponse {
   limit: number;
 }
 
+export type ReviewStatus = 'pending' | 'approved' | 'rejected' | 'disputed';
+
 export interface Review {
   id: number;
   reviewer_id: number;
   reviewee_id: number;
   rating: number;
-  title: string;
-  comment?: string;
+  title?: string;
+  comment: string;
+  status: ReviewStatus;
+  admin_notes?: string;
+  moderated_by?: number;
+  moderated_at?: string;
+  appeal_ticket_id?: number;
   created_at: string;
+  updated_at?: string;
   reviewer?: {
+    id: number;
     username: string;
     full_name: string;
+    profile_picture?: string;
+    user_type: string;
   };
   reviewee?: {
+    id: number;
     username: string;
     full_name: string;
+    profile_picture?: string;
+    user_type: string;
   };
 }
 
@@ -129,6 +143,49 @@ export interface ReviewsResponse {
   total: number;
   skip: number;
   limit: number;
+}
+
+export interface ReviewModerationResponse {
+  reviews: Review[];
+  total_count: number;
+  pending_count: number;
+  approved_count: number;
+  rejected_count: number;
+  disputed_count: number;
+}
+
+export type ReportStatus = 'pending' | 'investigating' | 'valid' | 'invalid' | 'malicious';
+
+export interface ReportDetail {
+  id: number;
+  reporter_id: number;
+  reported_user_id: number;
+  reporter_name: string;
+  reporter_username: string;
+  reported_user_name: string;
+  reported_user_username: string;
+  reason: string;
+  evidence?: string;
+  status: ReportStatus;
+  admin_notes?: string;
+  reviewed_by?: number;
+  reviewed_at?: string;
+  action_taken?: string;
+  appeal_ticket_id?: number;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface ReportInvestigationResponse {
+  reports: ReportDetail[];
+  total_count: number;
+  pending_count: number;
+  investigating_count: number;
+  warning_count: number;
+  resolved_count: number;
+  valid_count: number;
+  invalid_count: number;
+  malicious_count: number;
 }
 
 export interface Message {
@@ -252,6 +309,66 @@ export const adminApi = {
     return response as any;
   },
 
+  // Review Moderation
+  getPendingReviews: async (params?: {
+    skip?: number;
+    limit?: number;
+    status_filter?: ReviewStatus;
+  }): Promise<ReviewModerationResponse> => {
+    const response = await apiClient.get('/reviews/admin/pending', { params });
+    return response as any;
+  },
+
+  moderateReview: async (
+    reviewId: number,
+    action: 'approve' | 'reject',
+    adminNotes?: string
+  ): Promise<{ message: string; review_id: number; new_status: string }> => {
+    const response = await apiClient.post(`/reviews/admin/${reviewId}/moderate`, {
+      action,
+      admin_notes: adminNotes,
+    });
+    return response as any;
+  },
+
+  // Report Investigation
+  getPendingReports: async (params?: {
+    skip?: number;
+    limit?: number;
+    status_filter?: ReportStatus;
+  }): Promise<ReportInvestigationResponse> => {
+    const response = await apiClient.get('/reports/admin/pending', { params });
+    return response as any;
+  },
+
+  investigateReport: async (
+    reportId: number,
+    action: 'investigating' | 'valid' | 'invalid' | 'malicious' | 'resolved',
+    adminNotes?: string,
+    actionTaken?: string
+  ): Promise<{ message: string; report_id: number; new_status: string }> => {
+    const response = await apiClient.post(`/reports/admin/${reportId}/investigate`, {
+      action,
+      admin_notes: adminNotes,
+      action_taken: actionTaken,
+    });
+    return response as any;
+  },
+
+  getReporterStats: async (userId: number): Promise<{
+    user_id: number;
+    username: string;
+    total_reports_made: number;
+    valid_reports: number;
+    invalid_reports: number;
+    malicious_reports: number;
+    trust_score: number;
+    is_suspended: boolean;
+  }> => {
+    const response = await apiClient.get(`/reports/admin/reporter-stats/${userId}`);
+    return response as any;
+  },
+
   // Messages
   getMessages: async (params?: {
     skip?: number;
@@ -279,6 +396,26 @@ export const adminApi = {
     options: { new_password?: string; generate_random?: boolean }
   ): Promise<{ message: string; temp_password?: string }> => {
     const response = await apiClient.post(`/admin/users/${userId}/reset-password`, options);
+    return response as any;
+  },
+
+  // Credit Management
+  addCreditsToUser: async (
+    userId: number,
+    amount: number,
+    reason?: string
+  ): Promise<{
+    message: string;
+    user_id: number;
+    username: string;
+    previous_balance: number;
+    amount_changed: number;
+    new_balance: number;
+    reason?: string;
+  }> => {
+    const response = await apiClient.post(`/admin/users/${userId}/add-credits`, null, {
+      params: { amount, reason },
+    });
     return response as any;
   },
 };

@@ -96,4 +96,15 @@ export const promotionsApi = {
     const response = await apiClient.post(`/promotions/claims/${claimId}/use`);
     return response as any;
   },
+
+  // Client approval endpoints
+  approvePromotionClaim: async (claimId: number): Promise<{ success: boolean; message: string; claim_id: number; status: string }> => {
+    const response = await apiClient.post(`/promotions/approve-claim/${claimId}`);
+    return response as any;
+  },
+
+  rejectPromotionClaim: async (claimId: number, reason?: string): Promise<{ success: boolean; message: string; claim_id: number; status: string }> => {
+    const response = await apiClient.post(`/promotions/reject-claim/${claimId}`, { reason });
+    return response as any;
+  },
 };

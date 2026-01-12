@@ -6,13 +6,14 @@ import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import toast from 'react-hot-toast';
 import { FaGift, FaPlus, FaEdit, FaCheck, FaBan } from 'react-icons/fa';
-import { MdRefresh, MdDelete } from 'react-icons/md';
+import { MdRefresh, MdDelete, MdWarning } from 'react-icons/md';
 import {
   offersApi,
   type PlatformOffer,
   type OfferClaim,
   type OfferType,
   type OfferStatus,
+  type OfferClaimStatus,
 } from '@/api/endpoints/offers.api';
 
 interface OfferFormData {
@@ -41,6 +42,7 @@ export function OffersSection() {
   const [claims, setClaims] = useState<OfferClaim[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [claimsStatusFilter, setClaimsStatusFilter] = useState<string>('pending');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<PlatformOffer | null>(null);
@@ -55,6 +57,12 @@ export function OffersSection() {
     max_claims_per_player: '1',
     end_date: '',
   });
+
+  // Confirmation modal states
+  const [showDeleteOfferModal, setShowDeleteOfferModal] = useState(false);
+  const [pendingDeleteOffer, setPendingDeleteOffer] = useState<PlatformOffer | null>(null);
+  const [showClaimActionModal, setShowClaimActionModal] = useState(false);
+  const [pendingClaimAction, setPendingClaimAction] = useState<{ claim: OfferClaim; status: OfferClaimStatus } | null>(null);
 
   useEffect(() => {
     loadData();
@@ -156,17 +164,46 @@ export function OffersSection() {
     }
   };
 
-  const handleDeleteOffer = async (offer: PlatformOffer) => {
-    if (!confirm(`Are you sure you want to deactivate "${offer.title}"?`)) {
-      return;
-    }
+  const handleDeleteOffer = (offer: PlatformOffer) => {
+    setPendingDeleteOffer(offer);
+    setShowDeleteOfferModal(true);
+  };
+
+  const confirmDeleteOffer = async () => {
+    if (!pendingDeleteOffer) return;
 
     try {
-      await offersApi.deleteOffer(offer.id);
+      await offersApi.deleteOffer(pendingDeleteOffer.id);
       toast.success('Offer deactivated');
       loadData();
     } catch (error: any) {
       toast.error(error?.detail || 'Failed to delete offer');
+    } finally {
+      setShowDeleteOfferModal(false);
+      setPendingDeleteOffer(null);
+    }
+  };
+
+  const handleProcessClaim = (claim: OfferClaim, status: OfferClaimStatus) => {
+    setPendingClaimAction({ claim, status });
+    setShowClaimActionModal(true);
+  };
+
+  const confirmProcessClaim = async () => {
+    if (!pendingClaimAction) return;
+
+    const { claim, status } = pendingClaimAction;
+    const action = status === 'approved' ? 'approve' : 'reject';
+
+    try {
+      await offersApi.processClaimAdmin(claim.id, { status });
+      toast.success(`Claim ${status === 'approved' ? 'approved' : 'rejected'} successfully!`);
+      loadData();
+    } catch (error: any) {
+      toast.error(error?.detail || `Failed to ${action} claim`);
+    } finally {
+      setShowClaimActionModal(false);
+      setPendingClaimAction(null);
     }
   };
 
@@ -202,6 +239,13 @@ export function OffersSection() {
     if (statusFilter === 'all') return true;
     return offer.status === statusFilter;
   });
+
+  const filteredClaims = claims.filter((claim) => {
+    if (claimsStatusFilter === 'all') return true;
+    return claim.status === claimsStatusFilter;
+  });
+
+  const pendingClaimsCount = claims.filter((c) => c.status === 'pending').length;
 
   const offersColumns = [
     {
@@ -362,6 +406,34 @@ export function OffersSection() {
         </span>
       ),
     },
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (claim: OfferClaim) => (
+        claim.status === 'pending' ? (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => handleProcessClaim(claim, 'approved')}
+              className="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+              title="Approve claim"
+            >
+              <FaCheck /> Approve
+            </button>
+            <button
+              type="button"
+              onClick={() => handleProcessClaim(claim, 'rejected')}
+              className="bg-red-600 hover:bg-red-500 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+              title="Reject claim"
+            >
+              <FaBan /> Reject
+            </button>
+          </div>
+        ) : (
+          <span className="text-gray-500 text-sm">Processed</span>
+        )
+      ),
+    },
   ];
 
   if (loading) {
@@ -420,6 +492,11 @@ export function OffersSection() {
           }`}
         >
           Claims ({claims.length})
+          {pendingClaimsCount > 0 && (
+            <span className="ml-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+              {pendingClaimsCount} pending
+            </span>
+          )}
         </button>
       </div>
 
@@ -463,11 +540,38 @@ export function OffersSection() {
       {/* Claims Tab */}
       {activeTab === 'claims' && (
         <div className="space-y-4">
-          {claims.length > 0 ? (
-            <DataTable columns={claimsColumns} data={claims} />
+          {/* Claims Filter */}
+          <div className="flex gap-2">
+            {['pending', 'approved', 'rejected', 'all'].map((status) => (
+              <button
+                key={status}
+                type="button"
+                onClick={() => setClaimsStatusFilter(status)}
+                className={`px-4 py-2 rounded-lg capitalize transition-colors ${
+                  claimsStatusFilter === status
+                    ? status === 'pending'
+                      ? 'bg-yellow-500 text-dark-900 font-semibold'
+                      : 'bg-gold-500 text-dark-900 font-semibold'
+                    : 'bg-dark-400 text-gray-300 hover:bg-dark-300'
+                }`}
+              >
+                {status}
+                {status === 'pending' && pendingClaimsCount > 0 && (
+                  <span className="ml-1">({pendingClaimsCount})</span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {filteredClaims.length > 0 ? (
+            <DataTable columns={claimsColumns} data={filteredClaims} />
           ) : (
             <div className="text-center py-12 bg-dark-400 rounded-lg">
-              <p className="text-gray-400">No offer claims yet</p>
+              <p className="text-gray-400">
+                {claimsStatusFilter === 'pending'
+                  ? 'No pending claims to approve'
+                  : `No ${claimsStatusFilter === 'all' ? '' : claimsStatusFilter} claims yet`}
+              </p>
             </div>
           )}
         </div>
@@ -692,6 +796,95 @@ export function OffersSection() {
               className="flex-1"
             >
               Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete/Deactivate Offer Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteOfferModal}
+        onClose={() => {
+          setShowDeleteOfferModal(false);
+          setPendingDeleteOffer(null);
+        }}
+        title="Deactivate Offer"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <MdWarning className="text-red-500 text-2xl flex-shrink-0" />
+            <p className="text-gray-300">
+              Are you sure you want to deactivate{' '}
+              <span className="text-white font-medium">"{pendingDeleteOffer?.title}"</span>?
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => {
+                setShowDeleteOfferModal(false);
+                setPendingDeleteOffer(null);
+              }}
+              variant="secondary"
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmDeleteOffer}
+              variant="primary"
+              fullWidth
+              className="!bg-red-600 hover:!bg-red-700"
+            >
+              Deactivate Offer
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Process Claim Confirmation Modal */}
+      <Modal
+        isOpen={showClaimActionModal}
+        onClose={() => {
+          setShowClaimActionModal(false);
+          setPendingClaimAction(null);
+        }}
+        title={pendingClaimAction?.status === 'approved' ? 'Approve Claim' : 'Reject Claim'}
+      >
+        <div className="space-y-4">
+          <div className={`flex items-center gap-3 p-4 ${
+            pendingClaimAction?.status === 'approved'
+              ? 'bg-green-500/10 border border-green-500/30'
+              : 'bg-red-500/10 border border-red-500/30'
+          } rounded-lg`}>
+            <MdWarning className={`${
+              pendingClaimAction?.status === 'approved' ? 'text-green-500' : 'text-red-500'
+            } text-2xl flex-shrink-0`} />
+            <p className="text-gray-300">
+              Are you sure you want to {pendingClaimAction?.status === 'approved' ? 'approve' : 'reject'} this claim for{' '}
+              <span className="text-white font-medium">{pendingClaimAction?.claim.player_name}</span>?
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => {
+                setShowClaimActionModal(false);
+                setPendingClaimAction(null);
+              }}
+              variant="secondary"
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmProcessClaim}
+              variant="primary"
+              fullWidth
+              className={pendingClaimAction?.status === 'approved'
+                ? '!bg-green-600 hover:!bg-green-700'
+                : '!bg-red-600 hover:!bg-red-700'
+              }
+            >
+              {pendingClaimAction?.status === 'approved' ? 'Approve Claim' : 'Reject Claim'}
             </Button>
           </div>
         </div>

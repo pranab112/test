@@ -4,122 +4,66 @@ from datetime import datetime, timezone, timedelta
 import secrets
 import random
 import os
-import resend
 from app import models, schemas, auth
 from app.database import get_db
+from app.config import settings
+from app.services import send_otp_email as smtp_send_otp_email, generate_otp as service_generate_otp
 import logging
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/email", tags=["email-verification"])
 
-# Get base URL from environment (defaults to localhost for development)
-BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:8000")
-
-# Resend Configuration (new email service)
-RESEND_API_KEY = os.getenv("RESEND_API_KEY")
-SMTP_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", "onboarding@resend.dev")
-SMTP_FROM_NAME = os.getenv("SMTP_FROM_NAME", "Casino Royal")
-
 
 def generate_otp() -> str:
     """Generate a 6-digit OTP code"""
-    return str(random.randint(100000, 999999))
+    return service_generate_otp(6)
 
 
-def send_otp_email(email: str, otp: str, username: str):
+def send_otp_email_handler(email: str, otp: str, username: str) -> bool:
     """
-    Send OTP verification email using Resend.
-    Falls back to console logging if Resend API key is not configured.
+    Send OTP verification email using SMTP settings from config.
+    Falls back to console logging if SMTP is not configured.
+
+    This function is designed to NEVER raise exceptions - it always returns True/False.
     """
+    try:
+        # Try to send via SMTP if configured
+        if settings.smtp_configured:
+            success = smtp_send_otp_email(email, otp, username)
+            if success:
+                logger.info(f"OTP email sent to {email} via SMTP")
+                return True
+            else:
+                logger.warning(f"SMTP send failed for {email}, falling back to console")
 
-    # Email content
-    subject = "Your Casino Royal Verification Code"
-
-    # HTML email body for Resend
-    html_body = f"""<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-        .otp-code {{
-            background: #f0f0f0;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 32px;
-            font-weight: bold;
-            color: #333;
-            padding: 20px;
-            text-align: center;
-            letter-spacing: 8px;
-            margin: 20px 0;
-        }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h2>Hi {username},</h2>
-        <p>Your Casino Royal verification code is:</p>
-        <div class="otp-code">{otp}</div>
-        <p><strong>This code will expire in 10 minutes.</strong></p>
-        <p>If you didn't request this code, please ignore this email.</p>
-        <br>
-        <p>Best regards,<br>Casino Royal Team</p>
-    </div>
-</body>
-</html>"""
-
-    # Check if Resend API key is configured
-    if not RESEND_API_KEY:
-        # Fallback to console logging for development
-        logger.warning("Resend API key not configured. Logging OTP to console.")
+        # Fallback to console logging for development or if SMTP fails
+        logger.warning("SMTP not configured or failed. Logging OTP to console.")
         print(f"""
 ===========================================
 EMAIL VERIFICATION OTP (DEV MODE)
 ===========================================
 To: {email}
-Subject: {subject}
+Subject: Your {settings.SMTP_FROM_NAME} Verification Code
 OTP Code: {otp}
 Expires in: 10 minutes
 ===========================================
         """)
         return True
-
-    try:
-        # Set Resend API key
-        resend.api_key = RESEND_API_KEY
-
-        # Send email via Resend
-        params = {
-            "from": f"{SMTP_FROM_NAME} <{SMTP_FROM_EMAIL}>",
-            "to": [email],
-            "subject": subject,
-            "html": html_body,
-        }
-
-        response = resend.Emails.send(params)
-
-        logger.info(f"OTP email sent to {email} via Resend. ID: {response.get('id', 'N/A')}")
-        return True
-
     except Exception as e:
-        logger.error(f"Resend Error: {str(e)}")
-
-        # Log to console as fallback
+        # Catch any unexpected errors and log them
+        logger.error(f"Unexpected error in send_otp_email_handler: {type(e).__name__}: {e}")
+        # Still return True since we want the OTP flow to continue (user can see OTP in console)
         print(f"""
 ===========================================
-EMAIL VERIFICATION OTP (RESEND ERROR - LOGGED TO CONSOLE)
+EMAIL VERIFICATION OTP (FALLBACK - Error occurred)
 ===========================================
-Error: {str(e)}
 To: {email}
-Subject: {subject}
+Subject: Your {settings.SMTP_FROM_NAME} Verification Code
 OTP Code: {otp}
+Expires in: 10 minutes
 ===========================================
         """)
-
-        # Still return True to not block user registration
-        # The OTP is logged and can be retrieved from logs
         return True
 
 
@@ -173,7 +117,7 @@ async def send_otp_verification(
 
     # Send OTP email
     try:
-        send_otp_email(request.email, otp, current_user.username)
+        send_otp_email_handler(request.email, otp, current_user.username)
         return schemas.EmailVerificationResponse(
             message="Verification code sent successfully. Check your email.",
             verification_sent=True
@@ -257,7 +201,7 @@ async def resend_otp(
 
     # Send OTP email
     try:
-        send_otp_email(current_user.secondary_email, otp, current_user.username)
+        send_otp_email_handler(current_user.secondary_email, otp, current_user.username)
         return schemas.EmailVerificationResponse(
             message="New verification code sent successfully",
             verification_sent=True

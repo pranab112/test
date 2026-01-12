@@ -101,15 +101,15 @@ class WebSocketService {
 
   // Reconnection settings
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 10;
+  private maxReconnectAttempts = 50; // More attempts for better resilience
   private reconnectDelay = 1000; // Start with 1 second
-  private maxReconnectDelay = 30000; // Max 30 seconds
+  private maxReconnectDelay = 10000; // Max 10 seconds (reduced from 30)
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  // Heartbeat settings
+  // Heartbeat settings - more aggressive for Railway
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
   private heartbeatTimeout: ReturnType<typeof setTimeout> | null = null;
-  private heartbeatIntervalMs = 30000; // Send ping every 30 seconds
+  private heartbeatIntervalMs = 15000; // Send ping every 15 seconds (Railway may timeout idle connections)
   private heartbeatTimeoutMs = 10000; // Wait 10 seconds for pong
 
   // Event listeners
@@ -121,6 +121,12 @@ class WebSocketService {
   // Connection state
   private isConnecting = false;
   private manualDisconnect = false;
+
+  // Visibility change handler
+  private visibilityHandler: (() => void) | null = null;
+
+  // Beforeunload handler
+  private beforeUnloadHandler: (() => void) | null = null;
 
   /**
    * Get WebSocket URL based on environment
@@ -146,6 +152,14 @@ class WebSocketService {
       return;
     }
 
+    // Validate token before connecting
+    if (this.isTokenExpired(token)) {
+      console.log('Token expired, cannot connect to WebSocket');
+      // Don't redirect here - let the API call handle it
+      // Just don't attempt the connection
+      return;
+    }
+
     this.token = token;
     this.userId = userId;
     this.manualDisconnect = false;
@@ -157,11 +171,62 @@ class WebSocketService {
     try {
       this.socket = new WebSocket(wsUrl);
       this.setupEventHandlers();
+      this.setupVisibilityHandler();
+      this.setupBeforeUnloadHandler();
     } catch (error) {
       console.error('Failed to create WebSocket:', error);
       this.isConnecting = false;
       this.scheduleReconnect();
     }
+  }
+
+  /**
+   * Setup beforeunload handler to cleanly close connection on page unload
+   */
+  private setupBeforeUnloadHandler(): void {
+    if (this.beforeUnloadHandler) {
+      window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+    }
+
+    this.beforeUnloadHandler = () => {
+      // Set manual disconnect to prevent reconnection attempts during unload
+      this.manualDisconnect = true;
+      if (this.socket?.readyState === WebSocket.OPEN) {
+        this.socket.close(1000, 'Page unload');
+      }
+    };
+
+    window.addEventListener('beforeunload', this.beforeUnloadHandler);
+  }
+
+  /**
+   * Setup visibility change handler to reconnect when tab becomes visible
+   */
+  private setupVisibilityHandler(): void {
+    // Remove existing handler if any
+    if (this.visibilityHandler) {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+    }
+
+    this.visibilityHandler = () => {
+      if (document.visibilityState === 'visible') {
+        // Check connection and reconnect if needed
+        if (this.socket?.readyState !== WebSocket.OPEN && !this.isConnecting && !this.manualDisconnect) {
+          console.log('Tab visible, checking connection...');
+          if (this.token && this.userId) {
+            // Check if token is expired - just skip reconnection, don't redirect
+            if (this.isTokenExpired(this.token)) {
+              console.log('Token expired on tab visible, skipping WebSocket reconnection');
+              return;
+            }
+            this.reconnectAttempts = 0; // Reset attempts on visibility change
+            this.connect(this.token, this.userId);
+          }
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', this.visibilityHandler);
   }
 
   /**
@@ -196,6 +261,13 @@ class WebSocketService {
         reason: event.reason,
         wasClean: event.wasClean,
       });
+
+      // Handle unauthorized - token expired or invalid
+      if (event.code === 4001 || event.reason === 'Unauthorized') {
+        console.log('WebSocket unauthorized - token expired, logging out...');
+        this.handleUnauthorized();
+        return;
+      }
 
       // Attempt reconnection if not manually disconnected
       if (!this.manualDisconnect) {
@@ -278,6 +350,21 @@ class WebSocketService {
   }
 
   /**
+   * Check if token is expired
+   */
+  private isTokenExpired(token: string): boolean {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const exp = payload.exp;
+      if (!exp) return false;
+      // Check if token expires in less than 30 seconds
+      return Date.now() >= (exp * 1000) - 30000;
+    } catch {
+      return true; // If we can't parse, assume expired
+    }
+  }
+
+  /**
    * Schedule reconnection attempt
    */
   private scheduleReconnect(): void {
@@ -288,6 +375,13 @@ class WebSocketService {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       console.error('Max reconnection attempts reached');
       this.emit('reconnect_failed', { attempts: this.reconnectAttempts });
+      return;
+    }
+
+    // Check if token is expired before attempting reconnect
+    // Don't redirect - just skip reconnection and let API calls handle logout
+    if (this.token && this.isTokenExpired(this.token)) {
+      console.log('Token expired, skipping WebSocket reconnection');
       return;
     }
 
@@ -464,6 +558,33 @@ class WebSocketService {
   }
 
   /**
+   * Handle unauthorized - clear tokens and redirect to login
+   */
+  private handleUnauthorized(): void {
+    this.manualDisconnect = true;
+    this.stopHeartbeat();
+
+    // Clear tokens
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user');
+
+    // Determine redirect path based on current location
+    const currentPath = window.location.pathname;
+    let redirectPath = '/login';
+
+    if (currentPath.startsWith('/admin')) {
+      redirectPath = '/admin/login';
+    } else if (currentPath.startsWith('/client')) {
+      redirectPath = '/client/login';
+    } else if (currentPath.startsWith('/player')) {
+      redirectPath = '/player/login';
+    }
+
+    // Redirect to login
+    window.location.href = redirectPath;
+  }
+
+  /**
    * Disconnect WebSocket
    */
   disconnect(): void {
@@ -475,6 +596,18 @@ class WebSocketService {
     }
 
     this.stopHeartbeat();
+
+    // Remove visibility handler
+    if (this.visibilityHandler) {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+      this.visibilityHandler = null;
+    }
+
+    // Remove beforeunload handler
+    if (this.beforeUnloadHandler) {
+      window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+      this.beforeUnloadHandler = null;
+    }
 
     if (this.socket) {
       this.socket.close(1000, 'User disconnected');

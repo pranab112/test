@@ -2,13 +2,20 @@ import { useState, useEffect } from 'react';
 import { DataTable } from '@/components/common/DataTable';
 import { Badge } from '@/components/common/Badge';
 import { Avatar } from '@/components/common/Avatar';
+import { Modal } from '@/components/common/Modal';
+import { Button } from '@/components/common/Button';
 import toast from 'react-hot-toast';
 import { FaUserCheck, FaUserSlash } from 'react-icons/fa';
+import { MdWarning } from 'react-icons/md';
 import { adminApi, type User } from '@/api/endpoints';
 
 export function ApprovalsSection() {
   const [pendingUsers, setPendingUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Reject confirmation modal state
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [pendingRejectUser, setPendingRejectUser] = useState<{ id: number; username: string } | null>(null);
 
   useEffect(() => {
     loadPendingApprovals();
@@ -37,17 +44,23 @@ export function ApprovalsSection() {
     }
   };
 
-  const handleReject = async (userId: number, username: string) => {
-    if (!confirm(`Are you sure you want to reject ${username}?`)) {
-      return;
-    }
+  const handleReject = (userId: number, username: string) => {
+    setPendingRejectUser({ id: userId, username });
+    setShowRejectModal(true);
+  };
+
+  const confirmReject = async () => {
+    if (!pendingRejectUser) return;
 
     try {
-      await adminApi.rejectUser(userId);
-      toast.success(`${username} rejected`);
+      await adminApi.rejectUser(pendingRejectUser.id);
+      toast.success(`${pendingRejectUser.username} rejected`);
       loadPendingApprovals();
     } catch (error: any) {
       toast.error(error.response?.data?.detail || 'Failed to reject user');
+    } finally {
+      setShowRejectModal(false);
+      setPendingRejectUser(null);
     }
   };
 
@@ -125,6 +138,46 @@ export function ApprovalsSection() {
           emptyMessage="No pending approvals"
         />
       )}
+
+      {/* Reject Confirmation Modal */}
+      <Modal
+        isOpen={showRejectModal}
+        onClose={() => {
+          setShowRejectModal(false);
+          setPendingRejectUser(null);
+        }}
+        title="Reject User"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <MdWarning className="text-red-500 text-2xl flex-shrink-0" />
+            <p className="text-gray-300">
+              Are you sure you want to reject{' '}
+              <span className="text-white font-medium">{pendingRejectUser?.username}</span>?
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => {
+                setShowRejectModal(false);
+                setPendingRejectUser(null);
+              }}
+              variant="secondary"
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmReject}
+              variant="primary"
+              fullWidth
+              className="!bg-red-600 hover:!bg-red-700"
+            >
+              Reject User
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

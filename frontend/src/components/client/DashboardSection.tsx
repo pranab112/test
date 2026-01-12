@@ -2,15 +2,26 @@ import { useState, useEffect } from 'react';
 import { StatCard } from '@/components/common/StatCard';
 import toast from 'react-hot-toast';
 import {
-  MdPeople, MdCardGiftcard, MdGroup
+  MdPeople, MdCardGiftcard, MdGroup, MdAttachMoney
 } from 'react-icons/md';
 import { FaChartLine, FaUserPlus } from 'react-icons/fa';
 import { clientApi, type PlayerStats, type ActivityItem } from '@/api/endpoints';
+import { apiClient } from '@/api/client';
 
-export function DashboardSection() {
+interface BalanceInfo {
+  credits: number;
+  dollar_value: number;
+}
+
+interface DashboardSectionProps {
+  onNavigate?: (section: string) => void;
+}
+
+export function DashboardSection({ onNavigate }: DashboardSectionProps) {
   const [stats, setStats] = useState<PlayerStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
+  const [balance, setBalance] = useState<BalanceInfo>({ credits: 0, dollar_value: 0 });
 
   useEffect(() => {
     loadDashboardData();
@@ -21,12 +32,14 @@ export function DashboardSection() {
 
   const loadDashboardData = async () => {
     try {
-      const [statsData, activityData] = await Promise.all([
+      const [statsData, activityData, balanceData] = await Promise.all([
         clientApi.getPlayerStats(),
         clientApi.getRecentActivity(),
+        apiClient.get('/offers/my-balance') as Promise<BalanceInfo>,
       ]);
       setStats(statsData);
       setRecentActivity(activityData.activities || []);
+      setBalance(balanceData);
     } catch (error: any) {
       toast.error('Failed to load dashboard data');
       console.error(error);
@@ -49,40 +62,41 @@ export function DashboardSection() {
 
   const statCards = [
     {
+      title: 'My Credits',
+      value: balance.credits.toLocaleString(),
+      icon: <MdCardGiftcard />,
+      color: 'gold' as const,
+      subtitle: `$${balance.dollar_value.toFixed(2)}`,
+    },
+    {
+      title: 'My Balance (USD)',
+      value: `$${balance.dollar_value.toFixed(2)}`,
+      icon: <MdAttachMoney />,
+      color: 'green' as const,
+    },
+    {
       title: 'Total Players',
       value: stats.total_players.toString(),
       icon: <MdPeople />,
-      color: 'gold' as const,
+      color: 'blue' as const,
     },
     {
       title: 'Active Players',
       value: stats.active_players.toString(),
       icon: <FaUserPlus />,
-      color: 'green' as const,
+      color: 'purple' as const,
     },
     {
       title: 'Online Players',
       value: stats.online_players.toString(),
       icon: <MdGroup />,
-      color: 'blue' as const,
-    },
-    {
-      title: 'Total Credits',
-      value: stats.total_credits.toLocaleString(),
-      icon: <MdCardGiftcard />,
-      color: 'purple' as const,
+      color: 'gold' as const,
     },
     {
       title: 'Avg Player Level',
       value: stats.avg_level.toFixed(1),
       icon: <FaChartLine />,
-      color: 'gold' as const,
-    },
-    {
-      title: 'Avg Credits',
-      value: Math.round(stats.avg_credits).toLocaleString(),
-      icon: <MdCardGiftcard />,
-      color: 'green' as const,
+      color: 'blue' as const,
     },
   ];
 
@@ -135,19 +149,19 @@ export function DashboardSection() {
           <h2 className="text-xl font-bold text-gold-500 mb-4">Quick Actions</h2>
           <div className="space-y-3">
             <button
-              onClick={() => window.location.hash = '#players'}
+              onClick={() => onNavigate?.('players')}
               className="w-full bg-gold-gradient text-dark-700 font-bold py-3 px-4 rounded-lg hover:shadow-gold transition-all"
             >
               Manage Players ({stats.total_players})
             </button>
             <button
-              onClick={() => window.location.hash = '#players'}
+              onClick={() => onNavigate?.('players')}
               className="w-full bg-dark-300 text-gold-500 border-2 border-gold-700 font-bold py-3 px-4 rounded-lg hover:bg-dark-400 transition-all"
             >
               Register New Player
             </button>
             <button
-              onClick={() => window.location.hash = '#promotions'}
+              onClick={() => onNavigate?.('promotions')}
               className="w-full bg-dark-300 text-gold-500 border-2 border-gold-700 font-bold py-3 px-4 rounded-lg hover:bg-dark-400 transition-all"
             >
               Create Promotion

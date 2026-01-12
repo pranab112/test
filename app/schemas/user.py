@@ -7,6 +7,7 @@ class PlayerCreateByClient(BaseModel):
     username: str
     full_name: str
     password: Optional[str] = None
+    referral_code: Optional[str] = None  # Optional referral code for bonus credits
 
 class UserResponse(BaseModel):
     """Response model for user data - email is optional for client-created players"""
@@ -36,3 +37,11 @@ class PlayerRegistrationResponse(UserResponse):
 
 class UserSearchResponse(BaseModel):
     users: List[UserResponse]
+
+
+class ProfileUpdate(BaseModel):
+    """Schema for updating user profile"""
+    full_name: Optional[str] = None
+    company_name: Optional[str] = None
+    bio: Optional[str] = None
+    phone: Optional[str] = None

@@ -1,12 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { IconType } from 'react-icons';
 import { GiCardAceSpades, GiPokerHand } from 'react-icons/gi';
-import { FaUser, FaLock, FaEnvelope, FaBuilding, FaIdCard } from 'react-icons/fa';
+import { FaUser, FaLock, FaEnvelope, FaBuilding, FaIdCard, FaGift } from 'react-icons/fa';
 import { MdAdminPanelSettings } from 'react-icons/md';
 import { IoMdPerson } from 'react-icons/io';
 import { authApi } from '@/api/endpoints';
@@ -29,6 +29,7 @@ const registerSchema = z.object({
   user_type: z.nativeEnum(UserType),
   company_name: z.string().optional(), // For clients
   client_identifier: z.string().optional(), // For players - username or company of client
+  referral_code: z.string().optional(), // Optional referral code for bonus credits
 }).refine(
   (data) => {
     // If player, client_identifier is required
@@ -56,6 +57,7 @@ const userTypeIcons: Record<UserType, IconType> = {
 
 export default function Register() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [selectedUserType, setSelectedUserType] = useState<UserType>(UserType.PLAYER);
 
@@ -70,6 +72,14 @@ export default function Register() {
       user_type: UserType.PLAYER,
     },
   });
+
+  // Check for referral code in URL params (e.g., /register?ref=ABC123)
+  useEffect(() => {
+    const refCode = searchParams.get('ref');
+    if (refCode) {
+      setValue('referral_code', refCode);
+    }
+  }, [searchParams, setValue]);
 
   const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true);
@@ -263,6 +273,20 @@ export default function Register() {
                 className="pl-10"
                 error={errors.password?.message}
                 {...register('password')}
+              />
+            </div>
+
+            <div className="relative">
+              <div className="absolute left-3 top-[38px] text-gold-600">
+                <FaGift />
+              </div>
+              <Input
+                label="Referral Code (Optional)"
+                type="text"
+                placeholder="Enter referral code for bonus credits"
+                className="pl-10"
+                error={errors.referral_code?.message}
+                {...register('referral_code')}
               />
             </div>
 

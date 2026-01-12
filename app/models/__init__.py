@@ -10,9 +10,16 @@ from app.models.enums import (
     PromotionStatus,
     ClaimStatus,
     ReportStatus,
+    ReviewStatus,
     OfferType,
     OfferStatus,
-    OfferClaimStatus
+    OfferClaimStatus,
+    TicketStatus,
+    TicketPriority,
+    TicketCategory,
+    ReferralStatus,
+    GameType,
+    BetResult
 )
 
 # Import models - order matters for relationships
@@ -23,9 +30,13 @@ from app.models.review import Review
 from app.models.promotion import Promotion, PromotionClaim
 from app.models.game import Game, ClientGame, GameCredentials
 from app.models.wallet import PlayerWallet
-from app.models.payment import PaymentMethod, ClientPaymentMethod
+from app.models.payment import PaymentMethod, ClientPaymentMethod, PlayerPaymentPreference
 from app.models.report import Report
 from app.models.offer import PlatformOffer, OfferClaim
+from app.models.ticket import Ticket, TicketMessage
+from app.models.referral import Referral, REFERRAL_BONUS_CREDITS
+from app.models.bet_transaction import BetTransaction
+from app.models.community import CommunityPost, PostComment, PostLike, PostVisibility
 
 __all__ = [
     # Base
@@ -38,9 +49,16 @@ __all__ = [
     "PromotionStatus",
     "ClaimStatus",
     "ReportStatus",
+    "ReviewStatus",
     "OfferType",
     "OfferStatus",
     "OfferClaimStatus",
+    "TicketStatus",
+    "TicketPriority",
+    "TicketCategory",
+    "ReferralStatus",
+    "GameType",
+    "BetResult",
     # Models
     "User",
     "friends_association",
@@ -55,7 +73,17 @@ __all__ = [
     "PlayerWallet",
     "PaymentMethod",
     "ClientPaymentMethod",
+    "PlayerPaymentPreference",
     "Report",
     "PlatformOffer",
     "OfferClaim",
+    "Ticket",
+    "TicketMessage",
+    "Referral",
+    "REFERRAL_BONUS_CREDITS",
+    "BetTransaction",
+    "CommunityPost",
+    "PostComment",
+    "PostLike",
+    "PostVisibility",
 ]

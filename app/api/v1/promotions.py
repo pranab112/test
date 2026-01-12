@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func
 from typing import List, Optional
@@ -23,6 +23,22 @@ async def create_promotion(
     if current_user.user_type != UserType.CLIENT:
         raise HTTPException(status_code=403, detail="Only clients can create promotions")
 
+    # Cap total_budget to client's current credits if not specified or if it exceeds
+    total_budget = promotion.total_budget
+    if total_budget is None:
+        # If unlimited, cap to client's current credits
+        total_budget = current_user.credits
+    elif total_budget > current_user.credits:
+        # If specified budget exceeds client credits, cap it
+        total_budget = current_user.credits
+
+    # Validate that budget can cover at least one claim
+    if total_budget < promotion.value:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Total budget ({total_budget}) must be at least equal to the promotion value ({promotion.value})"
+        )
+
     # Create the promotion
     db_promotion = models.Promotion(
         client_id=current_user.id,
@@ -31,8 +47,9 @@ async def create_promotion(
         promotion_type=promotion.promotion_type,
         value=promotion.value,
         max_claims_per_player=promotion.max_claims_per_player,
-        total_budget=promotion.total_budget,
+        total_budget=total_budget,
         min_player_level=promotion.min_player_level,
+        requires_screenshot=promotion.requires_screenshot,
         end_date=promotion.end_date,
         target_player_ids=json.dumps(promotion.target_player_ids) if promotion.target_player_ids else None,
         terms=promotion.terms,
@@ -160,10 +177,12 @@ async def get_available_promotions(
         return []
 
     # Get active promotions from connected clients
+    # Use UTC now for comparison (database stores timezone-aware datetimes)
+    now_utc = datetime.now(timezone.utc)
     query = db.query(models.Promotion).filter(
         models.Promotion.client_id.in_(client_ids),
         models.Promotion.status == PromotionStatus.ACTIVE,
-        models.Promotion.end_date > datetime.utcnow()
+        models.Promotion.end_date > now_utc
     )
 
     if promotion_type:
@@ -213,8 +232,8 @@ async def claim_promotion(
             message="Promotion not found or inactive"
         )
 
-    # Check if promotion has expired
-    if promotion.end_date < datetime.utcnow():
+    # Check if promotion has expired (database stores timezone-aware datetimes)
+    if promotion.end_date < datetime.now(timezone.utc):
         promotion.status = PromotionStatus.EXPIRED
         db.commit()
         return schemas.PromotionClaimResponse(
@@ -267,6 +286,14 @@ async def claim_promotion(
             db.delete(existing_claim)
             db.flush()
 
+    # Check if promotion requires screenshot and validate
+    if promotion.requires_screenshot and not claim_request.screenshot_url:
+        return schemas.PromotionClaimResponse(
+            success=False,
+            message="This promotion requires a screenshot proof. Please provide a screenshot URL.",
+            requires_screenshot=True
+        )
+
     # Check budget if applicable (reserve the budget)
     if promotion.total_budget:
         if promotion.used_budget >= promotion.total_budget:
@@ -293,6 +320,7 @@ async def claim_promotion(
         client_id=promotion.client_id,
         claimed_value=promotion.value,
         status=ClaimStatus.PENDING_APPROVAL,
+        screenshot_url=claim_request.screenshot_url,
         wagering_required=wagering_required
     )
 
@@ -300,6 +328,7 @@ async def claim_promotion(
     db.flush()  # Get the claim ID
 
     # Create approval request message to the client
+    now = datetime.now(timezone.utc)
     approval_message_content = json.dumps({
         "type": "promotion_claim_request",
         "claim_id": claim.id,
@@ -309,7 +338,9 @@ async def claim_promotion(
         "value": promotion.value,
         "player_id": current_user.id,
         "player_username": current_user.username,
-        "player_level": current_user.player_level
+        "player_level": current_user.player_level,
+        "requires_screenshot": promotion.requires_screenshot,
+        "screenshot_url": claim_request.screenshot_url
     })
 
     approval_message = models.Message(
@@ -317,7 +348,8 @@ async def claim_promotion(
         receiver_id=promotion.client_id,
         message_type=MessageType.PROMOTION,
         content=approval_message_content,
-        is_read=False
+        is_read=False,
+        created_at=now
     )
 
     db.add(approval_message)
@@ -351,7 +383,9 @@ async def claim_promotion(
                 "promotion_type": promotion.promotion_type.value,
                 "value": promotion.value,
                 "player_username": current_user.username,
-                "status": "pending_approval"
+                "status": "pending_approval",
+                "requires_screenshot": promotion.requires_screenshot,
+                "screenshot_url": claim_request.screenshot_url
             }
         }
     ))
@@ -362,7 +396,9 @@ async def claim_promotion(
         claim_id=claim.id,
         claimed_value=promotion.value,
         wagering_required=wagering_required if promotion.wagering_requirement > 1 else None,
-        status="pending_approval"
+        status="pending_approval",
+        screenshot_url=claim_request.screenshot_url,
+        requires_screenshot=promotion.requires_screenshot
     )
 
 
@@ -400,7 +436,9 @@ async def get_my_claims(
             "status": claim.status,
             "claimed_at": claim.claimed_at,
             "wagering_completed": claim.wagering_completed,
-            "wagering_required": claim.wagering_required
+            "wagering_required": claim.wagering_required,
+            "requires_screenshot": promotion.requires_screenshot,
+            "screenshot_url": claim.screenshot_url
         })
 
     return result
@@ -437,6 +475,56 @@ async def get_player_wallet(
         total_wagering=wallet.total_wagering,
         last_updated=wallet.last_updated
     )
+
+
+@router.put("/{promotion_id}/update")
+async def update_promotion(
+    promotion_id: int,
+    update_data: schemas.PromotionUpdate,
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Update a promotion (Client only)"""
+    if current_user.user_type != UserType.CLIENT:
+        raise HTTPException(status_code=403, detail="Only clients can update promotions")
+
+    promotion = db.query(models.Promotion).filter(
+        models.Promotion.id == promotion_id,
+        models.Promotion.client_id == current_user.id
+    ).first()
+
+    if not promotion:
+        raise HTTPException(status_code=404, detail="Promotion not found")
+
+    if promotion.status != PromotionStatus.ACTIVE:
+        raise HTTPException(status_code=400, detail="Can only update active promotions")
+
+    # Update fields if provided
+    if update_data.title is not None:
+        promotion.title = update_data.title
+    if update_data.description is not None:
+        promotion.description = update_data.description
+    if update_data.value is not None:
+        promotion.value = update_data.value
+    if update_data.max_claims_per_player is not None:
+        promotion.max_claims_per_player = update_data.max_claims_per_player
+    if update_data.total_budget is not None:
+        promotion.total_budget = update_data.total_budget
+    if update_data.min_player_level is not None:
+        promotion.min_player_level = update_data.min_player_level
+    if update_data.requires_screenshot is not None:
+        promotion.requires_screenshot = update_data.requires_screenshot
+    if update_data.end_date is not None:
+        promotion.end_date = update_data.end_date
+    if update_data.terms is not None:
+        promotion.terms = update_data.terms
+    if update_data.wagering_requirement is not None:
+        promotion.wagering_requirement = update_data.wagering_requirement
+
+    db.commit()
+    db.refresh(promotion)
+
+    return _format_promotion_response(promotion, current_user, db)
 
 
 @router.put("/{promotion_id}/cancel")
@@ -483,11 +571,15 @@ def _format_promotion_response(promotion: models.Promotion, current_user: models
         ).count()
 
         already_claimed = existing_claim > 0
+        # Make end_date timezone-aware if it isn't
+        end_date = promotion.end_date
+        if end_date.tzinfo is None:
+            end_date = end_date.replace(tzinfo=timezone.utc)
         can_claim = (
             not already_claimed and
             existing_claim < promotion.max_claims_per_player and
             promotion.status == PromotionStatus.ACTIVE and
-            promotion.end_date > datetime.now(timezone.utc) and
+            end_date > datetime.now(timezone.utc) and
             current_user.player_level >= promotion.min_player_level
         )
 
@@ -510,6 +602,7 @@ def _format_promotion_response(promotion: models.Promotion, current_user: models
         total_budget=promotion.total_budget,
         used_budget=promotion.used_budget,
         min_player_level=promotion.min_player_level,
+        requires_screenshot=promotion.requires_screenshot,
         start_date=promotion.start_date,
         end_date=promotion.end_date,
         status=promotion.status,
@@ -552,7 +645,9 @@ async def get_pending_approvals(
             "player_level": player.player_level,
             "player_avatar": player.profile_picture,
             "claimed_at": claim.claimed_at.isoformat(),
-            "message_id": claim.approval_message_id
+            "message_id": claim.approval_message_id,
+            "requires_screenshot": promotion.requires_screenshot,
+            "screenshot_url": claim.screenshot_url
         })
 
     return result
@@ -567,7 +662,7 @@ async def approve_promotion_claim(
     """
     Approve a pending promotion claim (Client only)
 
-    This approves the claim and marks it as APPROVED (no credits added).
+    This approves the claim, deducts credits from client, and marks it as APPROVED.
     """
     if current_user.user_type != UserType.CLIENT:
         raise HTTPException(status_code=403, detail="Only clients can approve claims")
@@ -589,6 +684,19 @@ async def approve_promotion_claim(
     if promotion.total_budget and promotion.used_budget + claim.claimed_value > promotion.total_budget:
         raise HTTPException(status_code=400, detail="Insufficient promotion budget")
 
+    # Check if client has enough credits
+    if current_user.credits < claim.claimed_value:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Insufficient credits. You have {current_user.credits} but need {claim.claimed_value}"
+        )
+
+    # Deduct credits from client
+    current_user.credits -= claim.claimed_value
+
+    # Add credits to player
+    player.credits = (player.credits or 0) + claim.claimed_value
+
     # Update claim status to APPROVED
     claim.status = ClaimStatus.APPROVED
     claim.approved_at = datetime.now(timezone.utc)
@@ -602,6 +710,7 @@ async def approve_promotion_claim(
         promotion.status = PromotionStatus.DEPLETED
 
     # Create response message to the player
+    now = datetime.now(timezone.utc)
     response_message_content = json.dumps({
         "type": "promotion_claim_approved",
         "claim_id": claim.id,
@@ -610,7 +719,8 @@ async def approve_promotion_claim(
         "promotion_type": promotion.promotion_type.value,
         "value": claim.claimed_value,
         "client_id": current_user.id,
-        "client_name": current_user.full_name or current_user.username
+        "client_name": current_user.full_name or current_user.username,
+        "player_new_balance": player.credits
     })
 
     response_message = models.Message(
@@ -618,7 +728,8 @@ async def approve_promotion_claim(
         receiver_id=player.id,
         message_type=MessageType.PROMOTION,
         content=response_message_content,
-        is_read=False
+        is_read=False,
+        created_at=now
     )
 
     db.add(response_message)
@@ -673,7 +784,7 @@ async def approve_promotion_claim(
 @router.post("/reject-claim/{claim_id}")
 async def reject_promotion_claim(
     claim_id: int,
-    rejection_data: Optional[dict] = None,
+    rejection_data: Optional[dict] = Body(None),
     current_user: models.User = Depends(auth.get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -703,6 +814,7 @@ async def reject_promotion_claim(
     claim.rejection_reason = reason
 
     # Create response message to the player
+    now = datetime.now(timezone.utc)
     response_message_content = json.dumps({
         "type": "promotion_claim_rejected",
         "claim_id": claim.id,
@@ -720,7 +832,8 @@ async def reject_promotion_claim(
         receiver_id=player.id,
         message_type=MessageType.PROMOTION,
         content=response_message_content,
-        is_read=False
+        is_read=False,
+        created_at=now
     )
 
     db.add(response_message)

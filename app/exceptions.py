@@ -10,8 +10,28 @@ from pydantic import BaseModel, ConfigDict
 from typing import Any, Dict, Optional
 import logging
 import traceback
+import os
 
 logger = logging.getLogger(__name__)
+
+def get_cors_headers(existing_headers: Optional[Dict[str, str]] = None) -> Dict[str, str]:
+    """Get CORS headers for error responses, merging with existing headers"""
+    cors_origin = os.getenv("CORS_ORIGINS", "*")
+    # If multiple origins, use the first one or * for simplicity in errors
+    if "," in cors_origin:
+        cors_origin = cors_origin.split(",")[0].strip()
+
+    cors_headers = {
+        "Access-Control-Allow-Origin": cors_origin,
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+        "Access-Control-Allow-Headers": "*",
+    }
+
+    # Merge with existing headers if provided
+    if existing_headers:
+        return {**cors_headers, **existing_headers}
+    return cors_headers
 
 
 # ============= Custom Exception Classes =============
@@ -144,7 +164,7 @@ async def custom_exception_handler(request: Request, exc: CasinoRoyalException) 
                 "status": exc.status_code
             }
         },
-        headers=exc.headers
+        headers=get_cors_headers(exc.headers)
     )
 
 
@@ -185,7 +205,8 @@ async def database_exception_handler(request: Request, exc: SQLAlchemyError) -> 
                         "message": message,
                         "status": 409
                     }
-                }
+                },
+                headers=get_cors_headers()
             )
 
         if "FOREIGN KEY constraint failed" in error_str or "foreign key constraint" in error_str:
@@ -197,7 +218,8 @@ async def database_exception_handler(request: Request, exc: SQLAlchemyError) -> 
                         "message": "Referenced resource does not exist",
                         "status": 400
                     }
-                }
+                },
+                headers=get_cors_headers()
             )
 
         if "NOT NULL constraint failed" in error_str or "null value in column" in error_str:
@@ -209,7 +231,8 @@ async def database_exception_handler(request: Request, exc: SQLAlchemyError) -> 
                         "message": "Required field is missing",
                         "status": 400
                     }
-                }
+                },
+                headers=get_cors_headers()
             )
 
     if isinstance(exc, DataError):
@@ -221,7 +244,8 @@ async def database_exception_handler(request: Request, exc: SQLAlchemyError) -> 
                     "message": "Invalid data format",
                     "status": 400
                 }
-            }
+            },
+            headers=get_cors_headers()
         )
 
     if isinstance(exc, OperationalError):
@@ -233,7 +257,8 @@ async def database_exception_handler(request: Request, exc: SQLAlchemyError) -> 
                     "message": "Database temporarily unavailable",
                     "status": 503
                 }
-            }
+            },
+            headers=get_cors_headers()
         )
 
     # Generic database error
@@ -245,7 +270,8 @@ async def database_exception_handler(request: Request, exc: SQLAlchemyError) -> 
                 "message": "Database operation failed",
                 "status": 500
             }
-        }
+        },
+        headers=get_cors_headers()
     )
 
 
@@ -278,7 +304,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
                 "status": 422,
                 "details": errors
             }
-        }
+        },
+        headers=get_cors_headers()
     )
 
 
@@ -301,7 +328,8 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException) 
                 "message": exc.detail or "An error occurred",
                 "status": exc.status_code
             }
-        }
+        },
+        headers=get_cors_headers()
     )
 
 
@@ -333,7 +361,8 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
                 "message": message,
                 "status": 500
             }
-        }
+        },
+        headers=get_cors_headers()
     )
 
 

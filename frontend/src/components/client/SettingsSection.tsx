@@ -5,6 +5,7 @@ import { Avatar } from '@/components/common/Avatar';
 import { Modal } from '@/components/common/Modal';
 import { authApi, settingsApi } from '@/api/endpoints';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import toast from 'react-hot-toast';
 import {
   MdPerson,
@@ -14,20 +15,29 @@ import {
   MdVerified,
   MdUpload,
   MdDelete,
-  MdContentCopy,
   MdRefresh,
   MdWarning,
-  MdCheck,
 } from 'react-icons/md';
+import { useNavigate } from 'react-router-dom';
 
 type SettingsTab = 'profile' | 'security' | 'notifications' | 'appearance';
 
 export function SettingsSection() {
-  const { user, setUser } = useAuth();
+  const { user, setUser, logout } = useAuth();
+  const { soundEnabled, setSoundEnabled } = useNotifications();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Delete account state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
+  // Delete profile picture confirmation modal state
+  const [showDeletePictureModal, setShowDeletePictureModal] = useState(false);
 
   // Profile form state
   const [profileData, setProfileData] = useState({
@@ -43,18 +53,6 @@ export function SettingsSection() {
     newPassword: '',
     confirmPassword: '',
   });
-
-  // 2FA state
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
-  const [show2FASetupModal, setShow2FASetupModal] = useState(false);
-  const [show2FADisableModal, setShow2FADisableModal] = useState(false);
-  const [twoFactorSetup, setTwoFactorSetup] = useState<{
-    secret: string;
-    qr_code: string;
-    backup_codes: string[];
-  } | null>(null);
-  const [verificationCode, setVerificationCode] = useState('');
-  const [showBackupCodes, setShowBackupCodes] = useState(false);
 
   // Email verification state
   const [emailVerified, setEmailVerified] = useState(false);
@@ -95,15 +93,6 @@ export function SettingsSection() {
       });
       setProfilePicture(user.profile_picture);
       setEmailVerified(user.is_email_verified || false);
-      setTwoFactorEnabled(user.two_factor_enabled || false);
-
-      // Load 2FA status
-      try {
-        const twoFAStatus = await settingsApi.get2FAStatus();
-        setTwoFactorEnabled(twoFAStatus.enabled);
-      } catch {
-        // 2FA status endpoint may not exist yet
-      }
 
       // Load email verification status for players
       if (user.user_type === 'player') {
@@ -185,66 +174,27 @@ export function SettingsSection() {
     }
   };
 
-  // 2FA Functions
-  const handleSetup2FA = async () => {
-    setLoading(true);
-    try {
-      const setup = await settingsApi.setup2FA();
-      setTwoFactorSetup(setup);
-      setShow2FASetupModal(true);
-    } catch (error: any) {
-      toast.error(error?.detail || 'Failed to initialize 2FA setup');
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerify2FA = async () => {
-    if (!verificationCode || verificationCode.length !== 6) {
-      toast.error('Please enter a valid 6-digit code');
+  // Delete Account Handler
+  const handleDeleteAccount = async () => {
+    if (!deletePassword) {
+      toast.error('Please enter your password to confirm deletion');
       return;
     }
 
-    setLoading(true);
+    setDeletingAccount(true);
     try {
-      await settingsApi.verify2FA(verificationCode);
-      setTwoFactorEnabled(true);
-      setShowBackupCodes(true);
-      toast.success('Two-factor authentication enabled successfully!');
+      await settingsApi.deleteMyAccount(deletePassword);
+      toast.success('Your account has been deleted successfully');
+      setShowDeleteModal(false);
+      // Log out and redirect to landing page
+      logout();
+      navigate('/');
     } catch (error: any) {
-      toast.error(error?.detail || 'Invalid verification code');
+      const errorMessage = error?.detail || error?.message || 'Failed to delete account';
+      toast.error(errorMessage);
       console.error(error);
     } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDisable2FA = async () => {
-    if (!verificationCode) {
-      toast.error('Please enter your verification code');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await settingsApi.disable2FA(verificationCode);
-      setTwoFactorEnabled(false);
-      setShow2FADisableModal(false);
-      setVerificationCode('');
-      toast.success('Two-factor authentication disabled');
-    } catch (error: any) {
-      toast.error(error?.detail || 'Invalid verification code');
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const copyBackupCodes = () => {
-    if (twoFactorSetup?.backup_codes) {
-      navigator.clipboard.writeText(twoFactorSetup.backup_codes.join('\n'));
-      toast.success('Backup codes copied to clipboard');
+      setDeletingAccount(false);
     }
   };
 
@@ -344,10 +294,16 @@ export function SettingsSection() {
     }
   };
 
-  const handleDeleteProfilePicture = async () => {
-    if (!user || !confirm('Remove your profile picture?')) return;
+  const handleDeleteProfilePicture = () => {
+    if (!user) return;
+    setShowDeletePictureModal(true);
+  };
+
+  const confirmDeleteProfilePicture = async () => {
+    if (!user) return;
 
     setLoading(true);
+    setShowDeletePictureModal(false);
     try {
       await settingsApi.deleteProfilePicture(user.id);
       setProfilePicture(undefined);
@@ -379,24 +335,6 @@ export function SettingsSection() {
       toast.success('Notification settings updated');
     } catch (error: any) {
       toast.error(error?.detail || 'Failed to update notification settings');
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLogoutAllDevices = async () => {
-    if (!confirm('This will log you out of all devices including this one. Continue?')) return;
-
-    setLoading(true);
-    try {
-      await settingsApi.logoutAllSessions();
-      toast.success('Logged out of all devices');
-      // Logout current session
-      authApi.logout();
-      window.location.href = '/login';
-    } catch (error: any) {
-      toast.error(error?.detail || 'Failed to logout all devices');
       console.error(error);
     } finally {
       setLoading(false);
@@ -608,54 +546,29 @@ export function SettingsSection() {
                   </div>
                 </div>
 
-                {/* Two-Factor Authentication */}
-                <div className="bg-dark-300 p-6 rounded-lg">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-lg font-bold text-white">Two-Factor Authentication</h3>
-                    {twoFactorEnabled && (
-                      <span className="flex items-center gap-1 text-green-400 text-sm">
-                        <MdCheck size={16} />
-                        Enabled
-                      </span>
-                    )}
+                {/* Danger Zone - inside Security tab */}
+                <div className="bg-red-900/30 border-2 border-red-700 rounded-lg p-6">
+                  <h3 className="text-lg font-bold text-red-500 mb-4 flex items-center gap-2">
+                    <MdWarning className="text-xl" />
+                    Danger Zone
+                  </h3>
+                  <div className="flex items-center justify-between p-4 bg-dark-300 rounded-lg">
+                    <div>
+                      <p className="font-medium text-white">Delete Account</p>
+                      <p className="text-sm text-gray-400">
+                        Permanently delete your account and all associated data. This action cannot be undone.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteModal(true)}
+                      className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-lg transition-colors"
+                    >
+                      Delete Account
+                    </button>
                   </div>
-                  <p className="text-gray-400 mb-4">
-                    Add an extra layer of security to your account using a time-based one-time password (TOTP).
-                  </p>
-                  {twoFactorEnabled ? (
-                    <button
-                      type="button"
-                      onClick={() => setShow2FADisableModal(true)}
-                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                    >
-                      Disable 2FA
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleSetup2FA}
-                      disabled={loading}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50"
-                    >
-                      Enable 2FA
-                    </button>
-                  )}
                 </div>
 
-                <div className="bg-dark-300 p-6 rounded-lg">
-                  <h3 className="text-lg font-bold text-white mb-3">Active Sessions</h3>
-                  <p className="text-gray-400 mb-4">
-                    Manage devices where you're currently logged in.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleLogoutAllDevices}
-                    disabled={loading}
-                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50"
-                  >
-                    Logout All Devices
-                  </button>
-                </div>
               </div>
             )}
 
@@ -663,6 +576,28 @@ export function SettingsSection() {
             {activeTab === 'notifications' && (
               <div className="space-y-6">
                 <h2 className="text-2xl font-bold text-gold-500 mb-4">Notification Settings</h2>
+
+                {/* Sound Toggle - Separate from other settings */}
+                <div className="bg-dark-300 rounded-lg p-4 mb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="font-medium text-white">Notification Sounds</p>
+                      <p className="text-sm text-gray-400">Play sound when receiving new messages and notifications</p>
+                    </div>
+                    <button
+                      onClick={() => setSoundEnabled(!soundEnabled)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        soundEnabled ? 'bg-gold-500' : 'bg-gray-600'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          soundEnabled ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
 
                 <div className="space-y-4">
                   {[
@@ -747,180 +682,70 @@ export function SettingsSection() {
                     </button>
                   </div>
                 </div>
-
-                <div className="bg-dark-300 p-6 rounded-lg">
-                  <h3 className="text-lg font-bold text-white mb-3">Language</h3>
-                  <select className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500">
-                    <option>English (US)</option>
-                    <option>Spanish</option>
-                    <option>French</option>
-                    <option>German</option>
-                  </select>
-                </div>
-
-                <div className="bg-dark-300 p-6 rounded-lg">
-                  <h3 className="text-lg font-bold text-white mb-3">Display Density</h3>
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input type="radio" name="density" defaultChecked className="w-4 h-4" />
-                      <span className="text-white">Comfortable (Recommended)</span>
-                    </label>
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input type="radio" name="density" className="w-4 h-4" />
-                      <span className="text-white">Compact</span>
-                    </label>
-                  </div>
-                </div>
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* 2FA Setup Modal */}
+      {/* Delete Account Confirmation Modal */}
       <Modal
-        isOpen={show2FASetupModal}
+        isOpen={showDeleteModal}
         onClose={() => {
-          if (!showBackupCodes) {
-            setShow2FASetupModal(false);
-            setTwoFactorSetup(null);
-            setVerificationCode('');
-          }
+          setShowDeleteModal(false);
+          setDeletePassword('');
         }}
-        title={showBackupCodes ? 'Save Your Backup Codes' : 'Set Up Two-Factor Authentication'}
-        size="lg"
-      >
-        {showBackupCodes ? (
-          <div className="space-y-4">
-            <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-4 flex items-start gap-3">
-              <MdWarning className="text-yellow-500 flex-shrink-0 mt-0.5" size={20} />
-              <div className="text-sm text-yellow-400">
-                <strong>Important:</strong> Save these backup codes in a safe place. You can use them to access your account if you lose your authenticator device.
-              </div>
-            </div>
-
-            <div className="bg-dark-300 rounded-lg p-4">
-              <div className="grid grid-cols-2 gap-2">
-                {twoFactorSetup?.backup_codes.map((code, index) => (
-                  <div key={index} className="font-mono text-center py-2 bg-dark-400 rounded text-white">
-                    {code}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={copyBackupCodes}
-              className="w-full flex items-center justify-center gap-2 bg-dark-300 hover:bg-dark-400 text-white py-2 rounded-lg transition-colors"
-            >
-              <MdContentCopy size={18} />
-              Copy All Codes
-            </button>
-
-            <Button
-              onClick={() => {
-                setShow2FASetupModal(false);
-                setShowBackupCodes(false);
-                setTwoFactorSetup(null);
-                setVerificationCode('');
-              }}
-              fullWidth
-            >
-              I've Saved My Codes
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <p className="text-gray-400">
-              Scan the QR code below with your authenticator app (like Google Authenticator or Authy).
-            </p>
-
-            {twoFactorSetup?.qr_code && (
-              <div className="flex justify-center">
-                <img
-                  src={twoFactorSetup.qr_code}
-                  alt="2FA QR Code"
-                  className="w-48 h-48 bg-white p-2 rounded-lg"
-                />
-              </div>
-            )}
-
-            <div className="bg-dark-300 rounded-lg p-4">
-              <p className="text-sm text-gray-400 mb-2">Or enter this code manually:</p>
-              <code className="block text-center font-mono text-gold-500 break-all">
-                {twoFactorSetup?.secret}
-              </code>
-            </div>
-
-            <Input
-              label="Enter 6-digit code from your app"
-              type="text"
-              value={verificationCode}
-              onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              placeholder="000000"
-            />
-
-            <div className="flex gap-3">
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setShow2FASetupModal(false);
-                  setTwoFactorSetup(null);
-                  setVerificationCode('');
-                }}
-                fullWidth
-              >
-                Cancel
-              </Button>
-              <Button onClick={handleVerify2FA} loading={loading} fullWidth>
-                Verify & Enable
-              </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      {/* 2FA Disable Modal */}
-      <Modal
-        isOpen={show2FADisableModal}
-        onClose={() => {
-          setShow2FADisableModal(false);
-          setVerificationCode('');
-        }}
-        title="Disable Two-Factor Authentication"
+        title="Delete Your Account"
         size="md"
       >
         <div className="space-y-4">
-          <div className="bg-red-900/20 border border-red-700 rounded-lg p-4 flex items-start gap-3">
-            <MdWarning className="text-red-500 flex-shrink-0 mt-0.5" size={20} />
-            <div className="text-sm text-red-400">
-              Disabling 2FA will make your account less secure. You'll need to set it up again if you want to re-enable it.
+          <div className="bg-red-900/30 border border-red-700 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <MdWarning className="text-red-500 text-2xl flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-red-400 font-medium">This action is permanent!</p>
+                <p className="text-gray-400 text-sm mt-1">
+                  Once you delete your account, all your data including messages, game credentials,
+                  promotions, and player information will be permanently removed. This cannot be undone.
+                </p>
+              </div>
             </div>
           </div>
 
           <Input
-            label="Enter 6-digit code or backup code"
-            type="text"
-            value={verificationCode}
-            onChange={(e) => setVerificationCode(e.target.value.toUpperCase().slice(0, 8))}
-            placeholder="Enter code"
+            label="Enter your password to confirm"
+            type="password"
+            value={deletePassword}
+            onChange={(e) => setDeletePassword(e.target.value)}
+            placeholder="Your current password"
           />
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 pt-2">
             <Button
               variant="secondary"
               onClick={() => {
-                setShow2FADisableModal(false);
-                setVerificationCode('');
+                setShowDeleteModal(false);
+                setDeletePassword('');
               }}
               fullWidth
             >
               Cancel
             </Button>
-            <Button onClick={handleDisable2FA} loading={loading} fullWidth>
-              Disable 2FA
-            </Button>
+            <button
+              type="button"
+              onClick={handleDeleteAccount}
+              disabled={deletingAccount || !deletePassword}
+              className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-red-600/50 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              {deletingAccount ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  <MdDelete size={18} />
+                  Delete My Account
+                </>
+              )}
+            </button>
           </div>
         </div>
       </Modal>
@@ -999,6 +824,39 @@ export function SettingsSection() {
               </div>
             </>
           )}
+        </div>
+      </Modal>
+
+      {/* Delete Profile Picture Confirmation Modal */}
+      <Modal
+        isOpen={showDeletePictureModal}
+        onClose={() => setShowDeletePictureModal(false)}
+        title="Remove Profile Picture"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <MdWarning className="text-red-500 text-2xl flex-shrink-0" />
+            <p className="text-gray-300">
+              Are you sure you want to remove your profile picture?
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => setShowDeletePictureModal(false)}
+              variant="secondary"
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmDeleteProfilePicture}
+              variant="primary"
+              fullWidth
+              className="!bg-red-600 hover:!bg-red-700"
+            >
+              Remove Picture
+            </Button>
+          </div>
         </div>
       </Modal>
     </div>

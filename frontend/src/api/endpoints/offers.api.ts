@@ -67,8 +67,29 @@ export interface UpdateOfferRequest {
 
 export interface ClaimOfferRequest {
   offer_id: number;
-  client_id: number;
+  client_id?: number;  // Optional - player can claim without client
   verification_data?: string;
+}
+
+export interface CreditTransferRequest {
+  client_id: number;
+  amount: number;  // Amount in credits (100 credits = $1)
+}
+
+export interface CreditTransferResponse {
+  message: string;
+  credits_transferred: number;
+  dollar_value: number;
+  player_new_balance: number;
+  client_new_balance: number;
+  from_player: string;
+  to_client: string;
+}
+
+export interface BalanceResponse {
+  credits: number;
+  dollar_value: number;
+  rate: string;
 }
 
 export interface ProcessClaimRequest {
@@ -114,6 +135,18 @@ export const offersApi = {
     return response as any;
   },
 
+  // Get pending claims for admin approval (Admin only)
+  getPendingClaimsAdmin: async (): Promise<OfferClaim[]> => {
+    const response = await apiClient.get('/offers/admin/pending-claims');
+    return response as any;
+  },
+
+  // Process a claim - Admin approves/rejects (Admin only)
+  processClaimAdmin: async (claimId: number, data: ProcessClaimRequest): Promise<{ message: string }> => {
+    const response = await apiClient.put(`/offers/admin/process-claim/${claimId}`, data);
+    return response as any;
+  },
+
   // ============= PLAYER ENDPOINTS =============
 
   // Get available offers for player
@@ -131,6 +164,18 @@ export const offersApi = {
   // Claim an offer
   claimOffer: async (data: ClaimOfferRequest): Promise<OfferClaim> => {
     const response = await apiClient.post('/offers/claim', data);
+    return response as any;
+  },
+
+  // Get player's credit balance
+  getMyBalance: async (): Promise<BalanceResponse> => {
+    const response = await apiClient.get('/offers/my-balance');
+    return response as any;
+  },
+
+  // Transfer credits from player to client (one-way)
+  transferCredits: async (data: CreditTransferRequest): Promise<CreditTransferResponse> => {
+    const response = await apiClient.post('/offers/transfer-credits', data);
     return response as any;
   },
 

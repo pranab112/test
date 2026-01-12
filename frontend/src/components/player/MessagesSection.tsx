@@ -1,21 +1,32 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Avatar } from '@/components/common/Avatar';
 import { Badge } from '@/components/common/Badge';
 import { Button } from '@/components/common/Button';
+import { Modal } from '@/components/common/Modal';
 import toast from 'react-hot-toast';
-import { MdMessage, MdSend, MdContentCopy, MdVisibility, MdVisibilityOff, MdRefresh, MdImage, MdMic, MdStop, MdClose } from 'react-icons/md';
-import { FaKey, FaUser } from 'react-icons/fa';
+import { MdMessage, MdSend, MdContentCopy, MdVisibility, MdVisibilityOff, MdRefresh, MdImage, MdMic, MdClose, MdSettings, MdStar, MdMoreVert, MdPersonOff, MdDeleteForever } from 'react-icons/md';
+import { FaKey } from 'react-icons/fa';
 import { useDashboard } from '@/contexts/DashboardContext';
 import { chatApi, type Conversation, type Message } from '@/api/endpoints/chat.api';
 import { gameCredentialsApi, type GameCredential } from '@/api/endpoints/gameCredentials.api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { getFileUrl } from '@/config/api.config';
+import { useCallback } from 'react';
 
 export function MessagesSection() {
   const { chatTarget, clearChatTarget } = useDashboard();
   const { user } = useAuth();
-  const { getRoomId, messages: wsMessages, joinRoom, leaveRoom } = useWebSocket();
+  const { getRoomId, messages: wsMessages, joinRoom, leaveRoom, onlineUsers, requestOnlineStatus, isConnected } = useWebSocket();
+
+  // Helper to check if a friend is online (prefer real-time status over initial data)
+  const isFriendOnline = useCallback((friendId: number, initialOnlineStatus?: boolean) => {
+    const wsStatus = onlineUsers.get(friendId);
+    if (wsStatus !== undefined) {
+      return wsStatus.is_online;
+    }
+    return initialOnlineStatus ?? false;
+  }, [onlineUsers]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -23,38 +34,57 @@ export function MessagesSection() {
   const [sending, setSending] = useState(false);
   const [loadingConversations, setLoadingConversations] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
-  const [credentials, setCredentials] = useState<GameCredential[]>([]);
-  const [loadingCredentials, setLoadingCredentials] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const currentRoomRef = useRef<string | null>(null);
+
+  // Credentials modal state (per client)
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [selectedClientCredentials, setSelectedClientCredentials] = useState<GameCredential[]>([]);
+  const [loadingClientCredentials, setLoadingClientCredentials] = useState(false);
+  const [selectedClientName, setSelectedClientName] = useState<string>('');
 
   // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const recordingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Image attachment state
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load conversations and credentials on mount
+  // Delete menu state
+  const [deleteMenuOpen, setDeleteMenuOpen] = useState<number | null>(null);
+
+  // Load conversations on mount
   useEffect(() => {
     loadConversations();
-    loadCredentials();
   }, []);
 
-  const loadCredentials = async () => {
-    setLoadingCredentials(true);
+  // Request online status for all conversation partners when conversations load or WebSocket connects
+  useEffect(() => {
+    if (isConnected && conversations.length > 0) {
+      const friendIds = conversations.map(c => c.friend.id);
+      requestOnlineStatus(friendIds);
+    }
+  }, [isConnected, conversations, requestOnlineStatus]);
+
+  const openClientCredentials = async (clientId: number, clientName: string) => {
+    setShowCredentialsModal(true);
+    setSelectedClientName(clientName);
+    setLoadingClientCredentials(true);
     try {
-      const data = await gameCredentialsApi.getMyCredentials();
-      setCredentials(data);
+      // Get all credentials and filter by client ID
+      const allCredentials = await gameCredentialsApi.getMyCredentials();
+      const clientCredentials = allCredentials.filter(cred => cred.created_by_client_id === clientId);
+      setSelectedClientCredentials(clientCredentials);
     } catch (error) {
-      console.error('Failed to load credentials:', error);
+      console.error('Failed to load client credentials:', error);
+      toast.error('Failed to load credentials');
     } finally {
-      setLoadingCredentials(false);
+      setLoadingClientCredentials(false);
     }
   };
 
@@ -62,6 +92,17 @@ export function MessagesSection() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Close delete menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (deleteMenuOpen !== null) {
+        setDeleteMenuOpen(null);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [deleteMenuOpen]);
 
   // Listen for new WebSocket messages
   useEffect(() => {
@@ -210,6 +251,26 @@ export function MessagesSection() {
       toast.error(error.detail || 'Failed to send message');
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: number, deleteForEveryone: boolean = false) => {
+    try {
+      if (deleteForEveryone) {
+        // Delete for everyone - removes the message from the database
+        await chatApi.deleteMessage(messageId);
+        setMessages(prev => prev.filter(m => m.id !== messageId));
+        toast.success('Message deleted for everyone');
+      } else {
+        // Delete for myself - just hide locally (message still exists for other user)
+        setMessages(prev => prev.filter(m => m.id !== messageId));
+        toast.success('Message hidden');
+      }
+      setDeleteMenuOpen(null);
+    } catch (error: any) {
+      console.error('Delete message error:', error);
+      const message = error?.detail || error?.error?.message || 'Failed to delete message';
+      toast.error(message);
     }
   };
 
@@ -404,6 +465,21 @@ export function MessagesSection() {
     }
   };
 
+  // Helper to parse and detect promotion messages
+  const parsePromotionMessage = (message: Message): { isPromotion: boolean; data?: any } => {
+    if (message.message_type !== 'promotion' || !message.content) {
+      return { isPromotion: false };
+    }
+
+    try {
+      const data = JSON.parse(message.content);
+      return { isPromotion: true, data };
+    } catch (e) {
+      console.error('Failed to parse promotion message:', e);
+      return { isPromotion: false };
+    }
+  };
+
   const getMessagePreview = (message?: Message): React.ReactNode => {
     if (!message) return 'No messages yet';
     switch (message.message_type) {
@@ -435,41 +511,6 @@ export function MessagesSection() {
         >
           <MdRefresh size={20} />
         </button>
-      </div>
-
-      {/* Client Credentials Section - Compact */}
-      <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-4">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-bold text-gold-500 flex items-center gap-2">
-            <FaKey />
-            My Game Credentials
-          </h2>
-          <button
-            type="button"
-            onClick={loadCredentials}
-            className="text-gold-500 hover:text-gold-400 transition-colors"
-            title="Refresh credentials"
-          >
-            <MdRefresh size={18} />
-          </button>
-        </div>
-        <div className="max-h-[120px] overflow-y-auto">
-          {loadingCredentials ? (
-            <div className="text-center py-4 text-gray-400 text-sm">
-              Loading credentials...
-            </div>
-          ) : credentials.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-gray-400 text-sm">No game credentials assigned yet</p>
-            </div>
-          ) : (
-            <div className="flex gap-3 overflow-x-auto pb-2">
-              {credentials.map((cred) => (
-                <CredentialCardCompact key={cred.id} credential={cred} />
-              ))}
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Messages Section */}
@@ -507,7 +548,7 @@ export function MessagesSection() {
                       <Avatar
                         name={conv.friend.full_name || conv.friend.username}
                         size="sm"
-                        online={conv.friend.is_online}
+                        online={isFriendOnline(conv.friend.id, conv.friend.is_online)}
                         src={conv.friend.profile_picture}
                       />
                       <div className="flex-1 min-w-0">
@@ -539,22 +580,35 @@ export function MessagesSection() {
               <>
                 {/* Chat Header */}
                 <div className="p-4 bg-gradient-to-r from-dark-300 to-dark-200 border-b border-gold-700 flex-shrink-0">
-                  <div className="flex items-center gap-3">
-                    <Avatar
-                      name={selectedConversation.friend.full_name || selectedConversation.friend.username}
-                      size="sm"
-                      online={selectedConversation.friend.is_online}
-                      src={selectedConversation.friend.profile_picture}
-                    />
-                    <div>
-                      <p className="font-bold text-white">{selectedConversation.friend.username}</p>
-                      <p className="text-xs text-gray-400">
-                        {selectedConversation.friend.full_name}
-                        {selectedConversation.friend.is_online && (
-                          <span className="text-green-500 ml-2">● Online</span>
-                        )}
-                      </p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Avatar
+                        name={selectedConversation.friend.full_name || selectedConversation.friend.username}
+                        size="sm"
+                        online={isFriendOnline(selectedConversation.friend.id, selectedConversation.friend.is_online)}
+                        src={selectedConversation.friend.profile_picture}
+                      />
+                      <div>
+                        <p className="font-bold text-white">{selectedConversation.friend.username}</p>
+                        <p className="text-xs text-gray-400">
+                          {selectedConversation.friend.full_name}
+                          {isFriendOnline(selectedConversation.friend.id, selectedConversation.friend.is_online) ? (
+                            <span className="text-green-500 ml-2">● Online</span>
+                          ) : (
+                            <span className="text-gray-500 ml-2">● Offline</span>
+                          )}
+                        </p>
+                      </div>
                     </div>
+                    {/* Credentials/Settings button */}
+                    <button
+                      type="button"
+                      onClick={() => openClientCredentials(selectedConversation.friend.id, selectedConversation.friend.username)}
+                      className="bg-dark-400 hover:bg-dark-300 text-gold-500 p-2 rounded-lg transition-colors"
+                      title="View Game Credentials"
+                    >
+                      <MdSettings size={20} />
+                    </button>
                   </div>
                 </div>
 
@@ -576,6 +630,8 @@ export function MessagesSection() {
                     <>
                       {messages.map((msg) => {
                         const isOwn = msg.sender_id === user?.id;
+                        const promotionInfo = parsePromotionMessage(msg);
+
                         return (
                           <div
                             key={msg.id}
@@ -583,34 +639,126 @@ export function MessagesSection() {
                           >
                             <div className={`max-w-[70%] ${isOwn ? 'order-2' : 'order-1'}`}>
                               <div className={`rounded-lg p-3 ${
-                                isOwn
+                                promotionInfo.isPromotion
+                                  ? 'bg-gradient-to-br from-purple-600 to-blue-600 text-white'
+                                  : isOwn
                                   ? 'bg-gold-gradient text-dark-700'
                                   : 'bg-dark-300 text-white'
                               }`}>
-                                {msg.message_type === 'text' && (
+                                {promotionInfo.isPromotion && promotionInfo.data ? (
+                                  // Promotion Message
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-2 border-b border-white/20 pb-2">
+                                      <MdStar className="text-yellow-300" size={18} />
+                                      <span className="font-bold text-sm">
+                                        {promotionInfo.data.type === 'promotion_claim_request'
+                                          ? 'Promotion Claim Request'
+                                          : promotionInfo.data.type === 'promotion_claim_approved'
+                                          ? 'Promotion Approved ✅'
+                                          : promotionInfo.data.type === 'promotion_claim_rejected'
+                                          ? 'Promotion Rejected ❌'
+                                          : 'Promotion Update'
+                                        }
+                                      </span>
+                                    </div>
+                                    <div className="space-y-1 text-xs">
+                                      {promotionInfo.data.promotion_title && (
+                                        <div>
+                                          <span className="text-white/70">Promotion:</span>
+                                          <div className="font-semibold">{promotionInfo.data.promotion_title}</div>
+                                        </div>
+                                      )}
+                                      {promotionInfo.data.value && (
+                                        <div>
+                                          <span className="text-white/70">Value:</span>
+                                          <span className="font-semibold ml-1">{promotionInfo.data.value} credits</span>
+                                        </div>
+                                      )}
+                                      {promotionInfo.data.promotion_type && (
+                                        <div>
+                                          <span className="text-white/70">Type:</span>
+                                          <span className="font-semibold ml-1 capitalize">
+                                            {promotionInfo.data.promotion_type.replace('_', ' ')}
+                                          </span>
+                                        </div>
+                                      )}
+                                      {promotionInfo.data.message && (
+                                        <div className="pt-1 border-t border-white/20 mt-2">
+                                          <p className="text-white">{promotionInfo.data.message}</p>
+                                        </div>
+                                      )}
+                                      {promotionInfo.data.reason && (
+                                        <div className="pt-1 border-t border-white/20 mt-2">
+                                          <span className="text-white/70">Reason:</span>
+                                          <p className="text-white">{promotionInfo.data.reason}</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                ) : msg.message_type === 'text' ? (
                                   <p className="text-sm">{msg.content}</p>
-                                )}
-                                {msg.message_type === 'image' && msg.file_url && (
+                                ) : msg.message_type === 'image' && msg.file_url ? (
                                   <img
                                     src={getFileUrl(msg.file_url)}
                                     alt="Image message"
                                     className="max-w-full rounded-lg"
                                   />
-                                )}
-                                {msg.message_type === 'voice' && msg.file_url && (
+                                ) : msg.message_type === 'voice' && msg.file_url ? (
                                   <audio controls className="max-w-full">
                                     <source src={getFileUrl(msg.file_url)} type="audio/webm" />
                                   </audio>
+                                ) : null}
+                              </div>
+                              <div className={`flex items-center justify-between mt-1 ${
+                                isOwn ? 'flex-row-reverse' : ''
+                              }`}>
+                                <p className="text-xs text-gray-500">
+                                  {formatMessageTime(msg.created_at)}
+                                  {isOwn && msg.is_read && (
+                                    <span className="ml-2 text-blue-400">✓✓</span>
+                                  )}
+                                </p>
+                                {!promotionInfo.isPromotion && (
+                                  <div className="relative">
+                                    <button
+                                      type="button"
+                                      title="Message options"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setDeleteMenuOpen(deleteMenuOpen === msg.id ? null : msg.id);
+                                      }}
+                                      className={`${isOwn ? 'text-dark-500 hover:text-dark-700' : 'text-gray-500 hover:text-white'} mx-2`}
+                                    >
+                                      <MdMoreVert size={16} />
+                                    </button>
+                                    {deleteMenuOpen === msg.id && (
+                                      <div
+                                        className="absolute right-0 bottom-full mb-1 bg-dark-200 border border-gold-700 rounded-lg shadow-lg z-50 min-w-[160px] py-1"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDeleteMessage(msg.id, false)}
+                                          className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-dark-300 flex items-center gap-2"
+                                        >
+                                          <MdPersonOff size={16} />
+                                          Delete for me
+                                        </button>
+                                        {isOwn && (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleDeleteMessage(msg.id, true)}
+                                            className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-dark-300 flex items-center gap-2"
+                                          >
+                                            <MdDeleteForever size={16} />
+                                            Delete for everyone
+                                          </button>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
                                 )}
                               </div>
-                              <p className={`text-xs text-gray-500 mt-1 ${
-                                isOwn ? 'text-right' : 'text-left'
-                              }`}>
-                                {formatMessageTime(msg.created_at)}
-                                {isOwn && msg.is_read && (
-                                  <span className="ml-2 text-blue-400">✓✓</span>
-                                )}
-                              </p>
                             </div>
                           </div>
                         );
@@ -724,12 +872,47 @@ export function MessagesSection() {
           </div>
         </div>
       </div>
+
+      {/* Client Credentials Modal */}
+      <Modal
+        isOpen={showCredentialsModal}
+        onClose={() => {
+          setShowCredentialsModal(false);
+          setSelectedClientCredentials([]);
+          setSelectedClientName('');
+        }}
+        title={`Game Credentials from ${selectedClientName}`}
+        size="lg"
+      >
+        <div className="space-y-4">
+          {loadingClientCredentials ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gold-500 mx-auto mb-4" />
+              <p className="text-gray-400">Loading credentials...</p>
+            </div>
+          ) : selectedClientCredentials.length === 0 ? (
+            <div className="text-center py-8">
+              <FaKey className="text-4xl text-gray-600 mx-auto mb-4" />
+              <p className="text-gray-400">No game credentials from this client</p>
+              <p className="text-sm text-gray-500 mt-2">
+                This client hasn't assigned any game credentials to you yet.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {selectedClientCredentials.map((cred) => (
+                <CredentialCard key={cred.id} credential={cred} />
+              ))}
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }
 
-// Compact credential card for horizontal scrolling
-function CredentialCardCompact({ credential }: { credential: GameCredential }) {
+// Full credential card for modal
+function CredentialCard({ credential }: { credential: GameCredential }) {
   const [showPassword, setShowPassword] = useState(false);
 
   const copyToClipboard = (text: string, label: string) => {
@@ -738,163 +921,61 @@ function CredentialCardCompact({ credential }: { credential: GameCredential }) {
   };
 
   return (
-    <div className="bg-dark-300 border border-gold-700 rounded-lg p-3 min-w-[200px] flex-shrink-0">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="font-bold text-gold-500 text-sm truncate">{credential.game_name}</h3>
+    <div className="bg-dark-300 border border-gold-700 rounded-lg p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-bold text-gold-500 text-lg">{credential.game_name}</h3>
         {credential.login_url && (
-          <button
-            type="button"
-            onClick={() => window.open(credential.login_url, '_blank')}
-            className="text-blue-400 hover:text-blue-300 text-xs"
-            title="Open game"
-          >
-            Open
-          </button>
-        )}
-      </div>
-      <div className="flex items-center gap-2 text-xs">
-        <span className="text-gray-400">User:</span>
-        <span className="text-white font-mono truncate flex-1">{credential.username}</span>
-        <button
-          type="button"
-          onClick={() => copyToClipboard(credential.username, 'Username')}
-          className="text-gold-500 hover:text-gold-400"
-          title="Copy"
-        >
-          <MdContentCopy size={12} />
-        </button>
-      </div>
-      <div className="flex items-center gap-2 text-xs mt-1">
-        <span className="text-gray-400">Pass:</span>
-        <span className="text-white font-mono truncate flex-1">
-          {showPassword ? credential.password : '••••••'}
-        </span>
-        <button
-          type="button"
-          onClick={() => setShowPassword(!showPassword)}
-          className="text-gold-500 hover:text-gold-400"
-          title={showPassword ? 'Hide' : 'Show'}
-        >
-          {showPassword ? <MdVisibilityOff size={12} /> : <MdVisibility size={12} />}
-        </button>
-        <button
-          type="button"
-          onClick={() => copyToClipboard(credential.password, 'Password')}
-          className="text-gold-500 hover:text-gold-400"
-          title="Copy"
-        >
-          <MdContentCopy size={12} />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function CredentialCard({ credential }: { credential: GameCredential }) {
-  const [showPassword, setShowPassword] = useState(false);
-
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success(`${label} copied to clipboard`);
-  };
-
-  return (
-    <div className="bg-dark-300 border-2 border-gold-700 rounded-lg p-4">
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <h3 className="font-bold text-gold-500 text-lg">{credential.game_name}</h3>
-          <p className="text-sm text-gray-400">From: {credential.client_name || 'Client'}</p>
-        </div>
-        <Badge variant="success">Active</Badge>
-      </div>
-
-      <div className="space-y-3">
-        {/* Username */}
-        <div className="bg-dark-200 rounded-lg p-3">
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-xs text-gray-400 font-medium flex items-center gap-1">
-              <FaUser className="text-gold-500" />
-              Username
-            </label>
-            <button
-              type="button"
-              onClick={() => copyToClipboard(credential.username, 'Username')}
-              className="text-gold-500 hover:text-gold-400 transition-colors"
-              title="Copy username"
-            >
-              <MdContentCopy />
-            </button>
-          </div>
-          <p className="text-white font-mono">{credential.username}</p>
-        </div>
-
-        {/* Password */}
-        <div className="bg-dark-200 rounded-lg p-3">
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-xs text-gray-400 font-medium flex items-center gap-1">
-              <FaKey className="text-gold-500" />
-              Password
-            </label>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="text-gold-500 hover:text-gold-400 transition-colors"
-                title={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? <MdVisibilityOff /> : <MdVisibility />}
-              </button>
-              <button
-                type="button"
-                onClick={() => copyToClipboard(credential.password, 'Password')}
-                className="text-gold-500 hover:text-gold-400 transition-colors"
-                title="Copy password"
-              >
-                <MdContentCopy />
-              </button>
-            </div>
-          </div>
-          <p className="text-white font-mono">
-            {showPassword ? credential.password : '••••••••••'}
-          </p>
-        </div>
-
-        {/* Login URL */}
-        {credential.login_url && (
-          <div className="bg-dark-200 rounded-lg p-3">
-            <label className="text-xs text-gray-400 font-medium mb-2 block">
-              Login URL
-            </label>
-            <div className="flex items-center gap-2">
-              <p className="text-blue-400 text-sm flex-1 truncate">{credential.login_url}</p>
-              <button
-                type="button"
-                onClick={() => copyToClipboard(credential.login_url!, 'URL')}
-                className="text-gold-500 hover:text-gold-400 transition-colors"
-                title="Copy URL"
-              >
-                <MdContentCopy />
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div className="pt-2">
           <Button
-            onClick={() => {
-              if (credential.login_url) {
-                window.open(credential.login_url, '_blank');
-              } else {
-                toast.error('No login URL available');
-              }
-            }}
-            variant="primary"
-            fullWidth
+            variant="secondary"
+            onClick={() => window.open(credential.login_url, '_blank')}
+            className="text-sm"
           >
             Open Game
           </Button>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs text-gray-400 mb-1">Username</label>
+          <div className="flex items-center gap-2 bg-dark-400 rounded-lg px-3 py-2">
+            <span className="text-white font-mono flex-1 truncate">{credential.username}</span>
+            <button
+              type="button"
+              onClick={() => copyToClipboard(credential.username || '', 'Username')}
+              className="text-gold-500 hover:text-gold-400"
+              title="Copy username"
+            >
+              <MdContentCopy size={16} />
+            </button>
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs text-gray-400 mb-1">Password</label>
+          <div className="flex items-center gap-2 bg-dark-400 rounded-lg px-3 py-2">
+            <span className="text-white font-mono flex-1 truncate">
+              {showPassword ? credential.password : '••••••••'}
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="text-gold-500 hover:text-gold-400"
+              title={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? <MdVisibilityOff size={16} /> : <MdVisibility size={16} />}
+            </button>
+            <button
+              type="button"
+              onClick={() => copyToClipboard(credential.password || '', 'Password')}
+              className="text-gold-500 hover:text-gold-400"
+              title="Copy password"
+            >
+              <MdContentCopy size={16} />
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
+
+

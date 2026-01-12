@@ -6,6 +6,7 @@ import { chatApi } from '@/api/endpoints/chat.api';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import TypingIndicator from './TypingIndicator';
+import toast from 'react-hot-toast';
 
 interface Friend {
   id: number;
@@ -37,7 +38,7 @@ export default function ChatWindow({ friend, onClose }: ChatWindowProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const roomId = getRoomId(friend.id);
   const isOnline = onlineUsers.get(friend.id)?.is_online ?? friend.is_online ?? false;
@@ -144,12 +145,16 @@ export default function ChatWindow({ friend, onClose }: ChatWindowProps) {
         };
 
         setLocalMessages((prev) => [...prev, newMessage]);
+
+        // Show success notification
+        toast.success('Message sent!');
       }
 
       // Stop typing indicator
       sendTyping(friend.id, false);
     } catch (error) {
       console.error('Failed to send message:', error);
+      toast.error('Failed to send message. Please try again.');
     } finally {
       setIsSending(false);
     }

@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 
-type BadgeVariant = 'success' | 'warning' | 'error' | 'info' | 'default' | 'pending' | 'approved' | 'rejected' | 'purple';
+export type BadgeVariant = 'success' | 'warning' | 'error' | 'info' | 'default' | 'pending' | 'approved' | 'rejected' | 'purple' | 'danger';
 type BadgeSize = 'sm' | 'md' | 'lg';
 
 interface BadgeProps {
@@ -21,6 +21,7 @@ const variantStyles: Record<BadgeVariant, string> = {
   approved: 'bg-green-900/20 text-green-400 border-green-700',
   rejected: 'bg-red-900/20 text-red-400 border-red-700',
   purple: 'bg-purple-900/20 text-purple-400 border-purple-700',
+  danger: 'bg-red-900/20 text-red-400 border-red-700',
 };
 
 const sizeStyles: Record<BadgeSize, string> = {
@@ -39,6 +40,7 @@ const dotVariantStyles: Record<BadgeVariant, string> = {
   approved: 'bg-green-400',
   rejected: 'bg-red-400',
   purple: 'bg-purple-400',
+  danger: 'bg-red-400',
 };
 
 export function Badge({

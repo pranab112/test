@@ -14,3 +14,36 @@ class ActivityItem(BaseModel):
 
 class RecentActivityResponse(BaseModel):
     activities: List[ActivityItem]
+
+
+class TrendData(BaseModel):
+    value: str
+    is_positive: bool
+
+
+class QuickStats(BaseModel):
+    response_rate: float
+    player_retention: float
+    avg_rating: float
+
+
+class PromotionStats(BaseModel):
+    name: str
+    claims: int
+    rate: float
+
+
+class AnalyticsResponse(BaseModel):
+    total_friends: int
+    total_messages: int
+    active_players: int
+    new_signups: int
+    avg_session_time: str
+    friends_trend: TrendData
+    messages_trend: TrendData
+    players_trend: TrendData
+    signups_trend: TrendData
+    session_time_trend: TrendData
+    quick_stats: QuickStats
+    recent_activity: List[ActivityItem]
+    top_promotions: List[PromotionStats]
