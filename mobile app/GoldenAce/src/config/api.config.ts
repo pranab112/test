@@ -1,15 +1,38 @@
 // API Configuration for GoldenAce Mobile App
 // Update BASE_URL to your production server URL when deploying
+// Environment variables are loaded from .env file with EXPO_PUBLIC_ prefix
+
+// Get environment variables - Expo automatically injects EXPO_PUBLIC_ vars
+const getEnvVar = (key: string, fallback: string): string => {
+  // @ts-ignore - Expo injects these at build time
+  const value = process.env[key];
+  return value || fallback;
+};
+
+// Default fallback based on platform
+// For development:
+// - Android Emulator: use 10.0.2.2 (maps to host localhost)
+// - iOS Simulator: use localhost
+// - Physical device: use your computer's local IP (e.g., 192.168.1.x)
+const DEFAULT_API_URL = 'http://localhost:8000/api/v1';
+const DEFAULT_WS_URL = 'ws://localhost:8000/ws';
+const DEFAULT_FILE_URL = 'http://localhost:8000';
 
 export const API_CONFIG = {
-  // For development, use your local machine's IP address
-  // For Android emulator, use 10.0.2.2 instead of localhost
-  // For iOS simulator, localhost works fine
-  BASE_URL: process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:8000/api/v1',
-  WS_URL: process.env.EXPO_PUBLIC_WS_URL || 'ws://10.0.2.2:8000/ws',
-  FILE_BASE_URL: process.env.EXPO_PUBLIC_FILE_URL || 'http://10.0.2.2:8000',
+  BASE_URL: getEnvVar('EXPO_PUBLIC_API_URL', DEFAULT_API_URL),
+  WS_URL: getEnvVar('EXPO_PUBLIC_WS_URL', DEFAULT_WS_URL),
+  FILE_BASE_URL: getEnvVar('EXPO_PUBLIC_FILE_URL', DEFAULT_FILE_URL),
   TIMEOUT: 30000,
 } as const;
+
+// Log config in development for debugging
+if (__DEV__) {
+  console.log('API Config:', {
+    BASE_URL: API_CONFIG.BASE_URL,
+    WS_URL: API_CONFIG.WS_URL,
+    FILE_BASE_URL: API_CONFIG.FILE_BASE_URL,
+  });
+}
 
 // Helper to resolve file URLs (images, audio, etc.)
 export const getFileUrl = (url: string | null | undefined): string => {

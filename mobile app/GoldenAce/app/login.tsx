@@ -13,14 +13,11 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../src/contexts/AuthContext';
 import { Button, Input } from '../src/components/ui';
-import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../src/constants/theme';
-import { UserType } from '../src/types';
-
+import { Colors, FontSize, FontWeight, Spacing } from '../src/constants/theme';
 export default function LoginScreen() {
   const { login, isLoading } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [selectedType, setSelectedType] = useState<UserType>(UserType.PLAYER);
   const [errors, setErrors] = useState<{ username?: string; password?: string }>({});
 
   const validate = (): boolean => {
@@ -44,13 +41,9 @@ export default function LoginScreen() {
 
     try {
       await login({ username: username.trim(), password });
-
-      // Navigation is handled by the auth context/splash screen
-      if (selectedType === UserType.PLAYER) {
-        router.replace('/(player)/home');
-      } else if (selectedType === UserType.CLIENT) {
-        router.replace('/(client)/dashboard');
-      }
+      // Navigation will be handled by index.tsx after auth state updates
+      // which uses the actual user_type from the server, not the UI selection
+      router.replace('/');
     } catch (error: any) {
       const message = error?.detail || error?.error?.message || 'Login failed. Please try again.';
       Alert.alert('Login Failed', message);
@@ -70,51 +63,6 @@ export default function LoginScreen() {
           <Ionicons name="diamond" size={64} color={Colors.primary} />
           <Text style={styles.title}>GoldenAce</Text>
           <Text style={styles.subtitle}>Sign in to continue</Text>
-        </View>
-
-        <View style={styles.typeSelector}>
-          <TouchableOpacity
-            style={[
-              styles.typeButton,
-              selectedType === UserType.PLAYER && styles.typeButtonActive,
-            ]}
-            onPress={() => setSelectedType(UserType.PLAYER)}
-          >
-            <Ionicons
-              name="game-controller"
-              size={24}
-              color={selectedType === UserType.PLAYER ? Colors.background : Colors.textSecondary}
-            />
-            <Text
-              style={[
-                styles.typeButtonText,
-                selectedType === UserType.PLAYER && styles.typeButtonTextActive,
-              ]}
-            >
-              Player
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.typeButton,
-              selectedType === UserType.CLIENT && styles.typeButtonActive,
-            ]}
-            onPress={() => setSelectedType(UserType.CLIENT)}
-          >
-            <Ionicons
-              name="business"
-              size={24}
-              color={selectedType === UserType.CLIENT ? Colors.background : Colors.textSecondary}
-            />
-            <Text
-              style={[
-                styles.typeButtonText,
-                selectedType === UserType.CLIENT && styles.typeButtonTextActive,
-              ]}
-            >
-              Client
-            </Text>
-          </TouchableOpacity>
         </View>
 
         <View style={styles.form}>
@@ -181,33 +129,6 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     color: Colors.textSecondary,
     marginTop: Spacing.xs,
-  },
-  typeSelector: {
-    flexDirection: 'row',
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.xs,
-    marginBottom: Spacing.xl,
-  },
-  typeButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.md,
-    gap: Spacing.sm,
-  },
-  typeButtonActive: {
-    backgroundColor: Colors.primary,
-  },
-  typeButtonText: {
-    fontSize: FontSize.md,
-    fontWeight: FontWeight.medium,
-    color: Colors.textSecondary,
-  },
-  typeButtonTextActive: {
-    color: Colors.background,
   },
   form: {
     gap: Spacing.md,
