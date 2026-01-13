@@ -4,7 +4,7 @@ import { Colors, BorderRadius, Spacing, FontSize, FontWeight } from '../../const
 
 interface BadgeProps {
   text: string;
-  variant?: 'default' | 'success' | 'error' | 'warning' | 'info' | 'gold';
+  variant?: 'default' | 'success' | 'error' | 'warning' | 'info' | 'emerald';
   size?: 'sm' | 'md';
   style?: ViewStyle;
 }
@@ -25,8 +25,8 @@ export const Badge: React.FC<BadgeProps> = ({
         return Colors.warning + '20';
       case 'info':
         return Colors.info + '20';
-      case 'gold':
-        return Colors.primary + '20';
+      case 'emerald':
+        return '#10B98120';
       default:
         return Colors.surfaceLight;
     }
@@ -42,8 +42,8 @@ export const Badge: React.FC<BadgeProps> = ({
         return Colors.warning;
       case 'info':
         return Colors.info;
-      case 'gold':
-        return Colors.primary;
+      case 'emerald':
+        return '#10B981';
       default:
         return Colors.textSecondary;
     }

@@ -351,7 +351,7 @@ export function SettingsSection() {
   if (initialLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gold-500">Loading settings...</div>
+        <div className="text-emerald-500">Loading settings...</div>
       </div>
     );
   }
@@ -359,14 +359,14 @@ export function SettingsSection() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gold-500 mb-2">Settings</h1>
+        <h1 className="text-3xl font-bold text-emerald-500 mb-2">Settings</h1>
         <p className="text-gray-400">Manage your account settings and preferences</p>
       </div>
 
       <div className="grid grid-cols-12 gap-6">
         {/* Settings Navigation Sidebar */}
         <div className="col-span-12 lg:col-span-3">
-          <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-4">
+          <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-4">
             <nav className="space-y-2">
               {tabs.map((tab) => (
                 <button
@@ -375,7 +375,7 @@ export function SettingsSection() {
                   onClick={() => setActiveTab(tab.key)}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${
                     activeTab === tab.key
-                      ? 'bg-gold-600 text-dark-700'
+                      ? 'bg-emerald-600 text-dark-700'
                       : 'text-gray-400 hover:bg-dark-300 hover:text-white'
                   }`}
                 >
@@ -389,11 +389,11 @@ export function SettingsSection() {
 
         {/* Settings Content */}
         <div className="col-span-12 lg:col-span-9">
-          <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
+          <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
             {/* Profile Tab */}
             {activeTab === 'profile' && (
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-gold-500 mb-4">Profile Settings</h2>
+                <h2 className="text-2xl font-bold text-emerald-500 mb-4">Profile Settings</h2>
 
                 {/* Profile Picture Section */}
                 <div className="bg-dark-300 p-6 rounded-lg">
@@ -467,7 +467,7 @@ export function SettingsSection() {
                       value={profileData.bio}
                       onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
                       rows={4}
-                      className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-gold-500"
+                      className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       placeholder="Tell us about yourself..."
                     />
                   </div>
@@ -489,7 +489,7 @@ export function SettingsSection() {
                       <button
                         type="button"
                         onClick={() => setShowEmailVerifyModal(true)}
-                        className="bg-gold-600 hover:bg-gold-700 text-dark-700 px-4 py-2 rounded-lg font-medium transition-colors"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-dark-700 px-4 py-2 rounded-lg font-medium transition-colors"
                       >
                         Verify Email
                       </button>
@@ -506,7 +506,7 @@ export function SettingsSection() {
             {/* Security Tab */}
             {activeTab === 'security' && (
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-gold-500 mb-4">Security Settings</h2>
+                <h2 className="text-2xl font-bold text-emerald-500 mb-4">Security Settings</h2>
 
                 <div className="bg-dark-300 p-6 rounded-lg">
                   <h3 className="text-lg font-bold text-white mb-4">Change Password</h3>
@@ -575,7 +575,7 @@ export function SettingsSection() {
             {/* Notifications Tab */}
             {activeTab === 'notifications' && (
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-gold-500 mb-4">Notification Settings</h2>
+                <h2 className="text-2xl font-bold text-emerald-500 mb-4">Notification Settings</h2>
 
                 {/* Sound Toggle - Separate from other settings */}
                 <div className="bg-dark-300 rounded-lg p-4 mb-4">
@@ -587,7 +587,7 @@ export function SettingsSection() {
                     <button
                       onClick={() => setSoundEnabled(!soundEnabled)}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        soundEnabled ? 'bg-gold-500' : 'bg-gray-600'
+                        soundEnabled ? 'bg-emerald-500' : 'bg-gray-600'
                       }`}
                     >
                       <span
@@ -649,7 +649,7 @@ export function SettingsSection() {
                           }
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-gold-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gold-600"></div>
+                        <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
                       </label>
                     </div>
                   ))}
@@ -664,7 +664,7 @@ export function SettingsSection() {
             {/* Appearance Tab */}
             {activeTab === 'appearance' && (
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-gold-500 mb-4">Appearance Settings</h2>
+                <h2 className="text-2xl font-bold text-emerald-500 mb-4">Appearance Settings</h2>
 
                 <div className="bg-dark-300 p-6 rounded-lg">
                   <h3 className="text-lg font-bold text-white mb-3">Theme</h3>
@@ -672,7 +672,7 @@ export function SettingsSection() {
                     Choose your preferred theme. Currently using Dark theme.
                   </p>
                   <div className="grid grid-cols-2 gap-4">
-                    <button type="button" className="bg-dark-700 border-2 border-gold-600 rounded-lg p-4 text-left">
+                    <button type="button" className="bg-dark-700 border-2 border-emerald-600 rounded-lg p-4 text-left">
                       <div className="font-medium text-white mb-2">Dark (Current)</div>
                       <div className="text-sm text-gray-400">Default dark theme</div>
                     </button>
@@ -802,7 +802,7 @@ export function SettingsSection() {
                 type="button"
                 onClick={handleResendOTP}
                 disabled={loading}
-                className="text-gold-500 hover:text-gold-400 text-sm flex items-center gap-1 disabled:opacity-50"
+                className="text-emerald-500 hover:text-emerald-400 text-sm flex items-center gap-1 disabled:opacity-50"
               >
                 <MdRefresh size={16} />
                 Resend Code

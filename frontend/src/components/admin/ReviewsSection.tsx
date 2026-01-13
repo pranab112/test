@@ -87,7 +87,7 @@ export function ReviewsSection() {
       label: 'Rating',
       render: (review: AdminReview) => (
         <div className="flex items-center gap-1">
-          <MdStar className="text-gold-500" />
+          <MdStar className="text-emerald-500" />
           <span className="font-medium">{review.rating}/5</span>
         </div>
       ),
@@ -134,7 +134,7 @@ export function ReviewsSection() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gold-500 mb-2">Review Moderation</h1>
+        <h1 className="text-3xl font-bold text-emerald-500 mb-2">Review Moderation</h1>
         <p className="text-gray-400">Approve or reject user reviews before they become visible</p>
       </div>
 
@@ -160,11 +160,11 @@ export function ReviewsSection() {
 
       {/* Filter */}
       <div className="flex items-center gap-4">
-        <MdFilterList className="text-gold-500" size={20} />
+        <MdFilterList className="text-emerald-500" size={20} />
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as ReviewStatus | '')}
-          className="bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-lg focus:border-gold-500 focus:outline-none"
+          className="bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-lg focus:border-emerald-500 focus:outline-none"
         >
           <option value="">All Reviews</option>
           <option value="pending">Pending</option>
@@ -175,7 +175,7 @@ export function ReviewsSection() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-gold-500">Loading reviews...</div>
+        <div className="text-center py-12 text-emerald-500">Loading reviews...</div>
       ) : (
         <DataTable
           data={reviews}
@@ -188,7 +188,7 @@ export function ReviewsSection() {
       {showModal && selectedReview && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="bg-gray-900 rounded-lg p-6 max-w-lg w-full mx-4 border border-gray-700">
-            <h3 className="text-xl font-bold text-gold-500 mb-4">Review Details</h3>
+            <h3 className="text-xl font-bold text-emerald-500 mb-4">Review Details</h3>
 
             <div className="space-y-3 mb-4">
               <div className="flex justify-between">
@@ -201,7 +201,7 @@ export function ReviewsSection() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-400">Rating:</span>
-                <span className="text-gold-500 flex items-center gap-1">
+                <span className="text-emerald-500 flex items-center gap-1">
                   <MdStar /> {selectedReview.rating}/5
                 </span>
               </div>
@@ -222,7 +222,7 @@ export function ReviewsSection() {
               <textarea
                 value={moderationNotes}
                 onChange={(e) => setModerationNotes(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-lg focus:border-gold-500 focus:outline-none"
+                className="w-full bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-lg focus:border-emerald-500 focus:outline-none"
                 rows={3}
                 placeholder="Reason for rejection or notes..."
               />

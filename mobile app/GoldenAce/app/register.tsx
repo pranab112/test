@@ -163,9 +163,9 @@ export default function RegisterScreen() {
         </TouchableOpacity>
 
         <View style={styles.header}>
-          <Ionicons name="diamond" size={48} color={Colors.primary} />
+          <Ionicons name="git-network" size={48} color={Colors.primary} />
           <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join GoldenAce today</Text>
+          <Text style={styles.subtitle}>Join Green Palace today</Text>
         </View>
 
         <View style={styles.typeSelector}>

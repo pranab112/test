@@ -1,39 +1,54 @@
-// GoldenAce Theme Constants
-// Matching the website's dark theme with gold accents
+// Green Palace Theme Constants
+// Clean emerald theme - premium, trustworthy, elegant
 
 export const Colors = {
-  // Primary colors
-  primary: '#FFD700',
-  primaryDark: '#D4AF37',
-  primaryLight: '#FFC700',
+  // Primary colors - Emerald (clean, professional)
+  primary: '#10B981',
+  primaryDark: '#059669',
+  primaryLight: '#34D399',
+
+  // Secondary/Accent colors
+  accent: '#6EE7B7',
+  accentDark: '#047857',
 
   // Background colors
-  background: '#0d0d0d',
-  surface: '#1a1a1a',
-  surfaceLight: '#2d2d2d',
-  surfaceLighter: '#3a3a3a',
+  background: '#0a0a0a',
+  surface: '#111111',
+  surfaceLight: '#1a1a1a',
+  surfaceLighter: '#242424',
 
   // Text colors
   text: '#ffffff',
   textSecondary: '#a0a0a0',
   textMuted: '#666666',
+  textPrimary: '#10B981',
 
   // Status colors
-  success: '#22c55e',
+  success: '#10B981',
   error: '#ef4444',
   warning: '#f59e0b',
   info: '#3b82f6',
 
   // Border colors
-  border: '#3a3a3a',
-  borderLight: '#4a4a4a',
+  border: 'rgba(16, 185, 129, 0.2)',
+  borderLight: 'rgba(16, 185, 129, 0.3)',
+  borderSolid: '#2a2a2a',
 
   // Overlay
-  overlay: 'rgba(0, 0, 0, 0.5)',
+  overlay: 'rgba(0, 0, 0, 0.6)',
+  overlayLight: 'rgba(0, 0, 0, 0.3)',
 
   // Online status
-  online: '#22c55e',
+  online: '#10B981',
   offline: '#666666',
+
+  // Network node colors
+  node: '#10B981',
+  nodeGlow: 'rgba(16, 185, 129, 0.4)',
+
+  // Gradients (as string for reference)
+  gradientStart: '#10B981',
+  gradientEnd: '#059669',
 } as const;
 
 export const Spacing = {
@@ -50,6 +65,7 @@ export const BorderRadius = {
   md: 8,
   lg: 12,
   xl: 16,
+  xxl: 24,
   full: 9999,
 } as const;
 
@@ -72,24 +88,38 @@ export const FontWeight = {
 
 export const Shadow = {
   sm: {
-    shadowColor: '#000',
+    shadowColor: '#10B981',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.41,
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
     elevation: 2,
   },
   md: {
-    shadowColor: '#000',
+    shadowColor: '#10B981',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
     elevation: 5,
   },
   lg: {
-    shadowColor: '#000',
+    shadowColor: '#10B981',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
     elevation: 8,
   },
+  glow: {
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 10,
+  },
 };
+
+// App branding
+export const AppBranding = {
+  name: 'Green Palace',
+  tagline: 'Premium Sweepstakes Platform',
+  logoColor: '#10B981',
+} as const;

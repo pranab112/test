@@ -76,7 +76,7 @@ export default function ClientLogin() {
             <h1 className="text-4xl font-bold text-blue-500 tracking-wider mb-2">
               CLIENT PORTAL
             </h1>
-            <p className="text-gray-400">Golden Ace Business Access</p>
+            <p className="text-gray-400">Green Palace Business Access</p>
           </div>
 
           {/* Form */}

@@ -337,14 +337,14 @@ export function ReportsSection() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gold-500 mb-2">Reports</h1>
+          <h1 className="text-3xl font-bold text-emerald-500 mb-2">Reports</h1>
           <p className="text-gray-400">Manage reports and violations</p>
         </div>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={loadReports}
-            className="bg-dark-300 hover:bg-dark-400 text-gold-500 p-3 rounded-lg transition-colors"
+            className="bg-dark-300 hover:bg-dark-400 text-emerald-500 p-3 rounded-lg transition-colors"
             title="Refresh"
           >
             <MdRefresh size={20} />
@@ -355,7 +355,7 @@ export function ReportsSection() {
               resetForm();
               setShowMakeReportModal(true);
             }}
-            className="bg-gold-600 hover:bg-gold-700 text-dark-700 px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+            className="bg-emerald-600 hover:bg-emerald-700 text-dark-700 px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
           >
             <MdAdd size={20} />
             Make Report
@@ -381,7 +381,7 @@ export function ReportsSection() {
           title="Pending (Made)"
           value={stats.pendingMade}
           icon={<MdPending />}
-          color="gold"
+          color="green"
         />
         <StatCard
           title="Valid (Received)"
@@ -392,7 +392,7 @@ export function ReportsSection() {
       </div>
 
       {/* Tab Interface */}
-      <div className="flex gap-2 border-b border-gold-700">
+      <div className="flex gap-2 border-b border-emerald-700">
         {[
           { key: 'made', label: 'Made' },
           { key: 'received', label: 'Received' },
@@ -405,8 +405,8 @@ export function ReportsSection() {
             onClick={() => setActiveTab(tab.key as typeof activeTab)}
             className={`px-6 py-3 font-medium transition-colors relative ${
               activeTab === tab.key
-                ? 'text-gold-500 border-b-2 border-gold-500'
-                : 'text-gray-400 hover:text-gold-500'
+                ? 'text-emerald-500 border-b-2 border-emerald-500'
+                : 'text-gray-400 hover:text-emerald-500'
             }`}
           >
             {tab.label}
@@ -422,14 +422,14 @@ export function ReportsSection() {
       {/* Content */}
       <div className="space-y-4">
         {loadingReports ? (
-          <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-12 text-center">
-            <div className="text-gold-500">Loading reports...</div>
+          <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-12 text-center">
+            <div className="text-emerald-500">Loading reports...</div>
           </div>
         ) : activeTab === 'warnings' ? (
           // Warnings Tab
           <div>
             {warnings.length === 0 ? (
-              <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-12 text-center">
+              <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-12 text-center">
                 <MdCheckCircle className="text-6xl text-green-500 mx-auto mb-4" />
                 <p className="text-gray-400 mb-2">No Active Warnings</p>
                 <p className="text-sm text-gray-500">You have no pending reports requiring resolution</p>
@@ -455,7 +455,7 @@ export function ReportsSection() {
                             <p className="text-yellow-400 font-medium mb-2">To Resolve:</p>
                             {warning.resolution_amount && (
                               <p className="text-white mb-1">
-                                Amount to pay/refund: <span className="text-gold-500 font-bold">${warning.resolution_amount.toFixed(2)}</span>
+                                Amount to pay/refund: <span className="text-emerald-500 font-bold">${warning.resolution_amount.toFixed(2)}</span>
                               </p>
                             )}
                             {warning.resolution_notes && (
@@ -534,11 +534,11 @@ export function ReportsSection() {
           // Report Player Tab
           <div>
             {loadingFriends ? (
-              <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-12 text-center">
-                <div className="text-gold-500">Loading players...</div>
+              <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-12 text-center">
+                <div className="text-emerald-500">Loading players...</div>
               </div>
             ) : friends.length === 0 ? (
-              <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-12 text-center">
+              <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-12 text-center">
                 <MdReport className="text-6xl text-gray-500 mx-auto mb-4" />
                 <p className="text-gray-400 mb-2">No players to report</p>
                 <p className="text-sm text-gray-500">You can only report players you are connected with</p>
@@ -548,7 +548,7 @@ export function ReportsSection() {
                 {friends.map((friend) => (
                   <div
                     key={friend.id}
-                    className="bg-dark-200 border-2 border-gold-700 rounded-lg p-4 hover:shadow-gold transition-all"
+                    className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-4 hover:shadow-green transition-all"
                   >
                     <div className="flex items-center gap-3 mb-3">
                       <Avatar
@@ -576,7 +576,7 @@ export function ReportsSection() {
             )}
           </div>
         ) : currentReports.length === 0 ? (
-          <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-12 text-center">
+          <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-12 text-center">
             <MdReport className="text-6xl text-gray-500 mx-auto mb-4" />
             <p className="text-gray-400">No reports found</p>
           </div>
@@ -592,7 +592,7 @@ export function ReportsSection() {
             return (
               <div
                 key={report.id}
-                className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6 hover:shadow-gold transition-all"
+                className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6 hover:shadow-green transition-all"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
@@ -604,7 +604,7 @@ export function ReportsSection() {
                     </div>
                     <p className="text-sm text-gray-400 mb-2">
                       {isMade ? 'Reported User' : 'Reported By'}:{' '}
-                      <span className="text-gold-500">{displayName}</span>
+                      <span className="text-emerald-500">{displayName}</span>
                     </p>
                     <p className="text-xs text-gray-500">
                       Submitted: {formatDate(report.created_at)}
@@ -740,7 +740,7 @@ export function ReportsSection() {
                     playerUsername: selectedFriend?.username || '',
                   });
                 }}
-                className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500"
+                className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
                 <option value={0}>Select a player...</option>
                 {friends.map((friend) => (
@@ -758,7 +758,7 @@ export function ReportsSection() {
               onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
               placeholder="Describe the issue in detail..."
               rows={5}
-              className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-gold-500"
+              className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
           <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-4">
@@ -804,7 +804,7 @@ export function ReportsSection() {
               onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
               placeholder="Update your report reason..."
               rows={5}
-              className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-gold-500"
+              className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
           <div className="flex gap-3 pt-4">
@@ -1001,7 +1001,7 @@ export function ReportsSection() {
               onChange={(e) => setResolutionProof(e.target.value)}
               placeholder="Provide proof of resolution (transaction ID, payment screenshot URL, etc.)..."
               rows={4}
-              className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-gold-500"
+              className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
@@ -1014,7 +1014,7 @@ export function ReportsSection() {
               onChange={(e) => setResolutionNotes(e.target.value)}
               placeholder="Any additional context or explanation..."
               rows={3}
-              className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-gold-500"
+              className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 

@@ -71,7 +71,7 @@ export default function AdminLogin() {
             <h1 className="text-4xl font-bold text-red-500 tracking-wider mb-2">
               ADMIN ACCESS
             </h1>
-            <p className="text-gray-400">Golden Ace Administration</p>
+            <p className="text-gray-400">Green Palace Administration</p>
           </div>
 
           {/* Form */}

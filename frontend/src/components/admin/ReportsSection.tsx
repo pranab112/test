@@ -139,7 +139,7 @@ export function ReportsSection() {
       render: (report: Report) => (
         <button
           onClick={() => openInvestigationModal(report)}
-          className="bg-gold-600 hover:bg-gold-700 text-dark-700 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-1"
+          className="bg-emerald-600 hover:bg-emerald-700 text-dark-700 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-1"
         >
           <MdSearch size={14} />
           Investigate
@@ -151,7 +151,7 @@ export function ReportsSection() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gold-500 mb-2">Report Investigation</h1>
+        <h1 className="text-3xl font-bold text-emerald-500 mb-2">Report Investigation</h1>
         <p className="text-gray-400">Investigate user reports and take action against fake reporters</p>
       </div>
 
@@ -181,11 +181,11 @@ export function ReportsSection() {
 
       {/* Filter */}
       <div className="flex items-center gap-4">
-        <MdFilterList className="text-gold-500" size={20} />
+        <MdFilterList className="text-emerald-500" size={20} />
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as ReportStatus | '')}
-          className="bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-lg focus:border-gold-500 focus:outline-none"
+          className="bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-lg focus:border-emerald-500 focus:outline-none"
         >
           <option value="">All Reports</option>
           <option value="pending">Pending</option>
@@ -197,7 +197,7 @@ export function ReportsSection() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-gold-500">Loading reports...</div>
+        <div className="text-center py-12 text-emerald-500">Loading reports...</div>
       ) : (
         <DataTable
           data={reports}
@@ -210,7 +210,7 @@ export function ReportsSection() {
       {showModal && selectedReport && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="bg-gray-900 rounded-lg p-6 max-w-2xl w-full mx-4 border border-gray-700 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-bold text-gold-500 mb-4">Investigate Report</h3>
+            <h3 className="text-xl font-bold text-emerald-500 mb-4">Investigate Report</h3>
 
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
@@ -249,7 +249,7 @@ export function ReportsSection() {
               <textarea
                 value={adminNotes}
                 onChange={(e) => setAdminNotes(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-lg focus:border-gold-500 focus:outline-none"
+                className="w-full bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-lg focus:border-emerald-500 focus:outline-none"
                 rows={3}
                 placeholder="Investigation notes..."
               />
@@ -261,7 +261,7 @@ export function ReportsSection() {
                 type="text"
                 value={actionTaken}
                 onChange={(e) => setActionTaken(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-lg focus:border-gold-500 focus:outline-none"
+                className="w-full bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-lg focus:border-emerald-500 focus:outline-none"
                 placeholder="e.g., Warning issued, Account suspended, etc."
               />
             </div>

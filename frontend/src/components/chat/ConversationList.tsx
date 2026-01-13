@@ -107,7 +107,7 @@ export default function ConversationList({ onSelectConversation, selectedFriendI
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search conversations..."
-            className="w-full px-4 py-2 pl-10 bg-gray-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500/50"
+            className="w-full px-4 py-2 pl-10 bg-gray-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
           />
           <svg
             className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
@@ -129,7 +129,7 @@ export default function ConversationList({ onSelectConversation, selectedFriendI
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
           <div className="flex items-center justify-center h-32">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-yellow-500"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-emerald-500"></div>
           </div>
         ) : filteredConversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-gray-500">
@@ -154,12 +154,12 @@ export default function ConversationList({ onSelectConversation, selectedFriendI
                 key={conv.friend.id}
                 onClick={() => onSelectConversation(conv.friend)}
                 className={`w-full px-4 py-3 flex items-center space-x-3 hover:bg-gray-800 transition-colors ${
-                  isSelected ? 'bg-gray-800 border-l-2 border-yellow-500' : ''
+                  isSelected ? 'bg-gray-800 border-l-2 border-emerald-500' : ''
                 }`}
               >
                 {/* Avatar */}
                 <div className="relative flex-shrink-0">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center overflow-hidden">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center overflow-hidden">
                     {conv.friend.profile_picture ? (
                       <img
                         src={conv.friend.profile_picture}
@@ -191,7 +191,7 @@ export default function ConversationList({ onSelectConversation, selectedFriendI
                   <div className="flex items-center justify-between mt-1">
                     <p className="text-sm text-gray-400 truncate">{getMessagePreview(conv)}</p>
                     {totalUnread > 0 && (
-                      <span className="flex-shrink-0 ml-2 bg-yellow-500 text-gray-900 text-xs font-bold px-2 py-0.5 rounded-full">
+                      <span className="flex-shrink-0 ml-2 bg-emerald-500 text-gray-900 text-xs font-bold px-2 py-0.5 rounded-full">
                         {totalUnread > 99 ? '99+' : totalUnread}
                       </span>
                     )}

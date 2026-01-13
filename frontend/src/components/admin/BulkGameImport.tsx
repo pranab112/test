@@ -29,50 +29,50 @@ interface BulkGame {
 // Predefined game templates for quick import
 const GAME_TEMPLATES = {
   popular: [
-    { name: 'fire_kirin', display_name: 'Fire Kirin', category: 'fish', icon_url: 'https://placehold.co/400x300/FFD700/333333?text=Fire+Kirin' },
-    { name: 'golden_dragon', display_name: 'Golden Dragon', category: 'slots', icon_url: 'https://placehold.co/400x300/FFD700/333333?text=Golden+Dragon' },
-    { name: 'panda_master', display_name: 'Panda Master', category: 'fish', icon_url: 'https://placehold.co/400x300/FFD700/333333?text=Panda+Master' },
-    { name: 'juwa', display_name: 'Juwa', category: 'multi-game', icon_url: 'https://placehold.co/400x300/FFD700/333333?text=Juwa' },
-    { name: 'game_vault', display_name: 'Game Vault', category: 'multi-game', icon_url: 'https://placehold.co/400x300/FFD700/333333?text=Game+Vault' },
-    { name: 'orion_stars', display_name: 'Orion Stars', category: 'multi-game', icon_url: 'https://placehold.co/400x300/FFD700/333333?text=Orion+Stars' },
-    { name: 'vegas_x', display_name: 'Vegas X', category: 'casino', icon_url: 'https://placehold.co/400x300/FFD700/333333?text=Vegas+X' },
-    { name: 'ultra_panda', display_name: 'Ultra Panda', category: 'fish', icon_url: 'https://placehold.co/400x300/FFD700/333333?text=Ultra+Panda' },
-    { name: 'milky_way', display_name: 'Milky Way', category: 'sweepstakes', icon_url: 'https://placehold.co/400x300/FFD700/333333?text=Milky+Way' },
-    { name: 'river_monster', display_name: 'River Monster', category: 'fish', icon_url: 'https://placehold.co/400x300/FFD700/333333?text=River+Monster' },
+    { name: 'fire_kirin', display_name: 'Fire Kirin', category: 'fish', icon_url: 'https://placehold.co/400x300/10B981/333333?text=Fire+Kirin' },
+    { name: 'golden_dragon', display_name: 'Golden Dragon', category: 'slots', icon_url: 'https://placehold.co/400x300/10B981/333333?text=Golden+Dragon' },
+    { name: 'panda_master', display_name: 'Panda Master', category: 'fish', icon_url: 'https://placehold.co/400x300/10B981/333333?text=Panda+Master' },
+    { name: 'juwa', display_name: 'Juwa', category: 'multi-game', icon_url: 'https://placehold.co/400x300/10B981/333333?text=Juwa' },
+    { name: 'game_vault', display_name: 'Game Vault', category: 'multi-game', icon_url: 'https://placehold.co/400x300/10B981/333333?text=Game+Vault' },
+    { name: 'orion_stars', display_name: 'Orion Stars', category: 'multi-game', icon_url: 'https://placehold.co/400x300/10B981/333333?text=Orion+Stars' },
+    { name: 'vegas_x', display_name: 'Vegas X', category: 'casino', icon_url: 'https://placehold.co/400x300/10B981/333333?text=Vegas+X' },
+    { name: 'ultra_panda', display_name: 'Ultra Panda', category: 'fish', icon_url: 'https://placehold.co/400x300/10B981/333333?text=Ultra+Panda' },
+    { name: 'milky_way', display_name: 'Milky Way', category: 'sweepstakes', icon_url: 'https://placehold.co/400x300/10B981/333333?text=Milky+Way' },
+    { name: 'river_monster', display_name: 'River Monster', category: 'fish', icon_url: 'https://placehold.co/400x300/10B981/333333?text=River+Monster' },
   ],
   slots: [
-    { name: 'lucky_777', display_name: 'Lucky 777', category: 'slots', icon_url: 'https://placehold.co/400x300/FFD700/333333?text=Lucky+777' },
-    { name: 'mega_fortune', display_name: 'Mega Fortune', category: 'slots', icon_url: 'https://placehold.co/400x300/FFD700/333333?text=Mega+Fortune' },
-    { name: 'gold_rush', display_name: 'Gold Rush', category: 'slots', icon_url: 'https://placehold.co/400x300/FFD700/333333?text=Gold+Rush' },
-    { name: 'diamond_dreams', display_name: 'Diamond Dreams', category: 'slots', icon_url: 'https://placehold.co/400x300/FFD700/333333?text=Diamond+Dreams' },
-    { name: 'fruit_frenzy', display_name: 'Fruit Frenzy', category: 'slots', icon_url: 'https://placehold.co/400x300/FFD700/333333?text=Fruit+Frenzy' },
+    { name: 'lucky_777', display_name: 'Lucky 777', category: 'slots', icon_url: 'https://placehold.co/400x300/10B981/333333?text=Lucky+777' },
+    { name: 'mega_fortune', display_name: 'Mega Fortune', category: 'slots', icon_url: 'https://placehold.co/400x300/10B981/333333?text=Mega+Fortune' },
+    { name: 'gold_rush', display_name: 'Gold Rush', category: 'slots', icon_url: 'https://placehold.co/400x300/10B981/333333?text=Gold+Rush' },
+    { name: 'diamond_dreams', display_name: 'Diamond Dreams', category: 'slots', icon_url: 'https://placehold.co/400x300/10B981/333333?text=Diamond+Dreams' },
+    { name: 'fruit_frenzy', display_name: 'Fruit Frenzy', category: 'slots', icon_url: 'https://placehold.co/400x300/10B981/333333?text=Fruit+Frenzy' },
   ],
   casino: [
-    { name: 'blackjack_pro', display_name: 'Blackjack Pro', category: 'casino', icon_url: 'https://placehold.co/400x300/FFD700/333333?text=Blackjack+Pro' },
-    { name: 'roulette_royale', display_name: 'Roulette Royale', category: 'casino', icon_url: 'https://placehold.co/400x300/FFD700/333333?text=Roulette+Royale' },
-    { name: 'poker_stars', display_name: 'Poker Stars', category: 'poker', icon_url: 'https://placehold.co/400x300/FFD700/333333?text=Poker+Stars' },
-    { name: 'baccarat_gold', display_name: 'Baccarat Gold', category: 'casino', icon_url: 'https://placehold.co/400x300/FFD700/333333?text=Baccarat+Gold' },
-    { name: 'craps_master', display_name: 'Craps Master', category: 'casino', icon_url: 'https://placehold.co/400x300/FFD700/333333?text=Craps+Master' },
+    { name: 'blackjack_pro', display_name: 'Blackjack Pro', category: 'casino', icon_url: 'https://placehold.co/400x300/10B981/333333?text=Blackjack+Pro' },
+    { name: 'roulette_royale', display_name: 'Roulette Royale', category: 'casino', icon_url: 'https://placehold.co/400x300/10B981/333333?text=Roulette+Royale' },
+    { name: 'poker_stars', display_name: 'Poker Stars', category: 'poker', icon_url: 'https://placehold.co/400x300/10B981/333333?text=Poker+Stars' },
+    { name: 'baccarat_gold', display_name: 'Baccarat Gold', category: 'casino', icon_url: 'https://placehold.co/400x300/10B981/333333?text=Baccarat+Gold' },
+    { name: 'craps_master', display_name: 'Craps Master', category: 'casino', icon_url: 'https://placehold.co/400x300/10B981/333333?text=Craps+Master' },
   ]
 };
 
 const SAMPLE_CSV = `name,display_name,category,icon_url
-fire_kirin,Fire Kirin,fish,https://placehold.co/400x300/FFD700/333333?text=Fire+Kirin
-golden_dragon,Golden Dragon,slots,https://placehold.co/400x300/FFD700/333333?text=Golden+Dragon
-panda_master,Panda Master,fish,https://placehold.co/400x300/FFD700/333333?text=Panda+Master`;
+fire_kirin,Fire Kirin,fish,https://placehold.co/400x300/10B981/333333?text=Fire+Kirin
+golden_dragon,Golden Dragon,slots,https://placehold.co/400x300/10B981/333333?text=Golden+Dragon
+panda_master,Panda Master,fish,https://placehold.co/400x300/10B981/333333?text=Panda+Master`;
 
 const SAMPLE_JSON = JSON.stringify([
   {
     name: "fire_kirin",
     display_name: "Fire Kirin",
     category: "fish",
-    icon_url: "https://placehold.co/400x300/FFD700/333333?text=Fire+Kirin"
+    icon_url: "https://placehold.co/400x300/10B981/333333?text=Fire+Kirin"
   },
   {
     name: "golden_dragon",
     display_name: "Golden Dragon",
     category: "slots",
-    icon_url: "https://placehold.co/400x300/FFD700/333333?text=Golden+Dragon"
+    icon_url: "https://placehold.co/400x300/10B981/333333?text=Golden+Dragon"
   }
 ], null, 2);
 
@@ -234,13 +234,13 @@ export function BulkGameImport({ isOpen, onClose, onImportComplete }: BulkGameIm
     >
       <div className="space-y-4">
         {/* Tabs */}
-        <div className="flex gap-2 border-b border-gold-700">
+        <div className="flex gap-2 border-b border-emerald-700">
           <button
             onClick={() => setActiveTab('templates')}
             className={`px-4 py-2 font-medium transition-colors ${
               activeTab === 'templates'
-                ? 'text-gold-500 border-b-2 border-gold-500'
-                : 'text-gray-400 hover:text-gold-500'
+                ? 'text-emerald-500 border-b-2 border-emerald-500'
+                : 'text-gray-400 hover:text-emerald-500'
             }`}
           >
             Quick Templates
@@ -249,8 +249,8 @@ export function BulkGameImport({ isOpen, onClose, onImportComplete }: BulkGameIm
             onClick={() => setActiveTab('manual')}
             className={`px-4 py-2 font-medium transition-colors ${
               activeTab === 'manual'
-                ? 'text-gold-500 border-b-2 border-gold-500'
-                : 'text-gray-400 hover:text-gold-500'
+                ? 'text-emerald-500 border-b-2 border-emerald-500'
+                : 'text-gray-400 hover:text-emerald-500'
             }`}
           >
             Manual Entry
@@ -259,8 +259,8 @@ export function BulkGameImport({ isOpen, onClose, onImportComplete }: BulkGameIm
             onClick={() => setActiveTab('file')}
             className={`px-4 py-2 font-medium transition-colors ${
               activeTab === 'file'
-                ? 'text-gold-500 border-b-2 border-gold-500'
-                : 'text-gray-400 hover:text-gold-500'
+                ? 'text-emerald-500 border-b-2 border-emerald-500'
+                : 'text-gray-400 hover:text-emerald-500'
             }`}
           >
             Import File
@@ -272,7 +272,7 @@ export function BulkGameImport({ isOpen, onClose, onImportComplete }: BulkGameIm
           <div className="space-y-4">
             <div className="bg-dark-300 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-3">
-                <MdInfo className="text-gold-500" />
+                <MdInfo className="text-emerald-500" />
                 <p className="text-sm text-gray-400">
                   Quick import popular games with one click
                 </p>
@@ -281,25 +281,25 @@ export function BulkGameImport({ isOpen, onClose, onImportComplete }: BulkGameIm
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <button
                   onClick={() => handleLoadTemplate('popular')}
-                  className="bg-dark-200 border border-gold-700 rounded-lg p-4 hover:border-gold-500 transition-colors"
+                  className="bg-dark-200 border border-emerald-700 rounded-lg p-4 hover:border-emerald-500 transition-colors"
                 >
-                  <h4 className="text-gold-500 font-medium mb-1">Popular Games</h4>
+                  <h4 className="text-emerald-500 font-medium mb-1">Popular Games</h4>
                   <p className="text-xs text-gray-400">10 most popular games</p>
                 </button>
 
                 <button
                   onClick={() => handleLoadTemplate('slots')}
-                  className="bg-dark-200 border border-gold-700 rounded-lg p-4 hover:border-gold-500 transition-colors"
+                  className="bg-dark-200 border border-emerald-700 rounded-lg p-4 hover:border-emerald-500 transition-colors"
                 >
-                  <h4 className="text-gold-500 font-medium mb-1">Slot Games</h4>
+                  <h4 className="text-emerald-500 font-medium mb-1">Slot Games</h4>
                   <p className="text-xs text-gray-400">5 slot machine games</p>
                 </button>
 
                 <button
                   onClick={() => handleLoadTemplate('casino')}
-                  className="bg-dark-200 border border-gold-700 rounded-lg p-4 hover:border-gold-500 transition-colors"
+                  className="bg-dark-200 border border-emerald-700 rounded-lg p-4 hover:border-emerald-500 transition-colors"
                 >
-                  <h4 className="text-gold-500 font-medium mb-1">Casino Games</h4>
+                  <h4 className="text-emerald-500 font-medium mb-1">Casino Games</h4>
                   <p className="text-xs text-gray-400">5 classic casino games</p>
                 </button>
               </div>
@@ -307,7 +307,7 @@ export function BulkGameImport({ isOpen, onClose, onImportComplete }: BulkGameIm
 
             {games.length > 0 && (
               <div className="bg-dark-300 rounded-lg p-4">
-                <h4 className="text-gold-500 font-medium mb-3">
+                <h4 className="text-emerald-500 font-medium mb-3">
                   Games to Import ({games.length})
                 </h4>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -362,7 +362,7 @@ export function BulkGameImport({ isOpen, onClose, onImportComplete }: BulkGameIm
                 games.map((game, index) => (
                   <div key={index} className="bg-dark-300 rounded-lg p-4 space-y-3">
                     <div className="flex justify-between items-start">
-                      <h5 className="text-gold-500 font-medium">Game #{index + 1}</h5>
+                      <h5 className="text-emerald-500 font-medium">Game #{index + 1}</h5>
                       <button
                         onClick={() => handleRemoveGame(index)}
                         className="text-red-500 hover:text-red-400"
@@ -437,7 +437,7 @@ export function BulkGameImport({ isOpen, onClose, onImportComplete }: BulkGameIm
                     onClick={() => setFileFormat('json')}
                     className={`px-3 py-1 rounded text-xs ${
                       fileFormat === 'json'
-                        ? 'bg-gold-500 text-dark-700'
+                        ? 'bg-emerald-500 text-dark-700'
                         : 'bg-dark-200 text-gray-400'
                     }`}
                   >
@@ -447,7 +447,7 @@ export function BulkGameImport({ isOpen, onClose, onImportComplete }: BulkGameIm
                     onClick={() => setFileFormat('csv')}
                     className={`px-3 py-1 rounded text-xs ${
                       fileFormat === 'csv'
-                        ? 'bg-gold-500 text-dark-700'
+                        ? 'bg-emerald-500 text-dark-700'
                         : 'bg-dark-200 text-gray-400'
                     }`}
                   >
@@ -457,7 +457,7 @@ export function BulkGameImport({ isOpen, onClose, onImportComplete }: BulkGameIm
               </div>
 
               <textarea
-                className="w-full h-48 bg-dark-200 border border-gold-700 rounded-lg p-3 text-white font-mono text-sm"
+                className="w-full h-48 bg-dark-200 border border-emerald-700 rounded-lg p-3 text-white font-mono text-sm"
                 placeholder={fileFormat === 'json' ? 'Paste JSON array here...' : 'Paste CSV data here...'}
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
@@ -467,14 +467,14 @@ export function BulkGameImport({ isOpen, onClose, onImportComplete }: BulkGameIm
                 <div className="flex gap-2">
                   <button
                     onClick={() => downloadTemplate(fileFormat)}
-                    className="text-gold-500 hover:text-gold-400 text-sm flex items-center gap-1"
+                    className="text-emerald-500 hover:text-emerald-400 text-sm flex items-center gap-1"
                   >
                     <MdDownload size={16} />
                     Download Template
                   </button>
                   <button
                     onClick={() => copyToClipboard(fileFormat === 'json' ? SAMPLE_JSON : SAMPLE_CSV)}
-                    className="text-gold-500 hover:text-gold-400 text-sm flex items-center gap-1"
+                    className="text-emerald-500 hover:text-emerald-400 text-sm flex items-center gap-1"
                   >
                     <MdContentCopy size={16} />
                     Copy Sample
@@ -488,7 +488,7 @@ export function BulkGameImport({ isOpen, onClose, onImportComplete }: BulkGameIm
 
             {games.length > 0 && (
               <div className="bg-dark-300 rounded-lg p-4">
-                <h4 className="text-gold-500 font-medium mb-3">
+                <h4 className="text-emerald-500 font-medium mb-3">
                   Parsed Games ({games.length})
                 </h4>
                 <div className="space-y-2 max-h-64 overflow-y-auto">

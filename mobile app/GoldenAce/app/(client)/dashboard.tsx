@@ -129,7 +129,7 @@ export default function ClientDashboardScreen() {
             <Text style={styles.greeting}>Welcome back,</Text>
             <Text style={styles.companyName}>{user?.company_name || user?.username}</Text>
           </View>
-          <Badge text="Client" variant="gold" />
+          <Badge text="Client" variant="emerald" />
         </View>
       </Card>
 

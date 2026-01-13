@@ -122,7 +122,7 @@ export function HomeSection() {
 
       setRecentActivities(activities.length > 0 ? activities : [
         {
-          title: 'Welcome to Golden Ace!',
+          title: 'Welcome to Green Palace!',
           description: 'Start by connecting with clients and claiming rewards',
           time: 'Just now',
           type: 'info',
@@ -210,7 +210,7 @@ export function HomeSection() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gold-500">Loading dashboard...</div>
+        <div className="text-emerald-500">Loading dashboard...</div>
       </div>
     );
   }
@@ -219,7 +219,7 @@ export function HomeSection() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gold-500 mb-2">
+          <h1 className="text-3xl font-bold text-emerald-500 mb-2">
             Welcome Back{user?.full_name ? `, ${user.full_name.split(' ')[0]}` : ''}!
           </h1>
           <p className="text-gray-400">Your player dashboard overview</p>
@@ -227,7 +227,7 @@ export function HomeSection() {
         <button
           type="button"
           onClick={loadDashboardData}
-          className="bg-dark-300 hover:bg-dark-400 text-gold-500 p-3 rounded-lg transition-colors"
+          className="bg-dark-300 hover:bg-dark-400 text-emerald-500 p-3 rounded-lg transition-colors"
           title="Refresh"
         >
           <MdRefresh size={20} />
@@ -247,8 +247,8 @@ export function HomeSection() {
       </div>
 
       {/* Mini Casino Games */}
-      <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-        <h2 className="text-2xl font-bold text-gold-500 mb-4 flex items-center gap-2">
+      <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
+        <h2 className="text-2xl font-bold text-emerald-500 mb-4 flex items-center gap-2">
           <MdCasino className="text-3xl" />
           Mini Casino Games
         </h2>
@@ -268,7 +268,7 @@ export function HomeSection() {
 
           <button
             onClick={() => setShowSlotsGame(true)}
-            className="bg-gradient-to-br from-gold-600 to-yellow-700 hover:from-gold-500 hover:to-yellow-600 text-dark-700 p-6 rounded-lg transition-all transform hover:scale-105 shadow-lg flex items-center gap-4"
+            className="bg-gradient-to-br from-emerald-600 to-yellow-700 hover:from-emerald-500 hover:to-yellow-600 text-dark-700 p-6 rounded-lg transition-all transform hover:scale-105 shadow-lg flex items-center gap-4"
           >
             <GiCardRandom className="text-4xl flex-shrink-0" />
             <div className="text-left">
@@ -292,8 +292,8 @@ export function HomeSection() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Activity */}
-        <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-          <h2 className="text-xl font-bold text-gold-500 mb-4">Recent Activity</h2>
+        <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
+          <h2 className="text-xl font-bold text-emerald-500 mb-4">Recent Activity</h2>
           <div className="space-y-3">
             {recentActivities.map((activity, index) => (
               <ActivityItem key={index} {...activity} />
@@ -302,8 +302,8 @@ export function HomeSection() {
         </div>
 
         {/* Available Offers */}
-        <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-          <h2 className="text-xl font-bold text-gold-500 mb-4">Available Offers</h2>
+        <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
+          <h2 className="text-xl font-bold text-emerald-500 mb-4">Available Offers</h2>
           <div className="space-y-3">
             {availableOffers.length === 0 ? (
               <p className="text-gray-400 text-center py-4">No offers available right now</p>
@@ -518,19 +518,19 @@ function LuckyDiceGame({ credits, onBalanceUpdate }: { credits: number; onBalanc
   return (
     <div className="space-y-6">
       {/* Credits Display */}
-      <div className="bg-gradient-to-r from-gold-600 to-yellow-600 rounded-lg p-4 text-center">
+      <div className="bg-gradient-to-r from-emerald-600 to-yellow-600 rounded-lg p-4 text-center">
         <p className="text-sm text-dark-700 font-medium">Your Credits</p>
         <p className="text-3xl font-bold text-dark-700">{currentCredits.toLocaleString()}</p>
       </div>
 
-      <div className="bg-dark-300 border-2 border-gold-700 rounded-lg p-6">
+      <div className="bg-dark-300 border-2 border-emerald-700 rounded-lg p-6">
         <div className="flex items-center justify-center gap-8 mb-6">
           <Dice value={dice1} rolling={rolling} />
           <Dice value={dice2} rolling={rolling} />
         </div>
 
         <div className="text-center mb-4">
-          <p className="text-2xl font-bold text-gold-500">
+          <p className="text-2xl font-bold text-emerald-500">
             Total: {dice1 + dice2}
           </p>
         </div>
@@ -587,8 +587,8 @@ function LuckyDiceGame({ credits, onBalanceUpdate }: { credits: number; onBalanc
                 disabled={rolling}
                 className={`px-4 py-2 rounded-lg font-bold transition-all ${
                   prediction === value
-                    ? 'bg-gold-500 text-dark-700 scale-105'
-                    : 'bg-dark-200 text-white hover:bg-dark-400 border border-gold-700'
+                    ? 'bg-emerald-500 text-dark-700 scale-105'
+                    : 'bg-dark-200 text-white hover:bg-dark-400 border border-emerald-700'
                 } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 {value}
@@ -604,7 +604,7 @@ function LuckyDiceGame({ credits, onBalanceUpdate }: { credits: number; onBalanc
             onChange={(e) => handlePredictionChange(parseInt(e.target.value))}
             onBlur={(e) => handlePredictionChange(parseInt(e.target.value))}
             disabled={rolling}
-            className="w-full bg-dark-200 border-2 border-gold-700 rounded-lg px-4 py-3 text-white text-center text-xl font-bold focus:outline-none focus:ring-2 focus:ring-gold-500"
+            className="w-full bg-dark-200 border-2 border-emerald-700 rounded-lg px-4 py-3 text-white text-center text-xl font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
 
@@ -635,7 +635,7 @@ function LuckyDiceGame({ credits, onBalanceUpdate }: { credits: number; onBalanc
       </div>
 
       <div className="bg-dark-300 rounded-lg p-4">
-        <h3 className="font-bold text-gold-500 mb-2">How to Play</h3>
+        <h3 className="font-bold text-emerald-500 mb-2">How to Play</h3>
         <ul className="text-sm text-gray-400 space-y-1">
           <li>• Enter how many credits you want to bet</li>
           <li>• Choose a number between 2 and 12</li>
@@ -850,12 +850,12 @@ function LuckySlotsGame({ credits, onBalanceUpdate }: { credits: number; onBalan
   return (
     <div className="space-y-6">
       {/* Credits Display */}
-      <div className="bg-gradient-to-r from-gold-600 to-yellow-600 rounded-lg p-4 text-center">
+      <div className="bg-gradient-to-r from-emerald-600 to-yellow-600 rounded-lg p-4 text-center">
         <p className="text-sm text-dark-700 font-medium">Your Credits</p>
         <p className="text-3xl font-bold text-dark-700">{currentCredits.toLocaleString()}</p>
       </div>
 
-      <div className="bg-dark-300 border-2 border-gold-700 rounded-lg p-6">
+      <div className="bg-dark-300 border-2 border-emerald-700 rounded-lg p-6">
         <div className="flex items-center justify-center gap-4 mb-6 bg-dark-200 p-8 rounded-lg">
           {reels.map((symbol, index) => (
             <div
@@ -938,7 +938,7 @@ function LuckySlotsGame({ credits, onBalanceUpdate }: { credits: number; onBalan
       </div>
 
       <div className="bg-dark-300 rounded-lg p-4">
-        <h3 className="font-bold text-gold-500 mb-2">How to Play</h3>
+        <h3 className="font-bold text-emerald-500 mb-2">How to Play</h3>
         <ul className="text-sm text-gray-400 space-y-1">
           <li>• Enter how many credits you want to bet</li>
           <li>• Click SPIN to start</li>
@@ -1070,11 +1070,11 @@ function MemoryMatchGame() {
       <div className="flex items-center justify-between bg-dark-300 rounded-lg p-4">
         <div className="text-center">
           <p className="text-sm text-gray-400">Moves</p>
-          <p className="text-2xl font-bold text-gold-500">{moves}</p>
+          <p className="text-2xl font-bold text-emerald-500">{moves}</p>
         </div>
         <div className="text-center">
           <p className="text-sm text-gray-400">Time</p>
-          <p className="text-2xl font-bold text-gold-500">{timer}s</p>
+          <p className="text-2xl font-bold text-emerald-500">{timer}s</p>
         </div>
         <Button onClick={initializeGame} variant="secondary">
           New Game
@@ -1090,7 +1090,7 @@ function MemoryMatchGame() {
             className={`aspect-square rounded-lg text-4xl font-bold transition-all transform ${
               card.flipped || card.matched
                 ? 'bg-white text-black scale-100'
-                : 'bg-gradient-to-br from-gold-600 to-yellow-700 text-transparent hover:scale-105'
+                : 'bg-gradient-to-br from-emerald-600 to-yellow-700 text-transparent hover:scale-105'
             } ${card.matched ? 'opacity-50' : ''}`}
           >
             {card.flipped || card.matched ? card.symbol : '?'}
@@ -1106,7 +1106,7 @@ function MemoryMatchGame() {
       )}
 
       <div className="bg-dark-300 rounded-lg p-4">
-        <h3 className="font-bold text-gold-500 mb-2">How to Play</h3>
+        <h3 className="font-bold text-emerald-500 mb-2">How to Play</h3>
         <ul className="text-sm text-gray-400 space-y-1">
           <li>• Click cards to flip them</li>
           <li>• Match pairs of identical symbols</li>
@@ -1164,7 +1164,7 @@ function OfferCard({
   onClaim: () => void;
 }) {
   return (
-    <div className="p-4 bg-dark-300 border border-gold-700 rounded-lg hover:shadow-gold transition-all">
+    <div className="p-4 bg-dark-300 border border-emerald-700 rounded-lg hover:shadow-green transition-all">
       <div className="flex items-start justify-between mb-2">
         <div>
           <h3 className="font-bold text-white mb-1">{title}</h3>
@@ -1183,7 +1183,7 @@ function OfferCard({
             type="button"
             onClick={onClaim}
             disabled={isClaiming}
-            className="bg-gold-gradient text-dark-700 font-bold px-4 py-1 rounded text-sm hover:shadow-gold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-emerald-gradient text-dark-700 font-bold px-4 py-1 rounded text-sm hover:shadow-green transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isClaiming ? 'Claiming...' : 'Claim'}
           </button>

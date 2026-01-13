@@ -31,9 +31,9 @@ export default function SplashScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.logoContainer}>
-        <Ionicons name="diamond" size={80} color={Colors.primary} />
-        <Text style={styles.title}>GoldenAce</Text>
-        <Text style={styles.subtitle}>Premium Gaming Platform</Text>
+        <Ionicons name="git-network" size={80} color={Colors.primary} />
+        <Text style={styles.title}>Green Palace</Text>
+        <Text style={styles.subtitle}>Premium Sweepstakes Platform</Text>
       </View>
       <Loading text="Loading..." />
     </View>

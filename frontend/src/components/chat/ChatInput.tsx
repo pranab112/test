@@ -192,7 +192,7 @@ export default function ChatInput({ onSend, onTyping, disabled = false, receiver
             </button>
             <button
               onClick={stopRecording}
-              className="p-2 text-white bg-yellow-500 hover:bg-yellow-600 rounded-full transition-colors"
+              className="p-2 text-white bg-emerald-500 hover:bg-emerald-600 rounded-full transition-colors"
               title="Send"
             >
               <MdSend className="w-6 h-6" />
@@ -212,7 +212,7 @@ export default function ChatInput({ onSend, onTyping, disabled = false, receiver
             <img
               src={imagePreview.url}
               alt="Preview"
-              className="max-h-32 max-w-[200px] rounded-lg object-cover border-2 border-gold-500/50"
+              className="max-h-32 max-w-[200px] rounded-lg object-cover border-2 border-emerald-500/50"
             />
             <button
               type="button"
@@ -245,8 +245,8 @@ export default function ChatInput({ onSend, onTyping, disabled = false, receiver
           disabled={disabled || isUploading}
           className={`p-2 rounded-full transition-colors disabled:opacity-50 ${
             imagePreview
-              ? 'text-gold-500 bg-gold-500/20'
-              : 'text-gray-400 hover:text-yellow-500 hover:bg-gray-700'
+              ? 'text-emerald-500 bg-emerald-500/20'
+              : 'text-gray-400 hover:text-emerald-500 hover:bg-gray-700'
           }`}
           title="Send image"
         >
@@ -262,7 +262,7 @@ export default function ChatInput({ onSend, onTyping, disabled = false, receiver
             onKeyDown={handleKeyDown}
             placeholder={imagePreview ? "Add a caption..." : "Type a message..."}
             disabled={disabled || isUploading}
-            className="w-full px-4 py-2 bg-gray-700 text-white rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-yellow-500/50 disabled:opacity-50"
+            className="w-full px-4 py-2 bg-gray-700 text-white rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500/50 disabled:opacity-50"
             rows={1}
             style={{ minHeight: '40px', maxHeight: '120px' }}
           />
@@ -274,7 +274,7 @@ export default function ChatInput({ onSend, onTyping, disabled = false, receiver
             type="button"
             onClick={startRecording}
             disabled={disabled || isUploading}
-            className="p-2 text-gray-400 hover:text-yellow-500 hover:bg-gray-700 rounded-full transition-colors disabled:opacity-50"
+            className="p-2 text-gray-400 hover:text-emerald-500 hover:bg-gray-700 rounded-full transition-colors disabled:opacity-50"
             title="Record voice message"
           >
             <MdMic className="w-6 h-6" />
@@ -286,7 +286,7 @@ export default function ChatInput({ onSend, onTyping, disabled = false, receiver
           <button
             type="submit"
             disabled={disabled || isUploading}
-            className="p-2 text-gray-900 bg-yellow-500 hover:bg-yellow-600 rounded-full transition-colors disabled:opacity-50"
+            className="p-2 text-gray-900 bg-emerald-500 hover:bg-emerald-600 rounded-full transition-colors disabled:opacity-50"
             title={imagePreview ? "Send image" : "Send message"}
           >
             {isUploading ? (
@@ -300,7 +300,7 @@ export default function ChatInput({ onSend, onTyping, disabled = false, receiver
         {/* Loading indicator for other operations */}
         {isUploading && !message.trim() && !imagePreview && (
           <div className="p-2">
-            <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-yellow-500"></div>
+            <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-emerald-500"></div>
           </div>
         )}
       </form>

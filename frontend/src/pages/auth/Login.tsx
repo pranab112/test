@@ -66,22 +66,22 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-dark-700 via-dark-600 to-dark-500 p-4">
       <div className="max-w-md w-full">
-        <div className="bg-dark-200 border-2 border-gold-600 rounded-lg shadow-gold-lg p-8">
+        <div className="bg-dark-200 border-2 border-emerald-600 rounded-lg shadow-green-lg p-8">
           {/* Header */}
           <div className="text-center mb-8">
             <div className="flex items-center justify-center gap-3 mb-4">
-              <FaGamepad className="text-5xl text-gold-500" />
+              <FaGamepad className="text-5xl text-emerald-500" />
             </div>
-            <h1 className="text-4xl font-bold text-gold-500 tracking-wider mb-2">
+            <h1 className="text-4xl font-bold text-emerald-500 tracking-wider mb-2">
               PLAYER LOGIN
             </h1>
-            <p className="text-gray-400">Golden Ace Gaming Portal</p>
+            <p className="text-gray-400">Green Palace Gaming Portal</p>
           </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="relative">
-              <div className="absolute left-3 top-[38px] text-gold-600">
+              <div className="absolute left-3 top-[38px] text-emerald-600">
                 <FaUser />
               </div>
               <Input
@@ -95,7 +95,7 @@ export default function Login() {
             </div>
 
             <div className="relative">
-              <div className="absolute left-3 top-[38px] text-gold-600">
+              <div className="absolute left-3 top-[38px] text-emerald-600">
                 <FaLock />
               </div>
               <Input
@@ -119,7 +119,7 @@ export default function Login() {
               Don't have an account?{' '}
               <Link
                 to={ROUTES.REGISTER}
-                className="text-gold-500 hover:text-gold-400 font-semibold transition-colors"
+                className="text-emerald-500 hover:text-emerald-400 font-semibold transition-colors"
               >
                 Register
               </Link>

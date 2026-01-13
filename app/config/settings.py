@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     # Resend Email Configuration
     RESEND_API_KEY: Optional[str] = None
     RESEND_FROM_EMAIL: str = "onboarding@resend.dev"
-    RESEND_FROM_NAME: str = "Golden Ace"
+    RESEND_FROM_NAME: str = "Green Palace"
 
     # Base URL for links in emails
     BASE_URL: str = "http://127.0.0.1:8000"

@@ -60,15 +60,15 @@ export function Modal({
       {/* Modal */}
       <div className="flex min-h-full items-center justify-center p-4">
         <div
-          className={`relative w-full ${sizeStyles[size]} bg-dark-200 border-2 border-gold-700 rounded-lg shadow-gold-lg transform transition-all`}
+          className={`relative w-full ${sizeStyles[size]} bg-dark-200 border-2 border-emerald-700 rounded-lg shadow-green-lg transform transition-all`}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gold-700 bg-gradient-to-r from-dark-300 to-dark-200">
-            <h3 className="text-xl font-bold text-gold-500">{title}</h3>
+          <div className="flex items-center justify-between p-6 border-b border-emerald-700 bg-gradient-to-r from-dark-300 to-dark-200">
+            <h3 className="text-xl font-bold text-emerald-500">{title}</h3>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gold-500 transition-colors"
+              className="text-gray-400 hover:text-emerald-500 transition-colors"
             >
               <MdClose size={24} />
             </button>

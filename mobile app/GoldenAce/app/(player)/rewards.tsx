@@ -131,7 +131,7 @@ export default function PlayerRewardsScreen() {
           <Text style={styles.offerTitle}>{item.title}</Text>
           <Badge
             text={item.offer_type.replace('_', ' ')}
-            variant="gold"
+            variant="emerald"
             size="sm"
           />
         </View>

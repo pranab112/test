@@ -51,7 +51,7 @@ export function DashboardSection({ onNavigate }: DashboardSectionProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gold-500">Loading dashboard...</div>
+        <div className="text-emerald-500">Loading dashboard...</div>
       </div>
     );
   }
@@ -65,7 +65,7 @@ export function DashboardSection({ onNavigate }: DashboardSectionProps) {
       title: 'My Credits',
       value: balance.credits.toLocaleString(),
       icon: <MdCardGiftcard />,
-      color: 'gold' as const,
+      color: 'green' as const,
       subtitle: `$${balance.dollar_value.toFixed(2)}`,
     },
     {
@@ -90,7 +90,7 @@ export function DashboardSection({ onNavigate }: DashboardSectionProps) {
       title: 'Online Players',
       value: stats.online_players.toString(),
       icon: <MdGroup />,
-      color: 'gold' as const,
+      color: 'green' as const,
     },
     {
       title: 'Avg Player Level',
@@ -103,7 +103,7 @@ export function DashboardSection({ onNavigate }: DashboardSectionProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gold-500 mb-2">Client Dashboard</h1>
+        <h1 className="text-3xl font-bold text-emerald-500 mb-2">Client Dashboard</h1>
         <p className="text-gray-400">Overview of your player management</p>
       </div>
 
@@ -121,8 +121,8 @@ export function DashboardSection({ onNavigate }: DashboardSectionProps) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Activity */}
-        <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-          <h2 className="text-xl font-bold text-gold-500 mb-4">Recent Activity</h2>
+        <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
+          <h2 className="text-xl font-bold text-emerald-500 mb-4">Recent Activity</h2>
           {recentActivity.length === 0 ? (
             <p className="text-gray-400 text-center py-8">No recent activity</p>
           ) : (
@@ -130,7 +130,7 @@ export function DashboardSection({ onNavigate }: DashboardSectionProps) {
               {recentActivity.slice(0, 10).map((activity, index) => (
                 <div key={index} className="bg-dark-300 p-3 rounded-lg">
                   <div className="flex items-start gap-3">
-                    <div className="w-2 h-2 rounded-full mt-2 bg-gold-500" />
+                    <div className="w-2 h-2 rounded-full mt-2 bg-emerald-500" />
                     <div className="flex-1">
                       <p className="text-white">{activity.description}</p>
                       <p className="text-xs text-gray-500 mt-1">
@@ -145,24 +145,24 @@ export function DashboardSection({ onNavigate }: DashboardSectionProps) {
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-          <h2 className="text-xl font-bold text-gold-500 mb-4">Quick Actions</h2>
+        <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
+          <h2 className="text-xl font-bold text-emerald-500 mb-4">Quick Actions</h2>
           <div className="space-y-3">
             <button
               onClick={() => onNavigate?.('players')}
-              className="w-full bg-gold-gradient text-dark-700 font-bold py-3 px-4 rounded-lg hover:shadow-gold transition-all"
+              className="w-full bg-emerald-gradient text-dark-700 font-bold py-3 px-4 rounded-lg hover:shadow-green transition-all"
             >
               Manage Players ({stats.total_players})
             </button>
             <button
               onClick={() => onNavigate?.('players')}
-              className="w-full bg-dark-300 text-gold-500 border-2 border-gold-700 font-bold py-3 px-4 rounded-lg hover:bg-dark-400 transition-all"
+              className="w-full bg-dark-300 text-emerald-500 border-2 border-emerald-700 font-bold py-3 px-4 rounded-lg hover:bg-dark-400 transition-all"
             >
               Register New Player
             </button>
             <button
               onClick={() => onNavigate?.('promotions')}
-              className="w-full bg-dark-300 text-gold-500 border-2 border-gold-700 font-bold py-3 px-4 rounded-lg hover:bg-dark-400 transition-all"
+              className="w-full bg-dark-300 text-emerald-500 border-2 border-emerald-700 font-bold py-3 px-4 rounded-lg hover:bg-dark-400 transition-all"
             >
               Create Promotion
             </button>

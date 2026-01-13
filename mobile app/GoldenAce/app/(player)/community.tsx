@@ -197,7 +197,7 @@ export default function CommunityScreen() {
             </Text>
             <Badge
               text={item.author_user_type}
-              variant={item.author_user_type === 'client' ? 'gold' : 'default'}
+              variant={item.author_user_type === 'client' ? 'emerald' : 'default'}
               size="sm"
             />
           </View>

@@ -180,18 +180,18 @@ export function GamesSection() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gold-500">Games Library</h1>
+        <h1 className="text-3xl font-bold text-emerald-500">Games Library</h1>
         <p className="text-gray-400">Manage and customize your game offerings</p>
       </div>
 
       {/* Tabs */}
-      <div className="flex flex-wrap gap-2 border-b border-gold-700">
+      <div className="flex flex-wrap gap-2 border-b border-emerald-700">
         <button
           onClick={() => setActiveTab('my-games')}
           className={`px-4 py-2 font-medium transition-colors ${
             activeTab === 'my-games'
-              ? 'text-gold-500 border-b-2 border-gold-500'
-              : 'text-gray-400 hover:text-gold-500'
+              ? 'text-emerald-500 border-b-2 border-emerald-500'
+              : 'text-gray-400 hover:text-emerald-500'
           }`}
         >
           My Games ({clientGames.length})
@@ -200,8 +200,8 @@ export function GamesSection() {
           onClick={() => setActiveTab('library')}
           className={`px-4 py-2 font-medium transition-colors ${
             activeTab === 'library'
-              ? 'text-gold-500 border-b-2 border-gold-500'
-              : 'text-gray-400 hover:text-gold-500'
+              ? 'text-emerald-500 border-b-2 border-emerald-500'
+              : 'text-gray-400 hover:text-emerald-500'
           }`}
         >
           Game Library ({allGames.length})
@@ -217,13 +217,13 @@ export function GamesSection() {
             placeholder="Search games..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-dark-200 border border-gold-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gold-500"
+            className="w-full pl-10 pr-4 py-2 bg-dark-200 border border-emerald-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="px-4 py-2 bg-dark-200 border border-gold-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-gold-500"
+          className="px-4 py-2 bg-dark-200 border border-emerald-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
         >
           <option value="all">All Categories</option>
           {categories.map(cat => (
@@ -242,7 +242,7 @@ export function GamesSection() {
 
       {/* Content */}
       {loading ? (
-        <div className="text-center py-12 text-gold-500">Loading games...</div>
+        <div className="text-center py-12 text-emerald-500">Loading games...</div>
       ) : allGames.length === 0 ? (
         <div className="col-span-full text-center py-12">
           <MdVideogameAsset className="text-6xl text-gray-600 mx-auto mb-4" />
@@ -263,7 +263,7 @@ export function GamesSection() {
             filteredClientGames.map((clientGame) => (
               <div
                 key={clientGame.id}
-                className="bg-dark-200 border-2 border-gold-700 rounded-lg overflow-hidden hover:shadow-gold transition-all"
+                className="bg-dark-200 border-2 border-emerald-700 rounded-lg overflow-hidden hover:shadow-green transition-all"
               >
                 <div className="aspect-video bg-dark-300 relative">
                   {clientGame.custom_image_url || clientGame.game?.icon_url ? (
@@ -274,7 +274,7 @@ export function GamesSection() {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <FaGamepad className="text-4xl text-gold-500 opacity-50" />
+                      <FaGamepad className="text-4xl text-emerald-500 opacity-50" />
                     </div>
                   )}
                   <Badge
@@ -292,14 +292,14 @@ export function GamesSection() {
                     {clientGame.game?.category}
                   </p>
                   {clientGame.game_link && (
-                    <div className="flex items-center gap-1 text-xs text-gold-500 mb-3">
+                    <div className="flex items-center gap-1 text-xs text-emerald-500 mb-3">
                       <MdLink size={14} />
                       <span className="truncate">{clientGame.game_link}</span>
                     </div>
                   )}
                   <button
                     onClick={() => handleEditGame(clientGame)}
-                    className="w-full bg-dark-300 text-gold-500 py-2 rounded-lg hover:bg-dark-400 transition-colors flex items-center justify-center gap-2"
+                    className="w-full bg-dark-300 text-emerald-500 py-2 rounded-lg hover:bg-dark-400 transition-colors flex items-center justify-center gap-2"
                   >
                     <MdEdit size={16} />
                     Customize
@@ -317,7 +317,7 @@ export function GamesSection() {
               <div
                 key={game.id}
                 className={`bg-dark-200 border-2 rounded-lg overflow-hidden transition-all cursor-pointer ${
-                  isSelected ? 'border-gold-500 shadow-gold' : 'border-gold-700 hover:border-gold-600'
+                  isSelected ? 'border-emerald-500 shadow-green' : 'border-emerald-700 hover:border-emerald-600'
                 }`}
                 onClick={() => isSelected ? handleRemoveGame(game.id) : handleAddGame(game.id)}
               >
@@ -330,12 +330,12 @@ export function GamesSection() {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <FaGamepad className="text-4xl text-gold-500 opacity-50" />
+                      <FaGamepad className="text-4xl text-emerald-500 opacity-50" />
                     </div>
                   )}
                   {isSelected && (
-                    <div className="absolute inset-0 bg-gold-500 bg-opacity-20 flex items-center justify-center">
-                      <div className="bg-gold-500 text-dark-700 rounded-full p-2">
+                    <div className="absolute inset-0 bg-emerald-500 bg-opacity-20 flex items-center justify-center">
+                      <div className="bg-emerald-500 text-dark-700 rounded-full p-2">
                         <MdCheck size={32} />
                       </div>
                     </div>
@@ -347,7 +347,7 @@ export function GamesSection() {
                   <button className={`mt-3 w-full py-2 rounded-lg transition-colors flex items-center justify-center gap-2 ${
                     isSelected
                       ? 'bg-red-600 text-white hover:bg-red-700'
-                      : 'bg-gold-gradient text-dark-700 hover:shadow-gold'
+                      : 'bg-emerald-gradient text-dark-700 hover:shadow-green'
                   }`}>
                     {isSelected ? (
                       <>
@@ -409,7 +409,7 @@ export function GamesSection() {
               id="is_active"
               checked={editFormData.is_active}
               onChange={(e) => setEditFormData({ ...editFormData, is_active: e.target.checked })}
-              className="w-4 h-4 text-gold-500 bg-dark-200 border-gold-700 rounded focus:ring-gold-500"
+              className="w-4 h-4 text-emerald-500 bg-dark-200 border-emerald-700 rounded focus:ring-emerald-500"
             />
             <label htmlFor="is_active" className="text-gray-300">
               Game is active for players

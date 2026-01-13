@@ -47,7 +47,7 @@ export function AnalyticsSection() {
       case 'signup': return 'text-green-400';
       case 'message': return 'text-blue-400';
       case 'friend_request': return 'text-purple-400';
-      case 'review': return 'text-gold-400';
+      case 'review': return 'text-emerald-400';
       default: return 'text-gray-400';
     }
   };
@@ -63,7 +63,7 @@ export function AnalyticsSection() {
   };
 
   const getPromotionColor = (index: number) => {
-    const colors = ['bg-blue-600', 'bg-gold-600', 'bg-green-600'];
+    const colors = ['bg-blue-600', 'bg-emerald-600', 'bg-green-600'];
     return colors[index % colors.length];
   };
 
@@ -71,11 +71,11 @@ export function AnalyticsSection() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-gold-500 mb-2">Analytics</h1>
+          <h1 className="text-3xl font-bold text-emerald-500 mb-2">Analytics</h1>
           <p className="text-gray-400">Track your platform performance and engagement</p>
         </div>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gold-500"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
         </div>
       </div>
     );
@@ -85,7 +85,7 @@ export function AnalyticsSection() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-gold-500 mb-2">Analytics</h1>
+          <h1 className="text-3xl font-bold text-emerald-500 mb-2">Analytics</h1>
           <p className="text-gray-400">Track your platform performance and engagement</p>
         </div>
         <div className="bg-dark-200 border-2 border-red-700 rounded-lg p-6 text-center">
@@ -93,7 +93,7 @@ export function AnalyticsSection() {
           <button
             type="button"
             onClick={loadAnalytics}
-            className="mt-4 px-4 py-2 bg-gold-600 text-white rounded hover:bg-gold-700 transition"
+            className="mt-4 px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition"
           >
             Retry
           </button>
@@ -105,7 +105,7 @@ export function AnalyticsSection() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gold-500 mb-2">Analytics</h1>
+        <h1 className="text-3xl font-bold text-emerald-500 mb-2">Analytics</h1>
         <p className="text-gray-400">Track your platform performance and engagement</p>
       </div>
 
@@ -116,7 +116,7 @@ export function AnalyticsSection() {
           value={analytics.total_friends}
           icon={<MdPeople />}
           trend={analytics.friends_trend}
-          color="gold"
+          color="green"
         />
         <StatCard
           title="Total Messages"
@@ -146,7 +146,7 @@ export function AnalyticsSection() {
           trend={analytics.session_time_trend}
           color="red"
         />
-        <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
+        <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
           <div className="text-gray-400 text-sm font-medium uppercase tracking-wide mb-4">
             Quick Stats
           </div>
@@ -170,8 +170,8 @@ export function AnalyticsSection() {
       {/* Additional Analytics Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Activity */}
-        <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-          <h2 className="text-xl font-bold text-gold-500 mb-4">Recent Activity</h2>
+        <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
+          <h2 className="text-xl font-bold text-emerald-500 mb-4">Recent Activity</h2>
           <div className="space-y-3">
             {analytics.recent_activity.length > 0 ? (
               analytics.recent_activity.map((activity, idx) => (
@@ -197,8 +197,8 @@ export function AnalyticsSection() {
         </div>
 
         {/* Top Performing Promotions */}
-        <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-          <h2 className="text-xl font-bold text-gold-500 mb-4">Top Performing Promotions</h2>
+        <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
+          <h2 className="text-xl font-bold text-emerald-500 mb-4">Top Performing Promotions</h2>
           <div className="space-y-4">
             {analytics.top_promotions.length > 0 ? (
               analytics.top_promotions.map((promo, idx) => (
@@ -225,8 +225,8 @@ export function AnalyticsSection() {
       </div>
 
       {/* Player Engagement Chart Placeholder */}
-      <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-        <h2 className="text-xl font-bold text-gold-500 mb-4">Player Engagement Over Time</h2>
+      <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
+        <h2 className="text-xl font-bold text-emerald-500 mb-4">Player Engagement Over Time</h2>
         <div className="h-64 flex items-center justify-center border-2 border-dashed border-dark-400 rounded-lg">
           <div className="text-center">
             <p className="text-gray-400 mb-2">Chart visualization coming soon</p>

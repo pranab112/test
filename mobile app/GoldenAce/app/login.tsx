@@ -60,8 +60,8 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <Ionicons name="diamond" size={64} color={Colors.primary} />
-          <Text style={styles.title}>GoldenAce</Text>
+          <Ionicons name="git-network" size={64} color={Colors.primary} />
+          <Text style={styles.title}>Green Palace</Text>
           <Text style={styles.subtitle}>Sign in to continue</Text>
         </View>
 

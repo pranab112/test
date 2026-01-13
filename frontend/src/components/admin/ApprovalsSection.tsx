@@ -125,12 +125,12 @@ export function ApprovalsSection() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gold-500 mb-2">Pending Approvals</h1>
+        <h1 className="text-3xl font-bold text-emerald-500 mb-2">Pending Approvals</h1>
         <p className="text-gray-400">Review and approve new user registrations</p>
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-gold-500">Loading pending approvals...</div>
+        <div className="text-center py-12 text-emerald-500">Loading pending approvals...</div>
       ) : (
         <DataTable
           data={pendingUsers}

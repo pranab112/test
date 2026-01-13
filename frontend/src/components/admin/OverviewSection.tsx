@@ -31,7 +31,7 @@ export function OverviewSection({ onNavigate }: OverviewSectionProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gold-500">Loading statistics...</div>
+        <div className="text-emerald-500">Loading statistics...</div>
       </div>
     );
   }
@@ -45,7 +45,7 @@ export function OverviewSection({ onNavigate }: OverviewSectionProps) {
       title: 'Total Users',
       value: stats.users.total.toString(),
       icon: <MdPeople />,
-      color: 'gold' as const,
+      color: 'green' as const,
     },
     {
       title: 'Pending Approvals',
@@ -75,15 +75,15 @@ export function OverviewSection({ onNavigate }: OverviewSectionProps) {
       title: 'Online Users',
       value: stats.users.online.toString(),
       icon: <MdPeople />,
-      color: 'gold' as const,
+      color: 'green' as const,
     },
   ];
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gold-500 mb-2">Admin Overview</h1>
-        <p className="text-gray-400">Welcome to Golden Ace Admin Portal</p>
+        <h1 className="text-3xl font-bold text-emerald-500 mb-2">Admin Overview</h1>
+        <p className="text-gray-400">Welcome to Green Palace Admin Portal</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -99,8 +99,8 @@ export function OverviewSection({ onNavigate }: OverviewSectionProps) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-          <h2 className="text-xl font-bold text-gold-500 mb-4">Platform Statistics</h2>
+        <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
+          <h2 className="text-xl font-bold text-emerald-500 mb-4">Platform Statistics</h2>
           <div className="space-y-3">
             <StatRow label="Active Promotions" value={stats.promotions.active} />
             <StatRow label="Total Claims" value={stats.promotions.total_claims} />
@@ -111,24 +111,24 @@ export function OverviewSection({ onNavigate }: OverviewSectionProps) {
           </div>
         </div>
 
-        <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-          <h2 className="text-xl font-bold text-gold-500 mb-4">Quick Actions</h2>
+        <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
+          <h2 className="text-xl font-bold text-emerald-500 mb-4">Quick Actions</h2>
           <div className="space-y-3">
             <button
               onClick={() => onNavigate?.('approvals')}
-              className="w-full bg-gold-gradient text-dark-700 font-bold py-3 px-4 rounded-lg hover:shadow-gold transition-all"
+              className="w-full bg-emerald-gradient text-dark-700 font-bold py-3 px-4 rounded-lg hover:shadow-green transition-all"
             >
               Review Pending Approvals ({stats.users.pending_approvals})
             </button>
             <button
               onClick={() => onNavigate?.('reports')}
-              className="w-full bg-dark-300 text-gold-500 border-2 border-gold-700 font-bold py-3 px-4 rounded-lg hover:bg-dark-400 transition-all"
+              className="w-full bg-dark-300 text-emerald-500 border-2 border-emerald-700 font-bold py-3 px-4 rounded-lg hover:bg-dark-400 transition-all"
             >
               Review Reports ({stats.reports.pending})
             </button>
             <button
               onClick={() => onNavigate?.('broadcast')}
-              className="w-full bg-dark-300 text-gold-500 border-2 border-gold-700 font-bold py-3 px-4 rounded-lg hover:bg-dark-400 transition-all"
+              className="w-full bg-dark-300 text-emerald-500 border-2 border-emerald-700 font-bold py-3 px-4 rounded-lg hover:bg-dark-400 transition-all"
             >
               Send Broadcast
             </button>
@@ -143,7 +143,7 @@ function StatRow({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="flex justify-between items-center p-3 bg-dark-300 rounded-lg">
       <span className="text-gray-400">{label}</span>
-      <span className="font-bold text-gold-500">{value}</span>
+      <span className="font-bold text-emerald-500">{value}</span>
     </div>
   );
 }

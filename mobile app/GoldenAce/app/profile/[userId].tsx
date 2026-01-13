@@ -156,7 +156,7 @@ export default function ProfileScreen() {
           <View style={styles.badgeContainer}>
             <Badge
               text={profile.user_type}
-              variant={profile.user_type === 'client' ? 'gold' : 'default'}
+              variant={profile.user_type === 'client' ? 'emerald' : 'default'}
               size="sm"
             />
             {profile.is_online && (

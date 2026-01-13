@@ -160,11 +160,11 @@ export function RewardsSection() {
       case 'referral':
         return <MdGroup className="text-orange-500" />;
       case 'loyalty':
-        return <FaMedal className="text-gold-500" />;
+        return <FaMedal className="text-emerald-500" />;
       case 'special_event':
         return <MdEvent className="text-pink-500" />;
       default:
-        return <FaGift className="text-gold-500" />;
+        return <FaGift className="text-emerald-500" />;
     }
   };
 
@@ -309,7 +309,7 @@ export function RewardsSection() {
       label: 'Bonus Amount',
       render: (item: (typeof displayData)[0]) => (
         <div className="flex items-center gap-1">
-          <span className="font-bold text-gold-500 text-lg">${item.bonus_amount}</span>
+          <span className="font-bold text-emerald-500 text-lg">${item.bonus_amount}</span>
         </div>
       ),
     },
@@ -350,7 +350,7 @@ export function RewardsSection() {
             <button
               type="button"
               onClick={() => handleStartClaim(item)}
-              className="bg-gold-gradient text-dark-700 font-bold px-3 py-1 rounded text-sm hover:shadow-gold transition-all"
+              className="bg-emerald-gradient text-dark-700 font-bold px-3 py-1 rounded text-sm hover:shadow-green transition-all"
             >
               Claim
             </button>
@@ -371,7 +371,7 @@ export function RewardsSection() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gold-500">Loading rewards...</div>
+        <div className="text-emerald-500">Loading rewards...</div>
       </div>
     );
   }
@@ -380,14 +380,14 @@ export function RewardsSection() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gold-500 mb-2">Platform Rewards</h1>
-          <p className="text-gray-400">Claim special rewards from Golden Ace platform</p>
+          <h1 className="text-3xl font-bold text-emerald-500 mb-2">Platform Rewards</h1>
+          <p className="text-gray-400">Claim special rewards from Green Palace platform</p>
         </div>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={loadData}
-            className="bg-dark-300 hover:bg-dark-400 text-gold-500 p-3 rounded-lg transition-colors"
+            className="bg-dark-300 hover:bg-dark-400 text-emerald-500 p-3 rounded-lg transition-colors"
             title="Refresh"
           >
             <MdRefresh size={20} />
@@ -397,8 +397,8 @@ export function RewardsSection() {
             onClick={() => setFilter('all')}
             className={`px-4 py-2 rounded-lg font-medium transition-all ${
               filter === 'all'
-                ? 'bg-gold-gradient text-dark-700'
-                : 'bg-dark-300 text-gray-400 hover:text-gold-500'
+                ? 'bg-emerald-gradient text-dark-700'
+                : 'bg-dark-300 text-gray-400 hover:text-emerald-500'
             }`}
           >
             All
@@ -408,8 +408,8 @@ export function RewardsSection() {
             onClick={() => setFilter('available')}
             className={`px-4 py-2 rounded-lg font-medium transition-all ${
               filter === 'available'
-                ? 'bg-gold-gradient text-dark-700'
-                : 'bg-dark-300 text-gray-400 hover:text-gold-500'
+                ? 'bg-emerald-gradient text-dark-700'
+                : 'bg-dark-300 text-gray-400 hover:text-emerald-500'
             }`}
           >
             Available ({availableCount})
@@ -419,8 +419,8 @@ export function RewardsSection() {
             onClick={() => setFilter('claimed')}
             className={`px-4 py-2 rounded-lg font-medium transition-all ${
               filter === 'claimed'
-                ? 'bg-gold-gradient text-dark-700'
-                : 'bg-dark-300 text-gray-400 hover:text-gold-500'
+                ? 'bg-emerald-gradient text-dark-700'
+                : 'bg-dark-300 text-gray-400 hover:text-emerald-500'
             }`}
           >
             Claimed ({claimedCount})
@@ -450,11 +450,11 @@ export function RewardsSection() {
       </div>
 
       {/* Stats Banner */}
-      <div className="bg-gradient-to-r from-gold-900/40 to-yellow-900/40 border-2 border-gold-700 rounded-lg p-6">
+      <div className="bg-gradient-to-r from-emerald-900/40 to-yellow-900/40 border-2 border-emerald-700 rounded-lg p-6">
         <div className="flex items-center gap-6">
-          <FaGift className="text-6xl text-gold-500" />
+          <FaGift className="text-6xl text-emerald-500" />
           <div className="flex-1">
-            <h3 className="text-2xl font-bold text-gold-500 mb-2">Earn More Rewards!</h3>
+            <h3 className="text-2xl font-bold text-emerald-500 mb-2">Earn More Rewards!</h3>
             <p className="text-gray-300 mb-3">Complete tasks and claim offers. Admin will approve and credits will be added to your balance.</p>
             <div className="flex gap-6">
               <div>
@@ -463,7 +463,7 @@ export function RewardsSection() {
               </div>
               <div>
                 <p className="text-sm text-gray-400">Claimed</p>
-                <p className="text-2xl font-bold text-gold-500">{claimedCount}</p>
+                <p className="text-2xl font-bold text-emerald-500">{claimedCount}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-400">Total Earned</p>
@@ -475,7 +475,7 @@ export function RewardsSection() {
       </div>
 
       {/* Rewards Table */}
-      <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
+      <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
         <DataTable
           data={displayData}
           columns={columns}
@@ -505,7 +505,7 @@ export function RewardsSection() {
                   {getTypeIcon(selectedOffer.offer_type)}
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-2xl font-bold text-gold-500 mb-2">
+                  <h3 className="text-2xl font-bold text-emerald-500 mb-2">
                     {selectedOffer.title}
                   </h3>
                   <p className="text-gray-300 mb-3">{selectedOffer.description}</p>
@@ -518,7 +518,7 @@ export function RewardsSection() {
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div className="bg-dark-200 rounded-lg p-4 text-center">
                   <p className="text-sm text-gray-400 mb-1">Bonus Amount</p>
-                  <p className="text-3xl font-bold text-gold-500">${selectedOffer.bonus_amount}</p>
+                  <p className="text-3xl font-bold text-emerald-500">${selectedOffer.bonus_amount}</p>
                 </div>
                 <div className="bg-dark-200 rounded-lg p-4 text-center">
                   <p className="text-sm text-gray-400 mb-1">Expires</p>
@@ -533,7 +533,7 @@ export function RewardsSection() {
 
             {selectedOffer.requirement_description && (
               <div className="bg-dark-300 rounded-lg p-4">
-                <h4 className="font-bold text-gold-500 mb-2">Requirements</h4>
+                <h4 className="font-bold text-emerald-500 mb-2">Requirements</h4>
                 <p className="text-sm text-gray-300">{selectedOffer.requirement_description}</p>
               </div>
             )}
@@ -575,7 +575,7 @@ export function RewardsSection() {
                 <div className="text-3xl">{getTypeIcon(selectedOffer.offer_type)}</div>
                 <div>
                   <h3 className="font-bold text-white">{selectedOffer.title}</h3>
-                  <p className="text-gold-500 font-bold">{selectedOffer.bonus_amount} credits bonus</p>
+                  <p className="text-emerald-500 font-bold">{selectedOffer.bonus_amount} credits bonus</p>
                   <p className="text-sm text-gray-400">= ${(selectedOffer.bonus_amount / 100).toFixed(2)}</p>
                 </div>
               </div>
@@ -655,7 +655,7 @@ export function RewardsSection() {
               <p className="text-gray-400 mb-3">
                 Transfer credits to a client for gaming. This is a one-way transaction.
               </p>
-              <p className="text-sm text-gold-500 mb-4">Rate: 100 credits = $1</p>
+              <p className="text-sm text-emerald-500 mb-4">Rate: 100 credits = $1</p>
 
               <Input
                 label="Amount (in credits)"
@@ -675,7 +675,7 @@ export function RewardsSection() {
               <p className="text-sm text-gray-400 mb-2">Select Client to Transfer To:</p>
 
               {loadingClients ? (
-                <div className="text-center py-8 text-gold-500">Loading clients...</div>
+                <div className="text-center py-8 text-emerald-500">Loading clients...</div>
               ) : clients.length === 0 ? (
                 <div className="text-center py-8">
                   <MdGroup className="text-5xl text-gray-500 mx-auto mb-3" />

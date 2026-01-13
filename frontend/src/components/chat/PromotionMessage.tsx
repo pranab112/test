@@ -99,7 +99,7 @@ export default function PromotionMessage({ content, isOwn, messageId: _messageId
     }
     if (isClaimRequest) {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400">
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-400">
           <svg className="w-3 h-3 mr-1 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
           </svg>
@@ -113,14 +113,14 @@ export default function PromotionMessage({ content, isOwn, messageId: _messageId
   // Render for claim request (player to client)
   if (isClaimRequest) {
     return (
-      <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-lg p-4 max-w-sm">
+      <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 rounded-lg p-4 max-w-sm">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center space-x-2">
-            <svg className="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
             </svg>
-            <span className="text-yellow-500 font-semibold text-sm">Promotion Claim Request</span>
+            <span className="text-emerald-500 font-semibold text-sm">Promotion Claim Request</span>
           </div>
           {getStatusBadge()}
         </div>
@@ -130,7 +130,7 @@ export default function PromotionMessage({ content, isOwn, messageId: _messageId
           <h4 className="text-white font-medium mb-1">{data.promotion_title}</h4>
           <div className="flex items-center space-x-2 text-sm">
             <span className="text-gray-400">{getPromotionTypeLabel(data.promotion_type)}</span>
-            <span className="text-yellow-500 font-bold">{data.value} GC</span>
+            <span className="text-emerald-500 font-bold">{data.value} GC</span>
           </div>
         </div>
 
@@ -251,15 +251,15 @@ export default function PromotionMessage({ content, isOwn, messageId: _messageId
 
   // Fallback for unknown promotion message types
   return (
-    <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-lg p-4 max-w-sm">
+    <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 rounded-lg p-4 max-w-sm">
       <div className="flex items-center space-x-2 mb-2">
-        <svg className="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
         </svg>
-        <span className="text-yellow-500 font-semibold">Promotion</span>
+        <span className="text-emerald-500 font-semibold">Promotion</span>
       </div>
       <p className="text-white">{data.promotion_title}</p>
-      <p className="text-yellow-500 font-bold">{data.value} GC</p>
+      <p className="text-emerald-500 font-bold">{data.value} GC</p>
     </div>
   );
 }

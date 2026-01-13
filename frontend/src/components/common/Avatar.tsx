@@ -57,7 +57,7 @@ export function Avatar({
   return (
     <div className={`relative inline-block ${className}`}>
       <div
-        className={`${styles.container} rounded-full overflow-hidden flex items-center justify-center bg-gold-gradient text-dark-700 font-bold ${styles.text} border-2 border-gold-600`}
+        className={`${styles.container} rounded-full overflow-hidden flex items-center justify-center bg-emerald-gradient text-dark-700 font-bold ${styles.text} border-2 border-emerald-600`}
       >
         {src ? (
           <img

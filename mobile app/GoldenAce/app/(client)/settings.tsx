@@ -198,7 +198,7 @@ export default function ClientSettingsScreen() {
               <Text style={styles.profileName}>
                 {user?.company_name || user?.username}
               </Text>
-              <Badge text="Client" variant="gold" size="sm" />
+              <Badge text="Client" variant="emerald" size="sm" />
             </View>
             <Text style={styles.profileUsername}>@{user?.username}</Text>
             <View style={styles.emailRow}>

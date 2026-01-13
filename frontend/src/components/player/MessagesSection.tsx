@@ -500,13 +500,13 @@ export function MessagesSection() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gold-500 mb-2">Messages</h1>
+          <h1 className="text-3xl font-bold text-emerald-500 mb-2">Messages</h1>
           <p className="text-gray-400">Chat with clients and friends</p>
         </div>
         <button
           type="button"
           onClick={loadConversations}
-          className="bg-dark-300 hover:bg-dark-400 text-gold-500 p-3 rounded-lg transition-colors"
+          className="bg-dark-300 hover:bg-dark-400 text-emerald-500 p-3 rounded-lg transition-colors"
           title="Refresh"
         >
           <MdRefresh size={20} />
@@ -517,9 +517,9 @@ export function MessagesSection() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-320px)] min-h-[500px]">
         {/* Conversations List */}
         <div className="lg:col-span-1 h-full min-h-0">
-          <div className="bg-dark-200 border-2 border-gold-700 rounded-lg overflow-hidden h-full flex flex-col">
-            <div className="p-4 bg-gradient-to-r from-dark-300 to-dark-200 border-b border-gold-700 flex-shrink-0">
-              <h2 className="text-lg font-bold text-gold-500">Conversations</h2>
+          <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg overflow-hidden h-full flex flex-col">
+            <div className="p-4 bg-gradient-to-r from-dark-300 to-dark-200 border-b border-emerald-700 flex-shrink-0">
+              <h2 className="text-lg font-bold text-emerald-500">Conversations</h2>
             </div>
             <div className="divide-y divide-dark-400 flex-1 overflow-y-auto min-h-0">
               {loadingConversations ? (
@@ -575,11 +575,11 @@ export function MessagesSection() {
 
         {/* Chat Window */}
         <div className="lg:col-span-2 h-full min-h-0">
-          <div className="bg-dark-200 border-2 border-gold-700 rounded-lg overflow-hidden h-full flex flex-col">
+          <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg overflow-hidden h-full flex flex-col">
             {selectedConversation ? (
               <>
                 {/* Chat Header */}
-                <div className="p-4 bg-gradient-to-r from-dark-300 to-dark-200 border-b border-gold-700 flex-shrink-0">
+                <div className="p-4 bg-gradient-to-r from-dark-300 to-dark-200 border-b border-emerald-700 flex-shrink-0">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Avatar
@@ -604,7 +604,7 @@ export function MessagesSection() {
                     <button
                       type="button"
                       onClick={() => openClientCredentials(selectedConversation.friend.id, selectedConversation.friend.username)}
-                      className="bg-dark-400 hover:bg-dark-300 text-gold-500 p-2 rounded-lg transition-colors"
+                      className="bg-dark-400 hover:bg-dark-300 text-emerald-500 p-2 rounded-lg transition-colors"
                       title="View Game Credentials"
                     >
                       <MdSettings size={20} />
@@ -642,7 +642,7 @@ export function MessagesSection() {
                                 promotionInfo.isPromotion
                                   ? 'bg-gradient-to-br from-purple-600 to-blue-600 text-white'
                                   : isOwn
-                                  ? 'bg-gold-gradient text-dark-700'
+                                  ? 'bg-emerald-gradient text-dark-700'
                                   : 'bg-dark-300 text-white'
                               }`}>
                                 {promotionInfo.isPromotion && promotionInfo.data ? (
@@ -733,7 +733,7 @@ export function MessagesSection() {
                                     </button>
                                     {deleteMenuOpen === msg.id && (
                                       <div
-                                        className="absolute right-0 bottom-full mb-1 bg-dark-200 border border-gold-700 rounded-lg shadow-lg z-50 min-w-[160px] py-1"
+                                        className="absolute right-0 bottom-full mb-1 bg-dark-200 border border-emerald-700 rounded-lg shadow-lg z-50 min-w-[160px] py-1"
                                         onClick={(e) => e.stopPropagation()}
                                       >
                                         <button
@@ -769,7 +769,7 @@ export function MessagesSection() {
                 </div>
 
                 {/* Message Input */}
-                <div className="p-4 bg-dark-300 border-t border-gold-700 flex-shrink-0">
+                <div className="p-4 bg-dark-300 border-t border-emerald-700 flex-shrink-0">
                   {/* Image Preview */}
                   {imagePreview && (
                     <div className="mb-3">
@@ -818,7 +818,7 @@ export function MessagesSection() {
                   ) : (
                     <div className="flex gap-3">
                       {/* Image attachment button */}
-                      <label className="cursor-pointer bg-dark-200 hover:bg-dark-400 text-gray-400 hover:text-gold-500 p-3 rounded-lg transition-colors" title="Attach image">
+                      <label className="cursor-pointer bg-dark-200 hover:bg-dark-400 text-gray-400 hover:text-emerald-500 p-3 rounded-lg transition-colors" title="Attach image">
                         <MdImage size={20} />
                         <input
                           ref={fileInputRef}
@@ -834,7 +834,7 @@ export function MessagesSection() {
                       <button
                         type="button"
                         onClick={startRecording}
-                        className="bg-dark-200 hover:bg-dark-400 text-gray-400 hover:text-gold-500 p-3 rounded-lg transition-colors"
+                        className="bg-dark-200 hover:bg-dark-400 text-gray-400 hover:text-emerald-500 p-3 rounded-lg transition-colors"
                         title="Record voice message"
                       >
                         <MdMic size={20} />
@@ -847,7 +847,7 @@ export function MessagesSection() {
                         onKeyPress={(e) => e.key === 'Enter' && !imagePreview && handleSendMessage()}
                         placeholder={imagePreview ? "Press send to share image..." : "Type your message..."}
                         disabled={sending || !!imagePreview}
-                        className="flex-1 bg-dark-200 border-2 border-gold-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-gold-500 disabled:opacity-50"
+                        className="flex-1 bg-dark-200 border-2 border-emerald-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
                       />
                       <Button
                         onClick={imagePreview ? handleSendImage : handleSendMessage}
@@ -887,7 +887,7 @@ export function MessagesSection() {
         <div className="space-y-4">
           {loadingClientCredentials ? (
             <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gold-500 mx-auto mb-4" />
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-emerald-500 mx-auto mb-4" />
               <p className="text-gray-400">Loading credentials...</p>
             </div>
           ) : selectedClientCredentials.length === 0 ? (
@@ -921,9 +921,9 @@ function CredentialCard({ credential }: { credential: GameCredential }) {
   };
 
   return (
-    <div className="bg-dark-300 border border-gold-700 rounded-lg p-4">
+    <div className="bg-dark-300 border border-emerald-700 rounded-lg p-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-bold text-gold-500 text-lg">{credential.game_name}</h3>
+        <h3 className="font-bold text-emerald-500 text-lg">{credential.game_name}</h3>
         {credential.login_url && (
           <Button
             variant="secondary"
@@ -942,7 +942,7 @@ function CredentialCard({ credential }: { credential: GameCredential }) {
             <button
               type="button"
               onClick={() => copyToClipboard(credential.username || '', 'Username')}
-              className="text-gold-500 hover:text-gold-400"
+              className="text-emerald-500 hover:text-emerald-400"
               title="Copy username"
             >
               <MdContentCopy size={16} />
@@ -958,7 +958,7 @@ function CredentialCard({ credential }: { credential: GameCredential }) {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="text-gold-500 hover:text-gold-400"
+              className="text-emerald-500 hover:text-emerald-400"
               title={showPassword ? 'Hide password' : 'Show password'}
             >
               {showPassword ? <MdVisibilityOff size={16} /> : <MdVisibility size={16} />}
@@ -966,7 +966,7 @@ function CredentialCard({ credential }: { credential: GameCredential }) {
             <button
               type="button"
               onClick={() => copyToClipboard(credential.password || '', 'Password')}
-              className="text-gold-500 hover:text-gold-400"
+              className="text-emerald-500 hover:text-emerald-400"
               title="Copy password"
             >
               <MdContentCopy size={16} />

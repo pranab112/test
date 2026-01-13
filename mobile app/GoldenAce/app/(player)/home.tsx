@@ -144,7 +144,7 @@ export default function PlayerHomeScreen() {
                 <Ionicons name="gift" size={24} color={Colors.primary} />
                 <Badge
                   text={offer.offer_type.replace('_', ' ')}
-                  variant="gold"
+                  variant="emerald"
                   size="sm"
                 />
               </View>

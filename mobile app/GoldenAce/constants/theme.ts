@@ -1,29 +1,35 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Green Palace Theme Colors
+ * Clean emerald theme - premium, trustworthy, elegant
  */
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+// Green Palace primary color (emerald - clean, professional)
+const primaryEmerald = '#10B981';
+const tintColorDark = primaryEmerald;
 
 export const Colors = {
   light: {
+    // Light mode not used - app is dark-only
     text: '#11181C',
     background: '#fff',
-    tint: tintColorLight,
+    tint: primaryEmerald,
     icon: '#687076',
     tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    tabIconSelected: primaryEmerald,
   },
   dark: {
     text: '#ECEDEE',
-    background: '#151718',
+    background: '#0a0a0a',
     tint: tintColorDark,
     icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    tabIconDefault: '#666666',
+    tabIconSelected: primaryEmerald,
+    // Green Palace specific
+    primary: primaryEmerald,
+    surface: '#111111',
+    border: 'rgba(16, 185, 129, 0.2)',
   },
 };
 

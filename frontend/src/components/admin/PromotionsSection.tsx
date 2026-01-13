@@ -114,12 +114,12 @@ export function PromotionsSection() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gold-500 mb-2">Client Promotions</h1>
+        <h1 className="text-3xl font-bold text-emerald-500 mb-2">Client Promotions</h1>
         <p className="text-gray-400">Monitor client-created promotions - Total: {total}</p>
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-gold-500">Loading promotions...</div>
+        <div className="text-center py-12 text-emerald-500">Loading promotions...</div>
       ) : (
         <DataTable
           data={promotions}

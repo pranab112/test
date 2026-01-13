@@ -137,7 +137,7 @@ export default function PlayerFriendsScreen() {
         </View>
         <Badge
           text={item.user_type}
-          variant={item.user_type === 'client' ? 'gold' : 'default'}
+          variant={item.user_type === 'client' ? 'emerald' : 'default'}
           size="sm"
         />
       </TouchableOpacity>

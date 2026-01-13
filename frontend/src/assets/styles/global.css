@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,40 +6,63 @@
 
 @layer base {
   body {
-    @apply bg-bg-darker text-white font-orbitron antialiased;
+    @apply bg-bg-darker text-white antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
   }
 
   * {
-    @apply border-border-gold;
+    border-color: rgba(16, 185, 129, 0.2);
+  }
+
+  /* Headings use Orbitron for that tech feel */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-orbitron;
   }
 }
 
 @layer components {
-  /* Card styles */
+  /* Card styles - Clean emerald aesthetic */
   .card {
-    @apply bg-card-dark border border-border-gold rounded-lg p-4 sm:p-6 shadow-gold;
+    @apply bg-card-dark rounded-xl p-4 sm:p-6 shadow-green backdrop-blur-sm;
+    border: 1px solid rgba(16, 185, 129, 0.2);
   }
 
-  /* Button styles */
+  .card-elevated {
+    @apply bg-card-dark rounded-xl p-4 sm:p-6 shadow-green-lg backdrop-blur-sm hover:shadow-green-xl transition-shadow;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+  }
+
+  /* Button styles - Green Palace theme (Emerald) */
   .btn-primary {
-    @apply bg-gradient-to-r from-primary-gold to-secondary-gold text-black font-bold py-3 px-6 rounded-lg transition-all duration-300 hover:shadow-gold hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-h-[44px] touch-manipulation;
+    @apply bg-gradient-to-r from-primary-green to-secondary-green text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 hover:shadow-green hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-h-[44px] touch-manipulation;
   }
 
   .btn-secondary {
-    @apply bg-transparent border-2 border-primary-gold text-primary-gold font-bold py-3 px-6 rounded-lg transition-all duration-300 hover:bg-primary-gold hover:text-black disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] touch-manipulation;
+    @apply bg-transparent text-primary-green font-bold py-3 px-6 rounded-lg transition-all duration-300 hover:bg-primary-green hover:text-white disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] touch-manipulation;
+    border: 2px solid #10B981;
   }
 
   .btn-danger {
     @apply bg-neon-red text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 hover:shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] touch-manipulation;
   }
 
+  .btn-ghost {
+    @apply bg-transparent text-primary-green font-medium py-3 px-6 rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] touch-manipulation;
+  }
+
+  .btn-ghost:hover {
+    background-color: rgba(16, 185, 129, 0.1);
+  }
+
   /* Input styles */
   .input {
-    @apply w-full bg-bg-dark border border-border-gold rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-gold focus:border-transparent transition-all min-h-[44px] text-base;
+    @apply w-full bg-bg-dark rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-green focus:border-transparent transition-all min-h-[44px] text-base;
+    border: 1px solid rgba(16, 185, 129, 0.2);
   }
 
   .input-error {
-    @apply border-neon-red focus:ring-neon-red;
+    @apply focus:ring-neon-red;
+    border-color: #FF073A !important;
   }
 
   /* Label styles */
@@ -57,47 +80,73 @@
     @apply text-neon-red text-sm mt-1;
   }
 
-  /* Loading spinner */
+  /* Loading spinner - Emerald style */
   .spinner {
-    @apply animate-spin rounded-full border-4 border-gray-700 border-t-primary-gold;
+    @apply animate-spin rounded-full border-4 border-gray-700;
+    border-top-color: #10B981;
+  }
+
+  /* Network node style elements */
+  .node {
+    @apply w-3 h-3 bg-primary-green rounded-full shadow-node;
+  }
+
+  .node-line {
+    @apply h-px;
+    background: linear-gradient(to right, rgba(16, 185, 129, 0.5), transparent);
   }
 }
 
 @layer utilities {
-  /* Neon glow effects */
-  .glow-gold {
-    text-shadow: 0 0 10px rgba(255, 215, 0, 0.8),
-                 0 0 20px rgba(255, 215, 0, 0.6),
-                 0 0 30px rgba(255, 215, 0, 0.4);
+  /* Glow effects - Emerald */
+  .glow-green {
+    text-shadow: 0 0 10px rgba(16, 185, 129, 0.8),
+                 0 0 20px rgba(16, 185, 129, 0.6),
+                 0 0 30px rgba(16, 185, 129, 0.4);
   }
 
-  .glow-green {
-    text-shadow: 0 0 10px rgba(57, 255, 20, 0.8),
-                 0 0 20px rgba(57, 255, 20, 0.6);
+  .glow-emerald {
+    text-shadow: 0 0 10px rgba(16, 185, 129, 0.8),
+                 0 0 20px rgba(16, 185, 129, 0.6);
   }
 
   .glow-red {
     text-shadow: 0 0 10px rgba(255, 7, 58, 0.8),
                  0 0 20px rgba(255, 7, 58, 0.6);
   }
+
+  /* Network pattern background */
+  .bg-network {
+    background-image:
+      radial-gradient(circle at 20% 50%, rgba(16, 185, 129, 0.03) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.03) 0%, transparent 50%),
+      radial-gradient(circle at 40% 80%, rgba(16, 185, 129, 0.02) 0%, transparent 50%);
+  }
+
+  /* Palace border glow */
+  .border-glow {
+    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.3),
+                0 0 20px rgba(16, 185, 129, 0.1);
+  }
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar - Emerald */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-bg-dark;
+  background: #0a0a0a;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-primary-gold rounded-full;
+  background: rgba(16, 185, 129, 0.6);
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-secondary-gold;
+  background: #10B981;
 }
 
 /* Animations */
@@ -129,9 +178,34 @@
   animation: shimmer 2s infinite linear;
   background: linear-gradient(
     to right,
-    rgba(255, 215, 0, 0) 0%,
-    rgba(255, 215, 0, 0.3) 50%,
-    rgba(255, 215, 0, 0) 100%
+    rgba(16, 185, 129, 0) 0%,
+    rgba(16, 185, 129, 0.2) 50%,
+    rgba(16, 185, 129, 0) 100%
   );
   background-size: 1000px 100%;
+}
+
+/* Network connection lines animation */
+@keyframes networkPulse {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.animate-network {
+  animation: networkPulse 2s ease-in-out infinite;
+}
+
+/* Selection colors */
+::selection {
+  background-color: rgba(16, 185, 129, 0.3);
+  color: white;
+}
+
+::-moz-selection {
+  background-color: rgba(16, 185, 129, 0.3);
+  color: white;
 }
