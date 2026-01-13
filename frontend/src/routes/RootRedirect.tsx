@@ -28,6 +28,6 @@ export function RootRedirect() {
     }
   }
 
-  // If not logged in, redirect to player login
-  return <Navigate to={ROUTES.LOGIN} replace />;
+  // If not logged in, show landing page
+  return <Navigate to={ROUTES.LANDING} replace />;
 }
