@@ -48,7 +48,7 @@ export default function ChatScreen() {
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
-  const recordingTimer = useRef<NodeJS.Timeout | null>(null);
+  const recordingTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Audio playback state
   const [playingAudio, setPlayingAudio] = useState<number | null>(null);
@@ -902,7 +902,7 @@ const styles = StyleSheet.create({
   // Attach menu styles
   attachOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: Colors.overlayMedium,
     justifyContent: 'flex-end',
   },
   attachMenu: {
@@ -978,7 +978,7 @@ const styles = StyleSheet.create({
   // Full image preview styles
   fullImageOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.95)',
+    backgroundColor: Colors.overlayDark,
     justifyContent: 'center',
     alignItems: 'center',
   },

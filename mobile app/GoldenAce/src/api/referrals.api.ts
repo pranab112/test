@@ -34,27 +34,43 @@ const REFERRAL_ENDPOINTS = {
 export const referralsApi = {
   // Get my referral code
   getMyCode: async (): Promise<ReferralCode> => {
-    const response = await api.get(REFERRAL_ENDPOINTS.MY_CODE);
-    return response as unknown as ReferralCode;
+    try {
+      const response = await api.get(REFERRAL_ENDPOINTS.MY_CODE);
+      return response as unknown as ReferralCode;
+    } catch (error) {
+      throw error;
+    }
   },
 
   // Generate new referral code
   generateCode: async (): Promise<ReferralCode> => {
-    const response = await api.post(REFERRAL_ENDPOINTS.GENERATE_CODE);
-    return response as unknown as ReferralCode;
+    try {
+      const response = await api.post(REFERRAL_ENDPOINTS.GENERATE_CODE);
+      return response as unknown as ReferralCode;
+    } catch (error) {
+      throw error;
+    }
   },
 
   // Get referral statistics
   getStats: async (): Promise<ReferralStats> => {
-    const response = await api.get(REFERRAL_ENDPOINTS.STATS);
-    return response as unknown as ReferralStats;
+    try {
+      const response = await api.get(REFERRAL_ENDPOINTS.STATS);
+      return response as unknown as ReferralStats;
+    } catch (error) {
+      throw error;
+    }
   },
 
   // Get referral list
   getList: async (skip = 0, limit = 50): Promise<Referral[]> => {
-    const response = await api.get(REFERRAL_ENDPOINTS.LIST, {
-      params: { skip, limit },
-    });
-    return response as unknown as Referral[];
+    try {
+      const response = await api.get(REFERRAL_ENDPOINTS.LIST, {
+        params: { skip, limit },
+      });
+      return response as unknown as Referral[];
+    } catch (error) {
+      throw error;
+    }
   },
 };

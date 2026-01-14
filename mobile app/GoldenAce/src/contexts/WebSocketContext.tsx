@@ -52,7 +52,8 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return () => {
       disconnect();
     };
-  }, [isAuthenticated, connect, disconnect]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]); // Only depend on isAuthenticated - connect/disconnect are stable
 
   useEffect(() => {
     // Connection status handlers

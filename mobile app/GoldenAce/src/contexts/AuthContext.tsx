@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authApi } from '../api/auth.api';
 import { tokenStorage, userStorage, clearAllStorage } from '../services/storage';
-import type { User, UserType, LoginRequest, RegisterRequest } from '../types';
+import { type User, UserType, type LoginRequest, type RegisterRequest } from '../types';
 
 interface AuthContextType {
   user: User | null;
@@ -20,6 +20,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userType, setUserType] = useState<UserType | null>(null);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const loadUser = useCallback(async () => {
     try {
@@ -53,8 +54,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadUser();
   }, [loadUser]);
 
-  const login = async (credentials: LoginRequest) => {
-    setIsLoading(true);
+  const login = async (credentials: LoginRequest, fromRegister = false) => {
+    // Prevent concurrent auth operations
+    if (isAuthenticating) {
+      throw { detail: 'Authentication already in progress' };
+    }
+
+    setIsAuthenticating(true);
+    if (!fromRegister) {
+      setIsLoading(true);
+    }
+
     try {
       const tokenResponse = await authApi.login(credentials);
 
@@ -70,28 +80,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const currentUser = await authApi.getCurrentUser();
       setUser(currentUser);
     } finally {
-      setIsLoading(false);
+      setIsAuthenticating(false);
+      if (!fromRegister) {
+        setIsLoading(false);
+      }
     }
   };
 
   const register = async (data: RegisterRequest) => {
+    // Prevent concurrent auth operations
+    if (isAuthenticating) {
+      throw { detail: 'Authentication already in progress' };
+    }
+
     setIsLoading(true);
     try {
       await authApi.register(data);
-      // After registration, login automatically
-      await login({ username: data.username, password: data.password });
+      // After registration, login automatically (pass fromRegister=true to prevent nested isLoading)
+      await login({ username: data.username, password: data.password }, true);
     } finally {
       setIsLoading(false);
     }
   };
 
   const logout = async () => {
+    // Prevent concurrent auth operations
+    if (isAuthenticating) {
+      return; // Silently return if already in auth operation
+    }
+
     setIsLoading(true);
     try {
       await authApi.logout();
+    } catch (error) {
+      // Even if logout API fails, we should still clear local state
+      console.error('Logout API error (clearing local state anyway):', error);
+    } finally {
+      // Always clear local state and storage
+      await clearAllStorage();
       setUser(null);
       setUserType(null);
-    } finally {
       setIsLoading(false);
     }
   };

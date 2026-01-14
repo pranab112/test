@@ -46,98 +46,154 @@ export interface PaymentPreference {
 export const settingsApi = {
   // Update profile
   updateProfile: async (data: ProfileUpdateData): Promise<User> => {
-    const response = await api.put(SETTINGS_ENDPOINTS.PROFILE, data);
-    return response as unknown as User;
+    try {
+      const response = await api.put(SETTINGS_ENDPOINTS.PROFILE, data);
+      return response as unknown as User;
+    } catch (error) {
+      throw error;
+    }
   },
 
   // Change password
   changePassword: async (currentPassword: string, newPassword: string): Promise<{ message: string }> => {
-    const response = await api.post(SETTINGS_ENDPOINTS.PASSWORD, {
-      current_password: currentPassword,
-      new_password: newPassword,
-    });
-    return response as unknown as { message: string };
+    try {
+      const response = await api.post(SETTINGS_ENDPOINTS.PASSWORD, {
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+      return response as unknown as { message: string };
+    } catch (error) {
+      throw error;
+    }
   },
 
   // Get notification settings
   getNotificationSettings: async (): Promise<NotificationSettings> => {
-    const response = await api.get(SETTINGS_ENDPOINTS.NOTIFICATIONS);
-    return response as unknown as NotificationSettings;
+    try {
+      const response = await api.get(SETTINGS_ENDPOINTS.NOTIFICATIONS);
+      return response as unknown as NotificationSettings;
+    } catch (error) {
+      throw error;
+    }
   },
 
   // Update notification settings
   updateNotificationSettings: async (settings: Partial<NotificationSettings>): Promise<NotificationSettings> => {
-    const response = await api.put(SETTINGS_ENDPOINTS.NOTIFICATIONS, settings);
-    return response as unknown as NotificationSettings;
+    try {
+      const response = await api.put(SETTINGS_ENDPOINTS.NOTIFICATIONS, settings);
+      return response as unknown as NotificationSettings;
+    } catch (error) {
+      throw error;
+    }
   },
 
   // Delete account
   deleteAccount: async (password: string): Promise<{ message: string }> => {
-    const response = await api.post(SETTINGS_ENDPOINTS.DELETE_ACCOUNT, { password });
-    return response as unknown as { message: string };
+    try {
+      const response = await api.post(SETTINGS_ENDPOINTS.DELETE_ACCOUNT, { password });
+      return response as unknown as { message: string };
+    } catch (error) {
+      throw error;
+    }
   },
 
   // Upload profile picture
   uploadProfilePicture: async (imageUri: string): Promise<{ profile_picture: string }> => {
-    const formData = new FormData();
-    const filename = imageUri.split('/').pop() || 'photo.jpg';
-    const match = /\.(\w+)$/.exec(filename);
-    const type = match ? `image/${match[1]}` : 'image/jpeg';
+    try {
+      const formData = new FormData();
+      const filename = imageUri.split('/').pop() || 'photo.jpg';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : 'image/jpeg';
 
-    formData.append('file', {
-      uri: imageUri,
-      name: filename,
-      type,
-    } as any);
+      formData.append('file', {
+        uri: imageUri,
+        name: filename,
+        type,
+      } as unknown as Blob);
 
-    const response = await api.post(SETTINGS_ENDPOINTS.PROFILE_PICTURE, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    return response as unknown as { profile_picture: string };
+      const response = await api.post(SETTINGS_ENDPOINTS.PROFILE_PICTURE, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response as unknown as { profile_picture: string };
+    } catch (error) {
+      throw error;
+    }
   },
 
   // Delete profile picture
   deleteProfilePicture: async (): Promise<{ message: string }> => {
-    const response = await api.delete(SETTINGS_ENDPOINTS.PROFILE_PICTURE);
-    return response as unknown as { message: string };
+    try {
+      const response = await api.delete(SETTINGS_ENDPOINTS.PROFILE_PICTURE);
+      return response as unknown as { message: string };
+    } catch (error) {
+      throw error;
+    }
   },
 
   // Email verification
   sendEmailVerificationOTP: async (): Promise<{ message: string }> => {
-    const response = await api.post(SETTINGS_ENDPOINTS.EMAIL_VERIFICATION);
-    return response as unknown as { message: string };
+    try {
+      const response = await api.post(SETTINGS_ENDPOINTS.EMAIL_VERIFICATION);
+      return response as unknown as { message: string };
+    } catch (error) {
+      throw error;
+    }
   },
 
   verifyEmailOTP: async (otp: string): Promise<{ message: string }> => {
-    const response = await api.post(SETTINGS_ENDPOINTS.VERIFY_EMAIL_OTP, { otp });
-    return response as unknown as { message: string };
+    try {
+      const response = await api.post(SETTINGS_ENDPOINTS.VERIFY_EMAIL_OTP, { otp });
+      return response as unknown as { message: string };
+    } catch (error) {
+      throw error;
+    }
   },
 
   resendEmailOTP: async (): Promise<{ message: string }> => {
-    const response = await api.post(SETTINGS_ENDPOINTS.RESEND_EMAIL_OTP);
-    return response as unknown as { message: string };
+    try {
+      const response = await api.post(SETTINGS_ENDPOINTS.RESEND_EMAIL_OTP);
+      return response as unknown as { message: string };
+    } catch (error) {
+      throw error;
+    }
   },
 
   getEmailVerificationStatus: async (): Promise<{ is_verified: boolean }> => {
-    const response = await api.get(SETTINGS_ENDPOINTS.EMAIL_STATUS);
-    return response as unknown as { is_verified: boolean };
+    try {
+      const response = await api.get(SETTINGS_ENDPOINTS.EMAIL_STATUS);
+      return response as unknown as { is_verified: boolean };
+    } catch (error) {
+      throw error;
+    }
   },
 
   // Payment methods
   getAllPaymentMethods: async (): Promise<PaymentMethod[]> => {
-    const response = await api.get(SETTINGS_ENDPOINTS.PAYMENT_METHODS);
-    return response as unknown as PaymentMethod[];
+    try {
+      const response = await api.get(SETTINGS_ENDPOINTS.PAYMENT_METHODS);
+      return response as unknown as PaymentMethod[];
+    } catch (error) {
+      throw error;
+    }
   },
 
   getMyPaymentPreferences: async (): Promise<PaymentPreference[]> => {
-    const response = await api.get(SETTINGS_ENDPOINTS.MY_PAYMENT_PREFERENCES);
-    return response as unknown as PaymentPreference[];
+    try {
+      const response = await api.get(SETTINGS_ENDPOINTS.MY_PAYMENT_PREFERENCES);
+      return response as unknown as PaymentPreference[];
+    } catch (error) {
+      throw error;
+    }
   },
 
   updatePaymentPreferences: async (preferences: PaymentPreference[]): Promise<PaymentPreference[]> => {
-    const response = await api.put(SETTINGS_ENDPOINTS.MY_PAYMENT_PREFERENCES, { preferences });
-    return response as unknown as PaymentPreference[];
+    try {
+      const response = await api.put(SETTINGS_ENDPOINTS.MY_PAYMENT_PREFERENCES, { preferences });
+      return response as unknown as PaymentPreference[];
+    } catch (error) {
+      throw error;
+    }
   },
 };

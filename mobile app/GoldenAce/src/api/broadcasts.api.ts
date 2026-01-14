@@ -22,19 +22,31 @@ const BROADCAST_ENDPOINTS = {
 export const broadcastsApi = {
   // Get all broadcasts
   getBroadcasts: async (): Promise<Broadcast[]> => {
-    const response = await api.get(BROADCAST_ENDPOINTS.LIST);
-    return response as unknown as Broadcast[];
+    try {
+      const response = await api.get(BROADCAST_ENDPOINTS.LIST);
+      return response as unknown as Broadcast[];
+    } catch (error) {
+      throw error;
+    }
   },
 
   // Mark single broadcast as read
   markAsRead: async (broadcastId: number): Promise<{ message: string }> => {
-    const response = await api.put(BROADCAST_ENDPOINTS.MARK_READ(broadcastId));
-    return response as unknown as { message: string };
+    try {
+      const response = await api.put(BROADCAST_ENDPOINTS.MARK_READ(broadcastId));
+      return response as unknown as { message: string };
+    } catch (error) {
+      throw error;
+    }
   },
 
   // Mark all broadcasts as read
   markAllAsRead: async (): Promise<{ message: string }> => {
-    const response = await api.put(BROADCAST_ENDPOINTS.MARK_ALL_READ);
-    return response as unknown as { message: string };
+    try {
+      const response = await api.put(BROADCAST_ENDPOINTS.MARK_ALL_READ);
+      return response as unknown as { message: string };
+    } catch (error) {
+      throw error;
+    }
   },
 };

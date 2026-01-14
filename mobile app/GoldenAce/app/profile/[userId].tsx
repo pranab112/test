@@ -207,6 +207,7 @@ export default function ProfileScreen() {
             ) : requestPending ? (
               <Button
                 title="Request Pending"
+                onPress={() => {}}
                 disabled
                 variant="outline"
                 icon={<Ionicons name="time" size={18} color={Colors.textMuted} />}

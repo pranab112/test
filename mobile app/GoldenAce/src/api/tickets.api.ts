@@ -54,38 +54,62 @@ const TICKET_ENDPOINTS = {
 export const ticketsApi = {
   // Get all user's tickets
   getTickets: async (status?: TicketStatus): Promise<Ticket[]> => {
-    const params = status ? { status } : {};
-    const response = await api.get(TICKET_ENDPOINTS.BASE, { params });
-    return response as unknown as Ticket[];
+    try {
+      const params = status ? { status } : {};
+      const response = await api.get(TICKET_ENDPOINTS.BASE, { params });
+      return response as unknown as Ticket[];
+    } catch (error) {
+      throw error;
+    }
   },
 
   // Get single ticket
   getTicket: async (ticketId: number): Promise<Ticket> => {
-    const response = await api.get(TICKET_ENDPOINTS.TICKET(ticketId));
-    return response as unknown as Ticket;
+    try {
+      const response = await api.get(TICKET_ENDPOINTS.TICKET(ticketId));
+      return response as unknown as Ticket;
+    } catch (error) {
+      throw error;
+    }
   },
 
   // Create new ticket
   createTicket: async (data: CreateTicketData): Promise<Ticket> => {
-    const response = await api.post(TICKET_ENDPOINTS.BASE, data);
-    return response as unknown as Ticket;
+    try {
+      const response = await api.post(TICKET_ENDPOINTS.BASE, data);
+      return response as unknown as Ticket;
+    } catch (error) {
+      throw error;
+    }
   },
 
   // Get ticket messages
   getMessages: async (ticketId: number): Promise<TicketMessage[]> => {
-    const response = await api.get(TICKET_ENDPOINTS.MESSAGES(ticketId));
-    return response as unknown as TicketMessage[];
+    try {
+      const response = await api.get(TICKET_ENDPOINTS.MESSAGES(ticketId));
+      return response as unknown as TicketMessage[];
+    } catch (error) {
+      throw error;
+    }
   },
 
   // Add message to ticket
   addMessage: async (ticketId: number, content: string): Promise<TicketMessage> => {
-    const response = await api.post(TICKET_ENDPOINTS.MESSAGES(ticketId), { content });
-    return response as unknown as TicketMessage;
+    try {
+      const response = await api.post(TICKET_ENDPOINTS.MESSAGES(ticketId), { content });
+      return response as unknown as TicketMessage;
+    } catch (error) {
+      throw error;
+    }
   },
 
   // Close ticket
   closeTicket: async (ticketId: number): Promise<Ticket> => {
-    const response = await api.patch(TICKET_ENDPOINTS.TICKET(ticketId), { status: 'closed' });
-    return response as unknown as Ticket;
+    try {
+      const response = await api.patch(TICKET_ENDPOINTS.TICKET(ticketId), { status: 'closed' });
+      return response as unknown as Ticket;
+    } catch (error) {
+      throw error;
+    }
   },
 };

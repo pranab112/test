@@ -66,6 +66,8 @@ export const Input: React.FC<InputProps> = ({
           <TouchableOpacity
             onPress={() => setIsPasswordVisible(!isPasswordVisible)}
             style={styles.rightIcon}
+            accessibilityLabel={isPasswordVisible ? 'Hide password' : 'Show password'}
+            accessibilityRole="button"
           >
             <Ionicons
               name={isPasswordVisible ? 'eye-off' : 'eye'}

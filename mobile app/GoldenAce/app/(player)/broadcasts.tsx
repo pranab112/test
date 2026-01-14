@@ -137,7 +137,7 @@ export default function BroadcastsScreen() {
         activeOpacity={0.7}
         onPress={() => handleMarkAsRead(item)}
       >
-        <Card style={[styles.broadcastCard, !item.is_read && styles.unreadCard]}>
+        <Card style={[styles.broadcastCard, !item.is_read ? styles.unreadCard : undefined]}>
           <View style={styles.broadcastHeader}>
             <View style={[styles.iconContainer, { backgroundColor: iconColor + '20' }]}>
               <Ionicons

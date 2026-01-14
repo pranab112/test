@@ -84,8 +84,7 @@ export default function PlayerGamesScreen() {
         {
           text: 'Play',
           onPress: () => {
-            // Could open a WebView or external link
-            console.log('Playing game:', game.name);
+            // TODO: Open WebView or external link to play the game
           },
         },
       ]

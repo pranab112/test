@@ -2,18 +2,22 @@ import { api } from '../services/api';
 import { API_ENDPOINTS } from '../config/api.config';
 import type { Game, ClientGame } from '../types';
 
+interface ClientGamesResponse {
+  games: ClientGame[];
+}
+
 export const gamesApi = {
   // Get all games (for browsing)
   getAllGames: async (): Promise<Game[]> => {
     try {
       const response = await api.get<Game[]>(API_ENDPOINTS.GAMES.ADMIN);
       return response as unknown as Game[];
-    } catch (error: any) {
-      if (error?.response?.status === 404 || error?.error?.code === 'NOT_FOUND') {
+    } catch (error: unknown) {
+      const err = error as { response?: { status?: number }; error?: { code?: string } };
+      if (err?.response?.status === 404 || err?.error?.code === 'NOT_FOUND') {
         return [];
       }
-      console.error('Failed to fetch games:', error);
-      return [];
+      throw error;
     }
   },
 
@@ -21,13 +25,14 @@ export const gamesApi = {
   getClientGames: async (): Promise<ClientGame[]> => {
     try {
       const response = await api.get(API_ENDPOINTS.GAMES.MY_GAMES);
-      return (response as any).games || [];
-    } catch (error: any) {
-      if (error?.response?.status === 404 || error?.error?.code === 'NOT_FOUND') {
+      const data = response as unknown as ClientGamesResponse;
+      return data.games || [];
+    } catch (error: unknown) {
+      const err = error as { response?: { status?: number }; error?: { code?: string } };
+      if (err?.response?.status === 404 || err?.error?.code === 'NOT_FOUND') {
         return [];
       }
-      console.error('Failed to fetch client games:', error);
-      return [];
+      throw error;
     }
   },
 
@@ -37,7 +42,6 @@ export const gamesApi = {
       await api.post(API_ENDPOINTS.GAMES.UPDATE_GAMES, { game_ids: gameIds });
       return { message: 'Games updated successfully' };
     } catch (error) {
-      console.error('Failed to select games:', error);
       throw error;
     }
   },
@@ -55,7 +59,6 @@ export const gamesApi = {
       const response = await api.patch<ClientGame>(`/games/my-games/${clientGameId}`, data);
       return response as unknown as ClientGame;
     } catch (error) {
-      console.error('Failed to update client game:', error);
       throw error;
     }
   },
@@ -65,12 +68,12 @@ export const gamesApi = {
     try {
       const response = await api.get<Game[]>(`${API_ENDPOINTS.GAMES.CLIENT_GAMES}/${clientId}/games`);
       return response as unknown as Game[];
-    } catch (error: any) {
-      if (error?.response?.status === 404) {
+    } catch (error: unknown) {
+      const err = error as { response?: { status?: number } };
+      if (err?.response?.status === 404) {
         return [];
       }
-      console.error('Failed to fetch client games:', error);
-      return [];
+      throw error;
     }
   },
 };

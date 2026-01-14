@@ -59,9 +59,9 @@ export default function LoginScreen() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.header}>
-          <Ionicons name="git-network" size={64} color={Colors.primary} />
-          <Text style={styles.title}>Green Palace</Text>
+        <View style={styles.header} accessible={true} accessibilityRole="header">
+          <Ionicons name="git-network" size={64} color={Colors.primary} accessibilityLabel="Green Palace logo" />
+          <Text style={styles.title} accessibilityRole="header">Green Palace</Text>
           <Text style={styles.subtitle}>Sign in to continue</Text>
         </View>
 
@@ -95,7 +95,11 @@ export default function LoginScreen() {
 
           <View style={styles.registerContainer}>
             <Text style={styles.registerText}>Don't have an account?</Text>
-            <TouchableOpacity onPress={() => router.push('/register')}>
+            <TouchableOpacity
+              onPress={() => router.push('/register')}
+              accessibilityLabel="Sign up for a new account"
+              accessibilityRole="link"
+            >
               <Text style={styles.registerLink}>Sign Up</Text>
             </TouchableOpacity>
           </View>

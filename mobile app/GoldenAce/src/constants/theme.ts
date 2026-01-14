@@ -37,6 +37,8 @@ export const Colors = {
   // Overlay
   overlay: 'rgba(0, 0, 0, 0.6)',
   overlayLight: 'rgba(0, 0, 0, 0.3)',
+  overlayMedium: 'rgba(0, 0, 0, 0.5)',
+  overlayDark: 'rgba(0, 0, 0, 0.95)',
 
   // Online status
   online: '#10B981',

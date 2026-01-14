@@ -13,12 +13,16 @@ class WebSocketService {
   private onConnectHandlers: ConnectionHandler[] = [];
   private onDisconnectHandlers: ConnectionHandler[] = [];
   private isConnecting = false;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private isDisconnecting = false;
 
   async connect(): Promise<void> {
     if (this.ws?.readyState === WebSocket.OPEN || this.isConnecting) {
       return;
     }
 
+    // Reset disconnecting flag when explicitly connecting
+    this.isDisconnecting = false;
     this.isConnecting = true;
 
     try {
@@ -67,6 +71,11 @@ class WebSocketService {
   }
 
   private attemptReconnect(): void {
+    // Don't reconnect if we're intentionally disconnecting
+    if (this.isDisconnecting) {
+      return;
+    }
+
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       console.log('Max reconnect attempts reached');
       return;
@@ -75,17 +84,44 @@ class WebSocketService {
     this.reconnectAttempts++;
     console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
 
-    setTimeout(() => {
+    // Clear any existing reconnect timer
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+    }
+
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
       this.connect();
     }, this.reconnectDelay);
   }
 
   disconnect(): void {
+    this.isDisconnecting = true;
+
+    // Clear any pending reconnect timer
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
     if (this.ws) {
+      // Clear event handlers to prevent memory leaks
+      this.ws.onopen = null;
+      this.ws.onclose = null;
+      this.ws.onerror = null;
+      this.ws.onmessage = null;
       this.ws.close();
       this.ws = null;
     }
-    this.reconnectAttempts = this.maxReconnectAttempts; // Prevent auto-reconnect
+
+    this.reconnectAttempts = 0;
+    this.isConnecting = false;
+  }
+
+  // Reset disconnect state when explicitly connecting again
+  resetConnection(): void {
+    this.isDisconnecting = false;
+    this.reconnectAttempts = 0;
   }
 
   private handleMessage(data: any): void {

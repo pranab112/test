@@ -18,31 +18,47 @@ const USER_ENDPOINTS = {
 export const usersApi = {
   // Search users
   searchUsers: async (query: string): Promise<Friend[]> => {
-    const response = await api.get(USER_ENDPOINTS.SEARCH, {
-      params: { query },
-    });
-    return response as unknown as Friend[];
+    try {
+      const response = await api.get(USER_ENDPOINTS.SEARCH, {
+        params: { query },
+      });
+      return response as unknown as Friend[];
+    } catch (error) {
+      throw error;
+    }
   },
 
   // Get all users (for clients)
   getAllUsers: async (skip = 0, limit = 50, userType?: string): Promise<User[]> => {
-    const params: any = { skip, limit };
-    if (userType) params.user_type = userType;
-    const response = await api.get(USER_ENDPOINTS.ALL, { params });
-    return response as unknown as User[];
+    try {
+      const params: Record<string, unknown> = { skip, limit };
+      if (userType) params.user_type = userType;
+      const response = await api.get(USER_ENDPOINTS.ALL, { params });
+      return response as unknown as User[];
+    } catch (error) {
+      throw error;
+    }
   },
 
   // Get user profile
   getUserProfile: async (userId: number): Promise<User> => {
-    const response = await api.get(USER_ENDPOINTS.PROFILE(userId));
-    return response as unknown as User;
+    try {
+      const response = await api.get(USER_ENDPOINTS.PROFILE(userId));
+      return response as unknown as User;
+    } catch (error) {
+      throw error;
+    }
   },
 
   // Get online status for multiple users
   getOnlineStatus: async (userIds: number[]): Promise<OnlineStatus[]> => {
-    const response = await api.get(USER_ENDPOINTS.ONLINE_STATUS, {
-      params: { user_ids: userIds.join(',') },
-    });
-    return response as unknown as OnlineStatus[];
+    try {
+      const response = await api.get(USER_ENDPOINTS.ONLINE_STATUS, {
+        params: { user_ids: userIds.join(',') },
+      });
+      return response as unknown as OnlineStatus[];
+    } catch (error) {
+      throw error;
+    }
   },
 };
