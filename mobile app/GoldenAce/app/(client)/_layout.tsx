@@ -57,15 +57,6 @@ export default function ClientTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="games"
-        options={{
-          title: 'Games',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="game-controller" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="claims"
         options={{
           title: 'Claims',
