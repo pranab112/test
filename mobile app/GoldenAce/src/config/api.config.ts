@@ -89,12 +89,12 @@ export const API_ENDPOINTS = {
     CLIENT_GAMES: '/games/client',
   },
   OFFERS: {
+    // Player endpoints - platform offers from admin
     AVAILABLE: '/offers/available',
     MY_CLAIMS: '/offers/my-claims',
     CLAIM: '/offers/claim',
-    CLIENT_PENDING: '/offers/client/pending-claims',
-    CLIENT_ALL: '/offers/client/all-claims',
-    PROCESS_CLAIM: '/offers/client/process-claim',
+    // Note: Client claim management is done via PROMOTIONS API, not OFFERS
+    // The /offers/ endpoints are for admin-created platform offers only
   },
   PROMOTIONS: {
     BASE: '/promotions',
@@ -120,12 +120,15 @@ export const API_ENDPOINTS = {
     NOTIFICATIONS: '/settings/notifications',
     DELETE_ACCOUNT: '/settings/delete-account',
     PROFILE_PICTURE: '/settings/profile-picture',
-    EMAIL_VERIFICATION: '/settings/email-verification',
-    VERIFY_EMAIL_OTP: '/settings/verify-email-otp',
-    RESEND_EMAIL_OTP: '/settings/resend-email-otp',
-    EMAIL_STATUS: '/settings/email-verification-status',
     PAYMENT_METHODS: '/settings/payment-methods',
     MY_PAYMENT_PREFERENCES: '/settings/my-payment-preferences',
+  },
+  EMAIL: {
+    SEND_OTP: '/email/send-otp',
+    VERIFY_OTP: '/email/verify-otp',
+    RESEND_OTP: '/email/resend-otp',
+    STATUS: '/email/status',
+    REMOVE: '/email/remove',
   },
   REFERRALS: {
     MY_CODE: '/referrals/my-code',

@@ -199,6 +199,12 @@ export default function ProfileScreen() {
       return;
     }
 
+    // Backend requires minimum 10 characters for reason
+    if (reportReason.trim().length < 10) {
+      Alert.alert('Error', 'Report reason must be at least 10 characters');
+      return;
+    }
+
     setSubmittingReport(true);
     try {
       await reportsApi.createReport({

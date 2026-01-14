@@ -93,12 +93,12 @@ export default function PlayerHomeScreen() {
       <View style={styles.quickActions}>
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => router.push('/(player)/games')}
+          onPress={() => router.push('/(player)/promotions')}
         >
           <View style={[styles.actionIcon, { backgroundColor: Colors.primary + '20' }]}>
-            <Ionicons name="game-controller" size={24} color={Colors.primary} />
+            <Ionicons name="megaphone" size={24} color={Colors.primary} />
           </View>
-          <Text style={styles.actionText}>Play</Text>
+          <Text style={styles.actionText}>Promos</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.actionButton}

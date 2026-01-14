@@ -14,11 +14,16 @@ export const chatApi = {
   // Send text message
   sendTextMessage: async (receiverId: number, content: string): Promise<Message> => {
     try {
-      const formData = new FormData();
-      formData.append('receiver_id', receiverId.toString());
-      formData.append('content', content);
+      // Use URLSearchParams for form-encoded data (more reliable than FormData for non-file uploads)
+      const params = new URLSearchParams();
+      params.append('receiver_id', receiverId.toString());
+      params.append('content', content);
 
-      const response = await api.post(API_ENDPOINTS.CHAT.SEND_TEXT, formData);
+      const response = await api.post(API_ENDPOINTS.CHAT.SEND_TEXT, params.toString(), {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      });
       return response as unknown as Message;
     } catch (error) {
       throw error;
@@ -50,11 +55,8 @@ export const chatApi = {
         formData.append('caption', caption);
       }
 
-      const response = await api.post(API_ENDPOINTS.CHAT.SEND_IMAGE, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      // Don't set Content-Type header - let axios set it with proper boundary
+      const response = await api.post(API_ENDPOINTS.CHAT.SEND_IMAGE, formData);
       return response as unknown as Message;
     } catch (error) {
       throw error;
@@ -72,20 +74,29 @@ export const chatApi = {
       formData.append('receiver_id', receiverId.toString());
       formData.append('duration', duration.toString());
 
-      // Get filename from URI
+      // Get filename from URI and determine MIME type
       const filename = audioUri.split('/').pop() || 'audio.m4a';
+      const extension = filename.split('.').pop()?.toLowerCase() || 'm4a';
+
+      // Map extensions to MIME types the backend accepts
+      const mimeTypes: Record<string, string> = {
+        'm4a': 'audio/mp4',
+        'mp4': 'audio/mp4',
+        'mp3': 'audio/mpeg',
+        'webm': 'audio/webm',
+        'ogg': 'audio/ogg',
+        'wav': 'audio/wav',
+      };
+      const mimeType = mimeTypes[extension] || 'audio/mp4';
 
       formData.append('file', {
         uri: audioUri,
         name: filename,
-        type: 'audio/m4a',
+        type: mimeType,
       } as unknown as Blob);
 
-      const response = await api.post(API_ENDPOINTS.CHAT.SEND_VOICE, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      // Don't set Content-Type header - let axios set it with proper boundary
+      const response = await api.post(API_ENDPOINTS.CHAT.SEND_VOICE, formData);
       return response as unknown as Message;
     } catch (error) {
       throw error;

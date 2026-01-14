@@ -57,12 +57,19 @@ export default function ClientTabLayout() {
         }}
       />
       <Tabs.Screen
+        name="promotions"
+        options={{
+          title: 'Promos',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="megaphone" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="claims"
         options={{
+          href: null, // Hide from tab bar - promotions screen handles claims
           title: 'Claims',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="gift" size={size} color={color} />
-          ),
         }}
       />
       <Tabs.Screen

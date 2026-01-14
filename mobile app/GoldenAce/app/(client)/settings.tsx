@@ -38,6 +38,7 @@ export default function ClientSettingsScreen() {
 
   // Email verification modal
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [verifyingEmail, setVerifyingEmail] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
@@ -115,13 +116,29 @@ export default function ClientSettingsScreen() {
   };
 
   const handleSendOTP = async () => {
+    if (!verificationEmail.trim() || !verificationEmail.includes('@')) {
+      Alert.alert('Error', 'Please enter a valid email address');
+      return;
+    }
     setVerifyingEmail(true);
     try {
-      await settingsApi.sendEmailVerificationOTP();
+      await settingsApi.sendEmailVerificationOTP(verificationEmail.trim());
       setOtpSent(true);
       Alert.alert('Success', 'Verification code sent to your email');
     } catch (error: any) {
       Alert.alert('Error', error?.detail || 'Failed to send verification code');
+    } finally {
+      setVerifyingEmail(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    setVerifyingEmail(true);
+    try {
+      await settingsApi.resendEmailOTP();
+      Alert.alert('Success', 'New verification code sent');
+    } catch (error: any) {
+      Alert.alert('Error', error?.detail || 'Failed to resend verification code');
     } finally {
       setVerifyingEmail(false);
     }
@@ -474,8 +491,16 @@ export default function ClientSettingsScreen() {
             {!otpSent ? (
               <>
                 <Text style={styles.modalText}>
-                  We'll send a verification code to: {user?.email}
+                  Enter your email address to receive a verification code
                 </Text>
+                <Input
+                  placeholder="Enter your email"
+                  value={verificationEmail}
+                  onChangeText={setVerificationEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  leftIcon="mail-outline"
+                />
                 <Button
                   title="Send Verification Code"
                   onPress={handleSendOTP}
@@ -486,7 +511,7 @@ export default function ClientSettingsScreen() {
             ) : (
               <>
                 <Text style={styles.modalText}>
-                  Enter the 6-digit code sent to your email
+                  Enter the 6-digit code sent to {verificationEmail}
                 </Text>
                 <TextInput
                   style={styles.otpInput}
@@ -504,7 +529,7 @@ export default function ClientSettingsScreen() {
                   loading={verifyingEmail}
                   style={styles.modalButton}
                 />
-                <TouchableOpacity onPress={handleSendOTP} style={styles.resendButton}>
+                <TouchableOpacity onPress={handleResendOTP} style={styles.resendButton}>
                   <Text style={styles.resendText}>Resend Code</Text>
                 </TouchableOpacity>
               </>

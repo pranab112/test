@@ -97,6 +97,13 @@ export default function PlayerTabLayout() {
           title: 'Announcements',
         }}
       />
+      <Tabs.Screen
+        name="promotions"
+        options={{
+          href: null, // Hide from tab bar
+          title: 'Promotions',
+        }}
+      />
     </Tabs>
   );
 }

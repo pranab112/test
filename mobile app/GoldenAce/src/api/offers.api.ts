@@ -39,38 +39,7 @@ export const offersApi = {
     }
   },
 
-  // ============= CLIENT ENDPOINTS =============
-
-  // Get pending claims for client
-  getPendingClaimsForClient: async (): Promise<OfferClaim[]> => {
-    try {
-      const response = await api.get(API_ENDPOINTS.OFFERS.CLIENT_PENDING);
-      return response as unknown as OfferClaim[];
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  // Process a claim (approve/reject)
-  processClaim: async (
-    claimId: number,
-    data: { status: OfferClaimStatus }
-  ): Promise<{ message: string }> => {
-    try {
-      const response = await api.put(`${API_ENDPOINTS.OFFERS.PROCESS_CLAIM}/${claimId}`, data);
-      return response as unknown as { message: string };
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  // Get all claims for client
-  getAllClaimsForClient: async (): Promise<OfferClaim[]> => {
-    try {
-      const response = await api.get(API_ENDPOINTS.OFFERS.CLIENT_ALL);
-      return response as unknown as OfferClaim[];
-    } catch (error) {
-      throw error;
-    }
-  },
+  // Note: Client claim management is done via promotionsApi, not offersApi
+  // Platform offers are admin-created and admin-approved
+  // Client promotions are client-created and client-approved
 };

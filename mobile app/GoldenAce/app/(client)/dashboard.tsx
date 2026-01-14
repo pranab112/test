@@ -12,10 +12,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { friendsApi } from '../../src/api/friends.api';
 import { gamesApi } from '../../src/api/games.api';
-import { offersApi } from '../../src/api/offers.api';
+import { promotionsApi, PromotionClaim } from '../../src/api/promotions.api';
 import { Card, Avatar, Badge, Loading } from '../../src/components/ui';
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../../src/constants/theme';
-import type { Friend, ClientGame, OfferClaim } from '../../src/types';
+import type { Friend, ClientGame } from '../../src/types';
 
 interface DashboardStats {
   totalPlayers: number;
@@ -33,7 +33,7 @@ export default function ClientDashboardScreen() {
     pendingClaims: 0,
   });
   const [recentPlayers, setRecentPlayers] = useState<Friend[]>([]);
-  const [pendingClaims, setPendingClaims] = useState<OfferClaim[]>([]);
+  const [pendingClaims, setPendingClaims] = useState<PromotionClaim[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -42,7 +42,7 @@ export default function ClientDashboardScreen() {
       const [friendsData, gamesData, claimsData] = await Promise.all([
         friendsApi.getFriends(),
         gamesApi.getClientGames(),
-        offersApi.getPendingClaimsForClient(),
+        promotionsApi.getPendingApprovals(),
       ]);
 
       const players = friendsData.filter((f) => f.user_type === 'player');
@@ -174,17 +174,17 @@ export default function ClientDashboardScreen() {
             </TouchableOpacity>
           </View>
           {pendingClaims.map((claim) => (
-            <Card key={claim.id} style={styles.claimCard}>
+            <Card key={claim.claim_id} style={styles.claimCard}>
               <View style={styles.claimHeader}>
-                <Text style={styles.claimTitle}>{claim.offer_title || 'Offer'}</Text>
+                <Text style={styles.claimTitle}>{claim.promotion_title || 'Promotion'}</Text>
                 <Badge text="Pending" variant="warning" size="sm" />
               </View>
               <View style={styles.claimInfo}>
                 <Text style={styles.claimPlayer}>
-                  Player: {claim.player_name || `#${claim.player_id}`}
+                  Player: {claim.player_username || claim.player_name || `#${claim.player_id}`}
                 </Text>
                 <Text style={styles.claimBonus}>
-                  ${claim.bonus_amount.toFixed(2)}
+                  ${(claim.claimed_value || claim.value || 0).toFixed(2)}
                 </Text>
               </View>
             </Card>

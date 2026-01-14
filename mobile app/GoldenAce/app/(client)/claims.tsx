@@ -9,29 +9,29 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { offersApi } from '../../src/api/offers.api';
+import { promotionsApi, PromotionClaim } from '../../src/api/promotions.api';
 import { Card, Badge, Loading, EmptyState, Button, Avatar } from '../../src/components/ui';
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../../src/constants/theme';
-import type { OfferClaim, OfferClaimStatus } from '../../src/types';
 
 type TabType = 'pending' | 'all';
 
 export default function ClientClaimsScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('pending');
-  const [pendingClaims, setPendingClaims] = useState<OfferClaim[]>([]);
-  const [allClaims, setAllClaims] = useState<OfferClaim[]>([]);
+  const [pendingClaims, setPendingClaims] = useState<PromotionClaim[]>([]);
+  const [allClaims, setAllClaims] = useState<PromotionClaim[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [processingId, setProcessingId] = useState<number | null>(null);
 
   const loadData = async () => {
     try {
-      const [pending, all] = await Promise.all([
-        offersApi.getPendingClaimsForClient(),
-        offersApi.getAllClaimsForClient(),
-      ]);
+      // Get pending approval claims from promotions API
+      const pending = await promotionsApi.getPendingApprovals();
       setPendingClaims(pending);
-      setAllClaims(all);
+      // For all claims, we use the same list but include all statuses
+      // The promotions API doesn't have a separate "all claims" endpoint for clients
+      // So we'll just show pending claims in the "All" tab for now
+      setAllClaims(pending);
     } catch (error) {
       console.error('Error loading claims:', error);
     } finally {
@@ -49,21 +49,25 @@ export default function ClientClaimsScreen() {
     loadData();
   }, []);
 
-  const handleProcessClaim = async (claimId: number, status: OfferClaimStatus) => {
-    const actionText = status === 'approved' ? 'approve' : 'reject';
+  const handleProcessClaim = async (claimId: number, action: 'approve' | 'reject') => {
+    const actionText = action === 'approve' ? 'approve' : 'reject';
 
     Alert.alert(
-      `${status === 'approved' ? 'Approve' : 'Reject'} Claim`,
+      `${action === 'approve' ? 'Approve' : 'Reject'} Claim`,
       `Are you sure you want to ${actionText} this claim?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: status === 'approved' ? 'Approve' : 'Reject',
-          style: status === 'rejected' ? 'destructive' : 'default',
+          text: action === 'approve' ? 'Approve' : 'Reject',
+          style: action === 'reject' ? 'destructive' : 'default',
           onPress: async () => {
             setProcessingId(claimId);
             try {
-              await offersApi.processClaim(claimId, { status });
+              if (action === 'approve') {
+                await promotionsApi.approveClaim(claimId);
+              } else {
+                await promotionsApi.rejectClaim(claimId);
+              }
               Alert.alert('Success', `Claim ${actionText}d successfully`);
               await loadData();
             } catch (error: any) {
@@ -80,11 +84,14 @@ export default function ClientClaimsScreen() {
   const getStatusVariant = (status: string): 'success' | 'warning' | 'error' | 'default' => {
     switch (status) {
       case 'approved':
-      case 'completed':
+      case 'claimed':
+      case 'used':
         return 'success';
       case 'pending':
+      case 'pending_approval':
         return 'warning';
       case 'rejected':
+      case 'expired':
         return 'error';
       default:
         return 'default';
@@ -101,24 +108,24 @@ export default function ClientClaimsScreen() {
     });
   };
 
-  const renderPendingClaim = ({ item }: { item: OfferClaim }) => (
+  const renderPendingClaim = ({ item }: { item: PromotionClaim }) => (
     <Card style={styles.claimCard}>
       <View style={styles.claimHeader}>
         <View style={styles.offerInfo}>
-          <Text style={styles.offerTitle}>{item.offer_title || 'Offer'}</Text>
+          <Text style={styles.offerTitle}>{item.promotion_title || 'Promotion'}</Text>
           <Badge text="Pending" variant="warning" size="sm" />
         </View>
-        <Text style={styles.bonusAmount}>${item.bonus_amount.toFixed(2)}</Text>
+        <Text style={styles.bonusAmount}>${(item.claimed_value || item.value || 0).toFixed(2)}</Text>
       </View>
 
       <View style={styles.playerRow}>
         <Avatar
-          name={item.player_name || `Player ${item.player_id}`}
+          name={item.player_username || item.player_name || `Player ${item.player_id}`}
           size="sm"
         />
         <View style={styles.playerInfo}>
           <Text style={styles.playerName}>
-            {item.player_name || `Player #${item.player_id}`}
+            {item.player_username || item.player_name || `Player #${item.player_id}`}
           </Text>
           <Text style={styles.claimDate}>
             Claimed: {formatDate(item.claimed_at)}
@@ -126,58 +133,46 @@ export default function ClientClaimsScreen() {
         </View>
       </View>
 
-      {item.verification_data && (
-        <View style={styles.verificationSection}>
-          <Text style={styles.verificationLabel}>Verification Data:</Text>
-          <Text style={styles.verificationData}>{item.verification_data}</Text>
-        </View>
-      )}
-
       <View style={styles.actionButtons}>
         <Button
           title="Reject"
-          onPress={() => handleProcessClaim(item.id, 'rejected')}
+          onPress={() => handleProcessClaim(item.claim_id, 'reject')}
           variant="outline"
           size="sm"
           style={styles.rejectButton}
           textStyle={{ color: Colors.error }}
-          loading={processingId === item.id}
+          loading={processingId === item.claim_id}
         />
         <Button
           title="Approve"
-          onPress={() => handleProcessClaim(item.id, 'approved')}
+          onPress={() => handleProcessClaim(item.claim_id, 'approve')}
           size="sm"
           style={styles.approveButton}
           icon={<Ionicons name="checkmark" size={16} color={Colors.background} />}
-          loading={processingId === item.id}
+          loading={processingId === item.claim_id}
         />
       </View>
     </Card>
   );
 
-  const renderAllClaim = ({ item }: { item: OfferClaim }) => (
+  const renderAllClaim = ({ item }: { item: PromotionClaim }) => (
     <Card style={styles.historyCard}>
       <View style={styles.historyHeader}>
         <View style={styles.historyInfo}>
-          <Text style={styles.historyTitle}>{item.offer_title || 'Offer'}</Text>
+          <Text style={styles.historyTitle}>{item.promotion_title || 'Promotion'}</Text>
           <Text style={styles.historyPlayer}>
-            {item.player_name || `Player #${item.player_id}`}
+            {item.player_username || item.player_name || `Player #${item.player_id}`}
           </Text>
         </View>
         <View style={styles.historyRight}>
-          <Badge text={item.status} variant={getStatusVariant(item.status)} size="sm" />
-          <Text style={styles.historyAmount}>${item.bonus_amount.toFixed(2)}</Text>
+          <Badge text={item.status.replace('_', ' ')} variant={getStatusVariant(item.status)} size="sm" />
+          <Text style={styles.historyAmount}>${(item.claimed_value || item.value || 0).toFixed(2)}</Text>
         </View>
       </View>
       <View style={styles.historyDates}>
         <Text style={styles.dateText}>
           Claimed: {formatDate(item.claimed_at)}
         </Text>
-        {item.processed_at && (
-          <Text style={styles.dateText}>
-            Processed: {formatDate(item.processed_at)}
-          </Text>
-        )}
       </View>
     </Card>
   );
@@ -216,7 +211,7 @@ export default function ClientClaimsScreen() {
       {activeTab === 'pending' ? (
         <FlatList
           data={pendingClaims}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => item.claim_id.toString()}
           renderItem={renderPendingClaim}
           contentContainerStyle={styles.list}
           refreshControl={
@@ -237,7 +232,7 @@ export default function ClientClaimsScreen() {
       ) : (
         <FlatList
           data={allClaims}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => item.claim_id.toString()}
           renderItem={renderAllClaim}
           contentContainerStyle={styles.list}
           refreshControl={
