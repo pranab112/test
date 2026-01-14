@@ -22,11 +22,12 @@ import { Audio } from 'expo-av';
 import { chatApi } from '../../src/api/chat.api';
 import { friendsApi } from '../../src/api/friends.api';
 import { gameCredentialsApi } from '../../src/api/gameCredentials.api';
+import { gamesApi } from '../../src/api/games.api';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { Avatar, Loading, Card } from '../../src/components/ui';
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../../src/constants/theme';
 import { getFileUrl } from '../../src/config/api.config';
-import type { Message, Friend, GameCredential, UserType } from '../../src/types';
+import type { Message, Friend, GameCredential, ClientGame } from '../../src/types';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -64,6 +65,15 @@ export default function ChatScreen() {
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [gameCredentials, setGameCredentials] = useState<GameCredential[]>([]);
   const [loadingCredentials, setLoadingCredentials] = useState(false);
+
+  // Credential management state (for clients)
+  const [showAddCredentialModal, setShowAddCredentialModal] = useState(false);
+  const [editingCredential, setEditingCredential] = useState<GameCredential | null>(null);
+  const [clientGames, setClientGames] = useState<ClientGame[]>([]);
+  const [selectedGameId, setSelectedGameId] = useState<number | null>(null);
+  const [credentialUsername, setCredentialUsername] = useState('');
+  const [credentialPassword, setCredentialPassword] = useState('');
+  const [savingCredential, setSavingCredential] = useState(false);
 
   const loadData = async () => {
     if (!friendId) return;
@@ -338,14 +348,98 @@ export default function ChatScreen() {
         const credentials = await gameCredentialsApi.getMyCredentials();
         setGameCredentials(credentials);
       } else if (user?.user_type === 'client' && friend?.user_type === 'player' && friendId) {
-        const credentials = await gameCredentialsApi.getPlayerCredentials(parseInt(friendId));
+        const [credentials, games] = await Promise.all([
+          gameCredentialsApi.getPlayerCredentials(parseInt(friendId)),
+          gamesApi.getClientGames(),
+        ]);
         setGameCredentials(credentials);
+        setClientGames(games);
       }
     } catch (error) {
       console.error('Error loading credentials:', error);
     } finally {
       setLoadingCredentials(false);
     }
+  };
+
+  // Open add credential modal
+  const handleOpenAddCredential = () => {
+    setEditingCredential(null);
+    setSelectedGameId(null);
+    setCredentialUsername('');
+    setCredentialPassword('');
+    setShowAddCredentialModal(true);
+  };
+
+  // Open edit credential modal
+  const handleOpenEditCredential = (credential: GameCredential) => {
+    setEditingCredential(credential);
+    setSelectedGameId(credential.game_id);
+    setCredentialUsername(credential.game_username);
+    setCredentialPassword(credential.game_password);
+    setShowAddCredentialModal(true);
+  };
+
+  // Save credential (add or update)
+  const handleSaveCredential = async () => {
+    if (!selectedGameId || !credentialUsername.trim() || !credentialPassword.trim() || !friendId) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    setSavingCredential(true);
+    try {
+      if (editingCredential) {
+        // Update existing credential
+        await gameCredentialsApi.updateCredentials(editingCredential.id, {
+          game_username: credentialUsername.trim(),
+          game_password: credentialPassword.trim(),
+        });
+        Alert.alert('Success', 'Credential updated successfully');
+      } else {
+        // Create new credential
+        await gameCredentialsApi.createCredentials({
+          player_id: parseInt(friendId),
+          game_id: selectedGameId,
+          game_username: credentialUsername.trim(),
+          game_password: credentialPassword.trim(),
+        });
+        Alert.alert('Success', 'Credential created successfully');
+      }
+
+      // Refresh credentials
+      const credentials = await gameCredentialsApi.getPlayerCredentials(parseInt(friendId));
+      setGameCredentials(credentials);
+      setShowAddCredentialModal(false);
+    } catch (error: any) {
+      Alert.alert('Error', error?.detail || 'Failed to save credential');
+    } finally {
+      setSavingCredential(false);
+    }
+  };
+
+  // Delete credential
+  const handleDeleteCredential = (credential: GameCredential) => {
+    Alert.alert(
+      'Delete Credential',
+      `Are you sure you want to delete the credential for ${credential.game_display_name}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await gameCredentialsApi.deleteCredentials(credential.id);
+              setGameCredentials((prev) => prev.filter((c) => c.id !== credential.id));
+              Alert.alert('Success', 'Credential deleted successfully');
+            } catch (error: any) {
+              Alert.alert('Error', error?.detail || 'Failed to delete credential');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const formatDuration = (seconds: number): string => {
@@ -514,8 +608,8 @@ export default function ChatScreen() {
             </TouchableOpacity>
           ),
           headerRight: () => (
-            <TouchableOpacity onPress={handleOpenCredentials} style={styles.settingsButton}>
-              <Ionicons name="settings-outline" size={24} color={Colors.text} />
+            <TouchableOpacity onPress={handleOpenCredentials} style={styles.credentialsButton}>
+              <Ionicons name="game-controller" size={24} color={Colors.primary} />
             </TouchableOpacity>
           ),
         }}
@@ -705,9 +799,19 @@ export default function ChatScreen() {
           <View style={styles.credentialsContent}>
             <View style={styles.credentialsHeader}>
               <Text style={styles.credentialsTitle}>Game Credentials</Text>
-              <TouchableOpacity onPress={() => setShowCredentialsModal(false)}>
-                <Ionicons name="close" size={24} color={Colors.text} />
-              </TouchableOpacity>
+              <View style={styles.credentialsHeaderRight}>
+                {user?.user_type === 'client' && friend?.user_type === 'player' && (
+                  <TouchableOpacity
+                    onPress={handleOpenAddCredential}
+                    style={styles.addCredentialButton}
+                  >
+                    <Ionicons name="add" size={24} color={Colors.primary} />
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity onPress={() => setShowCredentialsModal(false)}>
+                  <Ionicons name="close" size={24} color={Colors.text} />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {loadingCredentials ? (
@@ -723,6 +827,15 @@ export default function ChatScreen() {
                     ? 'Your client has not assigned any game credentials yet.'
                     : 'No credentials have been assigned to this player.'}
                 </Text>
+                {user?.user_type === 'client' && friend?.user_type === 'player' && (
+                  <TouchableOpacity
+                    style={styles.addCredentialButtonLarge}
+                    onPress={handleOpenAddCredential}
+                  >
+                    <Ionicons name="add" size={20} color={Colors.background} />
+                    <Text style={styles.addCredentialButtonText}>Add Credential</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             ) : (
               <FlatList
@@ -731,8 +844,26 @@ export default function ChatScreen() {
                 renderItem={({ item }) => (
                   <View style={styles.credentialCard}>
                     <View style={styles.credentialHeader}>
-                      <Ionicons name="game-controller" size={24} color={Colors.primary} />
-                      <Text style={styles.credentialGameName}>{item.game_display_name}</Text>
+                      <View style={styles.credentialHeaderLeft}>
+                        <Ionicons name="game-controller" size={24} color={Colors.primary} />
+                        <Text style={styles.credentialGameName}>{item.game_display_name}</Text>
+                      </View>
+                      {user?.user_type === 'client' && (
+                        <View style={styles.credentialActions}>
+                          <TouchableOpacity
+                            onPress={() => handleOpenEditCredential(item)}
+                            style={styles.credentialActionButton}
+                          >
+                            <Ionicons name="pencil" size={18} color={Colors.primary} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => handleDeleteCredential(item)}
+                            style={styles.credentialActionButton}
+                          >
+                            <Ionicons name="trash" size={18} color={Colors.error} />
+                          </TouchableOpacity>
+                        </View>
+                      )}
                     </View>
                     <View style={styles.credentialRow}>
                       <Text style={styles.credentialLabel}>Username:</Text>
@@ -755,6 +886,105 @@ export default function ChatScreen() {
                 contentContainerStyle={styles.credentialsList}
               />
             )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Add/Edit Credential Modal */}
+      <Modal
+        visible={showAddCredentialModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAddCredentialModal(false)}
+      >
+        <View style={styles.credentialsOverlay}>
+          <View style={styles.credentialsContent}>
+            <View style={styles.credentialsHeader}>
+              <Text style={styles.credentialsTitle}>
+                {editingCredential ? 'Edit Credential' : 'Add Credential'}
+              </Text>
+              <TouchableOpacity onPress={() => setShowAddCredentialModal(false)}>
+                <Ionicons name="close" size={24} color={Colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.formContainer}>
+              {/* Game Selection - only show for new credentials */}
+              {!editingCredential && (
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Select Game</Text>
+                  <View style={styles.gameSelector}>
+                    {clientGames.map((clientGame) => (
+                      <TouchableOpacity
+                        key={clientGame.id}
+                        style={[
+                          styles.gameOption,
+                          selectedGameId === clientGame.game_id && styles.gameOptionSelected,
+                        ]}
+                        onPress={() => setSelectedGameId(clientGame.game_id)}
+                      >
+                        <Ionicons
+                          name="game-controller"
+                          size={20}
+                          color={selectedGameId === clientGame.game_id ? Colors.primary : Colors.textSecondary}
+                        />
+                        <Text
+                          style={[
+                            styles.gameOptionText,
+                            selectedGameId === clientGame.game_id && styles.gameOptionTextSelected,
+                          ]}
+                        >
+                          {clientGame.game?.display_name || `Game ${clientGame.game_id}`}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  {clientGames.length === 0 && (
+                    <Text style={styles.noGamesText}>No games configured. Add games in Settings.</Text>
+                  )}
+                </View>
+              )}
+
+              {/* Username Input */}
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Game Username</Text>
+                <TextInput
+                  style={styles.formInput}
+                  value={credentialUsername}
+                  onChangeText={setCredentialUsername}
+                  placeholder="Enter game username"
+                  placeholderTextColor={Colors.textMuted}
+                  autoCapitalize="none"
+                />
+              </View>
+
+              {/* Password Input */}
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Game Password</Text>
+                <TextInput
+                  style={styles.formInput}
+                  value={credentialPassword}
+                  onChangeText={setCredentialPassword}
+                  placeholder="Enter game password"
+                  placeholderTextColor={Colors.textMuted}
+                  autoCapitalize="none"
+                />
+              </View>
+
+              {/* Save Button */}
+              <TouchableOpacity
+                style={[
+                  styles.saveCredentialButton,
+                  savingCredential && styles.saveCredentialButtonDisabled,
+                ]}
+                onPress={handleSaveCredential}
+                disabled={savingCredential}
+              >
+                <Text style={styles.saveCredentialButtonText}>
+                  {savingCredential ? 'Saving...' : editingCredential ? 'Update Credential' : 'Add Credential'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -1094,8 +1324,8 @@ const styles = StyleSheet.create({
     width: screenWidth,
     height: screenWidth,
   },
-  // Settings button
-  settingsButton: {
+  // Game credentials button
+  credentialsButton: {
     marginLeft: Spacing.sm,
     padding: Spacing.xs,
   },
@@ -1156,16 +1386,29 @@ const styles = StyleSheet.create({
   credentialHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
+    justifyContent: 'space-between',
     marginBottom: Spacing.md,
     paddingBottom: Spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
+  credentialHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    flex: 1,
+  },
   credentialGameName: {
     fontSize: FontSize.lg,
     fontWeight: FontWeight.semibold,
     color: Colors.text,
+  },
+  credentialActions: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  credentialActionButton: {
+    padding: Spacing.xs,
   },
   credentialRow: {
     flexDirection: 'row',
@@ -1187,5 +1430,99 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: Spacing.sm,
     textAlign: 'right',
+  },
+  // Header right section
+  credentialsHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  addCredentialButton: {
+    padding: Spacing.xs,
+  },
+  addCredentialButtonLarge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primary,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.lg,
+    marginTop: Spacing.lg,
+    gap: Spacing.xs,
+  },
+  addCredentialButtonText: {
+    color: Colors.background,
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+  },
+  // Form styles for add/edit modal
+  formContainer: {
+    paddingTop: Spacing.md,
+  },
+  formGroup: {
+    marginBottom: Spacing.lg,
+  },
+  formLabel: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.medium,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.sm,
+  },
+  formInput: {
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: BorderRadius.lg,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    fontSize: FontSize.md,
+    color: Colors.text,
+  },
+  gameSelector: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+  },
+  gameOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surfaceLight,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.lg,
+    gap: Spacing.xs,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  gameOptionSelected: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primary + '10',
+  },
+  gameOptionText: {
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+  },
+  gameOptionTextSelected: {
+    color: Colors.primary,
+    fontWeight: FontWeight.medium,
+  },
+  noGamesText: {
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
+    fontStyle: 'italic',
+    marginTop: Spacing.sm,
+  },
+  saveCredentialButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: BorderRadius.lg,
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+    marginTop: Spacing.md,
+  },
+  saveCredentialButtonDisabled: {
+    backgroundColor: Colors.surfaceLight,
+  },
+  saveCredentialButtonText: {
+    color: Colors.background,
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
   },
 });
