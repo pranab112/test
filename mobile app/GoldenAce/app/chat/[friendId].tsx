@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Audio } from 'expo-av';
 import { chatApi } from '../../src/api/chat.api';
@@ -32,6 +33,7 @@ const { width: screenWidth } = Dimensions.get('window');
 export default function ChatScreen() {
   const { friendId } = useLocalSearchParams<{ friendId: string }>();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [friend, setFriend] = useState<Friend | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -541,7 +543,7 @@ export default function ChatScreen() {
 
         {/* Recording UI */}
         {isRecording ? (
-          <View style={styles.recordingContainer}>
+          <View style={[styles.recordingContainer, { paddingBottom: Math.max(insets.bottom, Spacing.md) }]}>
             <TouchableOpacity style={styles.cancelRecordButton} onPress={cancelRecording}>
               <Ionicons name="close" size={24} color={Colors.error} />
             </TouchableOpacity>
@@ -555,7 +557,7 @@ export default function ChatScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={styles.inputContainer}>
+          <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, Spacing.md) }]}>
             <TouchableOpacity
               style={styles.attachButton}
               onPress={() => setShowAttachMenu(true)}
