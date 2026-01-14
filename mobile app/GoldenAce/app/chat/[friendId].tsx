@@ -20,11 +20,12 @@ import * as ImagePicker from 'expo-image-picker';
 import { Audio } from 'expo-av';
 import { chatApi } from '../../src/api/chat.api';
 import { friendsApi } from '../../src/api/friends.api';
+import { gameCredentialsApi } from '../../src/api/gameCredentials.api';
 import { useAuth } from '../../src/contexts/AuthContext';
-import { Avatar, Loading } from '../../src/components/ui';
+import { Avatar, Loading, Card } from '../../src/components/ui';
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../../src/constants/theme';
 import { getFileUrl } from '../../src/config/api.config';
-import type { Message, Friend } from '../../src/types';
+import type { Message, Friend, GameCredential, UserType } from '../../src/types';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -56,6 +57,11 @@ export default function ChatScreen() {
 
   // Image preview modal
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  // Game credentials state
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [gameCredentials, setGameCredentials] = useState<GameCredential[]>([]);
+  const [loadingCredentials, setLoadingCredentials] = useState(false);
 
   const loadData = async () => {
     if (!friendId) return;
@@ -317,6 +323,29 @@ export default function ChatScreen() {
     };
   }, [sound]);
 
+  // Load game credentials
+  const handleOpenCredentials = async () => {
+    setShowCredentialsModal(true);
+    if (gameCredentials.length > 0) return;
+
+    setLoadingCredentials(true);
+    try {
+      // If current user is a player, get their own credentials
+      // If current user is a client and friend is a player, get that player's credentials
+      if (user?.user_type === 'player') {
+        const credentials = await gameCredentialsApi.getMyCredentials();
+        setGameCredentials(credentials);
+      } else if (user?.user_type === 'client' && friend?.user_type === 'player' && friendId) {
+        const credentials = await gameCredentialsApi.getPlayerCredentials(parseInt(friendId));
+        setGameCredentials(credentials);
+      }
+    } catch (error) {
+      console.error('Error loading credentials:', error);
+    } finally {
+      setLoadingCredentials(false);
+    }
+  };
+
   const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -480,6 +509,11 @@ export default function ChatScreen() {
           headerLeft: () => (
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
               <Ionicons name="arrow-back" size={24} color={Colors.text} />
+            </TouchableOpacity>
+          ),
+          headerRight: () => (
+            <TouchableOpacity onPress={handleOpenCredentials} style={styles.settingsButton}>
+              <Ionicons name="settings-outline" size={24} color={Colors.text} />
             </TouchableOpacity>
           ),
         }}
@@ -656,6 +690,71 @@ export default function ChatScreen() {
             />
           )}
         </Pressable>
+      </Modal>
+
+      {/* Game Credentials Modal */}
+      <Modal
+        visible={showCredentialsModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCredentialsModal(false)}
+      >
+        <View style={styles.credentialsOverlay}>
+          <View style={styles.credentialsContent}>
+            <View style={styles.credentialsHeader}>
+              <Text style={styles.credentialsTitle}>Game Credentials</Text>
+              <TouchableOpacity onPress={() => setShowCredentialsModal(false)}>
+                <Ionicons name="close" size={24} color={Colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            {loadingCredentials ? (
+              <View style={styles.credentialsLoading}>
+                <Loading text="Loading credentials..." />
+              </View>
+            ) : gameCredentials.length === 0 ? (
+              <View style={styles.credentialsEmpty}>
+                <Ionicons name="key-outline" size={48} color={Colors.textMuted} />
+                <Text style={styles.credentialsEmptyText}>No game credentials found</Text>
+                <Text style={styles.credentialsEmptySubtext}>
+                  {user?.user_type === 'player'
+                    ? 'Your client has not assigned any game credentials yet.'
+                    : 'No credentials have been assigned to this player.'}
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                data={gameCredentials}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                  <View style={styles.credentialCard}>
+                    <View style={styles.credentialHeader}>
+                      <Ionicons name="game-controller" size={24} color={Colors.primary} />
+                      <Text style={styles.credentialGameName}>{item.game_display_name}</Text>
+                    </View>
+                    <View style={styles.credentialRow}>
+                      <Text style={styles.credentialLabel}>Username:</Text>
+                      <Text style={styles.credentialValue}>{item.game_username}</Text>
+                    </View>
+                    <View style={styles.credentialRow}>
+                      <Text style={styles.credentialLabel}>Password:</Text>
+                      <Text style={styles.credentialValue}>{item.game_password}</Text>
+                    </View>
+                    {item.login_url && (
+                      <View style={styles.credentialRow}>
+                        <Text style={styles.credentialLabel}>Login URL:</Text>
+                        <Text style={[styles.credentialValue, styles.credentialUrl]} numberOfLines={1}>
+                          {item.login_url}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+                contentContainerStyle={styles.credentialsList}
+              />
+            )}
+          </View>
+        </View>
       </Modal>
     </>
   );
@@ -992,5 +1091,99 @@ const styles = StyleSheet.create({
   fullImage: {
     width: screenWidth,
     height: screenWidth,
+  },
+  // Settings button
+  settingsButton: {
+    marginLeft: Spacing.sm,
+    padding: Spacing.xs,
+  },
+  // Credentials modal styles
+  credentialsOverlay: {
+    flex: 1,
+    backgroundColor: Colors.overlayMedium,
+    justifyContent: 'flex-end',
+  },
+  credentialsContent: {
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+    padding: Spacing.lg,
+    paddingBottom: Spacing.xxl,
+    maxHeight: '80%',
+  },
+  credentialsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
+  },
+  credentialsTitle: {
+    fontSize: FontSize.xl,
+    fontWeight: FontWeight.bold,
+    color: Colors.text,
+  },
+  credentialsLoading: {
+    paddingVertical: Spacing.xl,
+    alignItems: 'center',
+  },
+  credentialsEmpty: {
+    alignItems: 'center',
+    paddingVertical: Spacing.xl,
+  },
+  credentialsEmptyText: {
+    fontSize: FontSize.lg,
+    color: Colors.textSecondary,
+    marginTop: Spacing.md,
+  },
+  credentialsEmptySubtext: {
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    marginTop: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+  },
+  credentialsList: {
+    paddingBottom: Spacing.md,
+  },
+  credentialCard: {
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  credentialHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+    paddingBottom: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  credentialGameName: {
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.semibold,
+    color: Colors.text,
+  },
+  credentialRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: Spacing.xs,
+  },
+  credentialLabel: {
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+  },
+  credentialValue: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.medium,
+    color: Colors.text,
+  },
+  credentialUrl: {
+    color: Colors.primary,
+    flex: 1,
+    marginLeft: Spacing.sm,
+    textAlign: 'right',
   },
 });

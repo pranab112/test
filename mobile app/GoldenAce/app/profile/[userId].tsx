@@ -6,14 +6,18 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  TextInput,
+  Modal,
 } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { friendsApi } from '../../src/api/friends.api';
+import { reviewsApi } from '../../src/api/reviews.api';
+import { reportsApi } from '../../src/api/reports.api';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { Card, Avatar, Badge, Button, Loading } from '../../src/components/ui';
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../../src/constants/theme';
-import type { Friend } from '../../src/types';
+import type { Friend, Review, ReviewStats, Report } from '../../src/types';
 
 export default function ProfileScreen() {
   const { userId } = useLocalSearchParams<{ userId: string }>();
@@ -23,6 +27,22 @@ export default function ProfileScreen() {
   const [isFriend, setIsFriend] = useState(false);
   const [requestPending, setRequestPending] = useState(false);
   const [sendingRequest, setSendingRequest] = useState(false);
+
+  // Reviews state
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewStats, setReviewStats] = useState<ReviewStats | null>(null);
+  const [canReview, setCanReview] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewTitle, setReviewTitle] = useState('');
+  const [reviewComment, setReviewComment] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
+
+  // Reports state
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reportEvidence, setReportEvidence] = useState('');
+  const [submittingReport, setSubmittingReport] = useState(false);
 
   const loadProfile = async () => {
     if (!userId) return;
@@ -50,6 +70,20 @@ export default function ProfileScreen() {
         (r) => r.receiver_id === parseInt(userId) || r.requester_id === parseInt(userId)
       );
       setRequestPending(hasPending);
+
+      // Load reviews and stats
+      try {
+        const [reviewsData, statsData, canReviewData] = await Promise.all([
+          reviewsApi.getUserReviews(parseInt(userId)),
+          reviewsApi.getReviewStats(parseInt(userId)),
+          reviewsApi.canReview(parseInt(userId)),
+        ]);
+        setReviews(reviewsData.reviews || []);
+        setReviewStats(statsData);
+        setCanReview(canReviewData.can_review);
+      } catch (err) {
+        console.error('Error loading reviews:', err);
+      }
     } catch (error) {
       console.error('Error loading profile:', error);
     } finally {
@@ -107,6 +141,84 @@ export default function ProfileScreen() {
       month: 'long',
       day: 'numeric',
     });
+  };
+
+  const handleSubmitReview = async () => {
+    if (!userId || !reviewTitle.trim()) {
+      Alert.alert('Error', 'Please provide a title for your review');
+      return;
+    }
+
+    setSubmittingReview(true);
+    try {
+      await reviewsApi.createReview({
+        reviewee_id: parseInt(userId),
+        rating: reviewRating,
+        title: reviewTitle.trim(),
+        comment: reviewComment.trim() || undefined,
+      });
+      Alert.alert('Success', 'Review submitted successfully!');
+      setShowReviewModal(false);
+      setReviewRating(5);
+      setReviewTitle('');
+      setReviewComment('');
+      // Reload reviews
+      const [reviewsData, statsData] = await Promise.all([
+        reviewsApi.getUserReviews(parseInt(userId)),
+        reviewsApi.getReviewStats(parseInt(userId)),
+      ]);
+      setReviews(reviewsData.reviews || []);
+      setReviewStats(statsData);
+      setCanReview(false);
+    } catch (error: any) {
+      Alert.alert('Error', error?.detail || 'Failed to submit review');
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
+  const handleSubmitReport = async () => {
+    if (!userId || !reportReason.trim()) {
+      Alert.alert('Error', 'Please provide a reason for the report');
+      return;
+    }
+
+    setSubmittingReport(true);
+    try {
+      await reportsApi.createReport({
+        reported_user_id: parseInt(userId),
+        reason: reportReason.trim(),
+        evidence: reportEvidence.trim() || undefined,
+      });
+      Alert.alert('Success', 'Report submitted successfully. Our team will review it.');
+      setShowReportModal(false);
+      setReportReason('');
+      setReportEvidence('');
+    } catch (error: any) {
+      Alert.alert('Error', error?.detail || 'Failed to submit report');
+    } finally {
+      setSubmittingReport(false);
+    }
+  };
+
+  const renderStars = (rating: number, interactive: boolean = false) => {
+    return (
+      <View style={styles.starsContainer}>
+        {[1, 2, 3, 4, 5].map((star) => (
+          <TouchableOpacity
+            key={star}
+            onPress={() => interactive && setReviewRating(star)}
+            disabled={!interactive}
+          >
+            <Ionicons
+              name={star <= rating ? 'star' : 'star-outline'}
+              size={interactive ? 32 : 16}
+              color={Colors.warning}
+            />
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
   };
 
   if (loading) {
@@ -248,7 +360,181 @@ export default function ProfileScreen() {
             <Text style={styles.infoText}>Joined {formatDate(profile.created_at)}</Text>
           </View>
         </Card>
+
+        {/* Review/Report Actions */}
+        {!isOwnProfile && (
+          <View style={styles.reviewReportActions}>
+            {canReview && (
+              <Button
+                title="Write Review"
+                onPress={() => setShowReviewModal(true)}
+                variant="outline"
+                icon={<Ionicons name="star" size={18} color={Colors.primary} />}
+                style={styles.reviewReportButton}
+              />
+            )}
+            <Button
+              title="Report User"
+              onPress={() => setShowReportModal(true)}
+              variant="outline"
+              icon={<Ionicons name="flag" size={18} color={Colors.error} />}
+              style={[styles.reviewReportButton, styles.reportButton]}
+              textStyle={{ color: Colors.error }}
+            />
+          </View>
+        )}
+
+        {/* Reviews Section */}
+        <Card style={styles.reviewsCard}>
+          <View style={styles.reviewsHeader}>
+            <Text style={styles.sectionTitle}>Reviews</Text>
+            {reviewStats && (
+              <View style={styles.ratingOverview}>
+                <Ionicons name="star" size={20} color={Colors.warning} />
+                <Text style={styles.avgRating}>
+                  {reviewStats.average_rating?.toFixed(1) || '0.0'}
+                </Text>
+                <Text style={styles.totalReviews}>
+                  ({reviewStats.total_reviews} reviews)
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {reviews.length === 0 ? (
+            <View style={styles.emptyReviews}>
+              <Ionicons name="star-outline" size={40} color={Colors.textMuted} />
+              <Text style={styles.emptyReviewsText}>No reviews yet</Text>
+            </View>
+          ) : (
+            reviews.slice(0, 5).map((review) => (
+              <View key={review.id} style={styles.reviewItem}>
+                <View style={styles.reviewHeader}>
+                  <View style={styles.reviewerInfo}>
+                    <Avatar
+                      source={review.reviewer?.profile_picture}
+                      name={review.reviewer?.full_name || review.reviewer?.username}
+                      size="sm"
+                    />
+                    <View style={styles.reviewerDetails}>
+                      <Text style={styles.reviewerName}>
+                        {review.reviewer?.full_name || review.reviewer?.username}
+                      </Text>
+                      <Text style={styles.reviewDate}>{formatDate(review.created_at)}</Text>
+                    </View>
+                  </View>
+                  {renderStars(review.rating)}
+                </View>
+                <Text style={styles.reviewTitle}>{review.title}</Text>
+                {review.comment && (
+                  <Text style={styles.reviewComment}>{review.comment}</Text>
+                )}
+              </View>
+            ))
+          )}
+        </Card>
       </ScrollView>
+
+      {/* Review Modal */}
+      <Modal
+        visible={showReviewModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowReviewModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Write a Review</Text>
+              <TouchableOpacity onPress={() => setShowReviewModal(false)}>
+                <Ionicons name="close" size={24} color={Colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalLabel}>Rating</Text>
+            {renderStars(reviewRating, true)}
+
+            <Text style={styles.modalLabel}>Title</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={reviewTitle}
+              onChangeText={setReviewTitle}
+              placeholder="Summary of your experience"
+              placeholderTextColor={Colors.textMuted}
+              maxLength={100}
+            />
+
+            <Text style={styles.modalLabel}>Comment (Optional)</Text>
+            <TextInput
+              style={[styles.modalInput, styles.modalTextArea]}
+              value={reviewComment}
+              onChangeText={setReviewComment}
+              placeholder="Share more details about your experience..."
+              placeholderTextColor={Colors.textMuted}
+              multiline
+              numberOfLines={4}
+              maxLength={500}
+            />
+
+            <Button
+              title="Submit Review"
+              onPress={handleSubmitReview}
+              loading={submittingReview}
+              style={styles.submitButton}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Report Modal */}
+      <Modal
+        visible={showReportModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowReportModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Report User</Text>
+              <TouchableOpacity onPress={() => setShowReportModal(false)}>
+                <Ionicons name="close" size={24} color={Colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalLabel}>Reason</Text>
+            <TextInput
+              style={[styles.modalInput, styles.modalTextArea]}
+              value={reportReason}
+              onChangeText={setReportReason}
+              placeholder="Describe why you are reporting this user..."
+              placeholderTextColor={Colors.textMuted}
+              multiline
+              numberOfLines={4}
+              maxLength={500}
+            />
+
+            <Text style={styles.modalLabel}>Evidence (Optional)</Text>
+            <TextInput
+              style={[styles.modalInput, styles.modalTextArea]}
+              value={reportEvidence}
+              onChangeText={setReportEvidence}
+              placeholder="Provide any evidence or additional details..."
+              placeholderTextColor={Colors.textMuted}
+              multiline
+              numberOfLines={3}
+              maxLength={500}
+            />
+
+            <Button
+              title="Submit Report"
+              onPress={handleSubmitReport}
+              loading={submittingReport}
+              style={[styles.submitButton, styles.reportSubmitButton]}
+            />
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -352,5 +638,148 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: FontSize.md,
     color: Colors.textSecondary,
+  },
+  // Review/Report actions
+  reviewReportActions: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  reviewReportButton: {
+    flex: 1,
+  },
+  reportButton: {
+    borderColor: Colors.error,
+  },
+  // Reviews section
+  reviewsCard: {
+    marginBottom: Spacing.md,
+  },
+  reviewsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+  sectionTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.semibold,
+    color: Colors.text,
+  },
+  ratingOverview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  avgRating: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.bold,
+    color: Colors.text,
+  },
+  totalReviews: {
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+  },
+  emptyReviews: {
+    alignItems: 'center',
+    paddingVertical: Spacing.lg,
+  },
+  emptyReviewsText: {
+    fontSize: FontSize.md,
+    color: Colors.textMuted,
+    marginTop: Spacing.sm,
+  },
+  reviewItem: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    paddingTop: Spacing.md,
+    marginTop: Spacing.md,
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  reviewerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  reviewerDetails: {
+    gap: 2,
+  },
+  reviewerName: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.medium,
+    color: Colors.text,
+  },
+  reviewDate: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+  },
+  starsContainer: {
+    flexDirection: 'row',
+    gap: 2,
+  },
+  reviewTitle: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+    color: Colors.text,
+    marginBottom: Spacing.xs,
+  },
+  reviewComment: {
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+    lineHeight: 20,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: Colors.overlayMedium,
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+    padding: Spacing.lg,
+    paddingBottom: Spacing.xxl,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
+  },
+  modalTitle: {
+    fontSize: FontSize.xl,
+    fontWeight: FontWeight.bold,
+    color: Colors.text,
+  },
+  modalLabel: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.medium,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.sm,
+    marginTop: Spacing.md,
+  },
+  modalInput: {
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    fontSize: FontSize.md,
+    color: Colors.text,
+  },
+  modalTextArea: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  submitButton: {
+    marginTop: Spacing.lg,
+  },
+  reportSubmitButton: {
+    backgroundColor: Colors.error,
   },
 });

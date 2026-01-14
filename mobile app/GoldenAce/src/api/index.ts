@@ -10,3 +10,6 @@ export { referralsApi } from './referrals.api';
 export { broadcastsApi } from './broadcasts.api';
 export { ticketsApi } from './tickets.api';
 export { usersApi } from './users.api';
+export { reviewsApi } from './reviews.api';
+export { reportsApi } from './reports.api';
+export { gameCredentialsApi } from './gameCredentials.api';

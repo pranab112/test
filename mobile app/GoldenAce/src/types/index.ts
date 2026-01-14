@@ -309,14 +309,87 @@ export interface TicketMessage {
 export interface Review {
   id: number;
   reviewer_id: number;
-  reviewer_username: string;
-  reviewer_full_name?: string;
-  reviewer_profile_picture?: string;
   reviewee_id: number;
   rating: number;
-  text: string;
-  is_approved: boolean;
+  title: string;
+  comment?: string;
+  status: 'pending' | 'approved' | 'rejected' | 'disputed';
+  admin_notes?: string;
   created_at: string;
+  updated_at?: string;
+  reviewer: {
+    id: number;
+    username: string;
+    full_name?: string;
+    profile_picture?: string;
+    user_type: string;
+  };
+  reviewee: {
+    id: number;
+    username: string;
+    full_name?: string;
+    profile_picture?: string;
+    user_type: string;
+  };
+}
+
+export interface ReviewStats {
+  total_reviews: number;
+  average_rating: number;
+  rating_distribution: { [key: number]: number };
+}
+
+export interface ReviewCreate {
+  reviewee_id: number;
+  rating: number;
+  title: string;
+  comment?: string;
+}
+
+// Report Types
+export type ReportStatus = 'pending' | 'investigating' | 'warning' | 'resolved' | 'valid' | 'invalid' | 'malicious';
+
+export interface Report {
+  id: number;
+  reporter_id: number;
+  reported_user_id: number;
+  reporter_name: string;
+  reporter_username: string;
+  reported_user_name: string;
+  reported_user_username: string;
+  reason: string;
+  evidence?: string;
+  status: ReportStatus;
+  admin_notes?: string;
+  action_taken?: string;
+  warning_sent_at?: string;
+  warning_deadline?: string;
+  resolution_amount?: number;
+  resolution_notes?: string;
+  resolved_at?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface ReportCreate {
+  reported_user_id: number;
+  reason: string;
+  evidence?: string;
+}
+
+// Game Credential Types
+export interface GameCredential {
+  id: number;
+  player_id: number;
+  game_id: number;
+  game_name: string;
+  game_display_name: string;
+  game_username: string;
+  game_password: string;
+  created_by_client_id: number;
+  login_url?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 // API Response Types
