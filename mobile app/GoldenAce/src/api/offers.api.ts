@@ -2,6 +2,28 @@ import { api } from '../services/api';
 import { API_ENDPOINTS } from '../config/api.config';
 import type { PlatformOffer, OfferClaim, OfferClaimStatus } from '../types';
 
+// Credit transfer types
+export interface CreditTransferRequest {
+  client_id: number;
+  amount: number; // Amount in credits (100 credits = $1)
+}
+
+export interface CreditTransferResponse {
+  message: string;
+  credits_transferred: number;
+  dollar_value: number;
+  player_new_balance: number;
+  client_new_balance: number;
+  from_player: string;
+  to_client: string;
+}
+
+export interface BalanceResponse {
+  credits: number;
+  dollar_value: number;
+  rate: string;
+}
+
 export const offersApi = {
   // ============= PLAYER ENDPOINTS =============
 
@@ -34,6 +56,26 @@ export const offersApi = {
     try {
       const response = await api.post(API_ENDPOINTS.OFFERS.CLAIM, data);
       return response as unknown as OfferClaim;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get player's credit balance
+  getMyBalance: async (): Promise<BalanceResponse> => {
+    try {
+      const response = await api.get('/offers/my-balance');
+      return response as unknown as BalanceResponse;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Transfer credits from player to client (one-way)
+  transferCredits: async (data: CreditTransferRequest): Promise<CreditTransferResponse> => {
+    try {
+      const response = await api.post('/offers/transfer-credits', data);
+      return response as unknown as CreditTransferResponse;
     } catch (error) {
       throw error;
     }

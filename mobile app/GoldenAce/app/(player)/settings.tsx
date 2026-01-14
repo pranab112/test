@@ -19,7 +19,10 @@ import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { settingsApi } from '../../src/api/settings.api';
 import { referralsApi, ReferralCode, ReferralStats, Referral } from '../../src/api/referrals.api';
+import { offersApi, CreditTransferResponse } from '../../src/api/offers.api';
+import { friendsApi } from '../../src/api/friends.api';
 import { Card, Avatar, Button, Input, Loading } from '../../src/components/ui';
+import type { Friend } from '../../src/types';
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../../src/constants/theme';
 
 export default function PlayerSettingsScreen() {
@@ -53,6 +56,14 @@ export default function PlayerSettingsScreen() {
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [loadingReferrals, setLoadingReferrals] = useState(false);
   const [generatingCode, setGeneratingCode] = useState(false);
+
+  // Credit transfer modal
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferAmount, setTransferAmount] = useState('');
+  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
+  const [clients, setClients] = useState<Friend[]>([]);
+  const [loadingClients, setLoadingClients] = useState(false);
+  const [transferring, setTransferring] = useState(false);
 
   const loadReferralData = async () => {
     setLoadingReferrals(true);
@@ -109,6 +120,62 @@ export default function PlayerSettingsScreen() {
       loadReferralData();
     }
   }, [showReferralsModal]);
+
+  // Load clients for credit transfer
+  const loadClients = async () => {
+    setLoadingClients(true);
+    try {
+      const friends = await friendsApi.getFriends();
+      const clientFriends = friends.filter((f) => f.user_type === 'client');
+      setClients(clientFriends);
+    } catch (error) {
+      console.error('Error loading clients:', error);
+    } finally {
+      setLoadingClients(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showTransferModal) {
+      loadClients();
+    }
+  }, [showTransferModal]);
+
+  const handleTransferCredits = async () => {
+    if (!selectedClientId) {
+      Alert.alert('Error', 'Please select a client to transfer to');
+      return;
+    }
+    const amount = parseInt(transferAmount);
+    if (!amount || amount <= 0) {
+      Alert.alert('Error', 'Please enter a valid amount');
+      return;
+    }
+    if (user?.credits && amount > user.credits) {
+      Alert.alert('Error', 'Insufficient credits');
+      return;
+    }
+
+    setTransferring(true);
+    try {
+      const result = await offersApi.transferCredits({
+        client_id: selectedClientId,
+        amount: amount,
+      });
+      Alert.alert(
+        'Success',
+        `Transferred ${result.credits_transferred} GC ($${result.dollar_value.toFixed(2)}) to ${result.to_client}`
+      );
+      setShowTransferModal(false);
+      setTransferAmount('');
+      setSelectedClientId(null);
+      await refreshUser(); // Refresh user to update balance
+    } catch (error: any) {
+      Alert.alert('Error', error?.detail || 'Failed to transfer credits');
+    } finally {
+      setTransferring(false);
+    }
+  };
 
   const handleLogout = async () => {
     Alert.alert(
@@ -363,6 +430,27 @@ export default function PlayerSettingsScreen() {
             title="Announcements"
             subtitle="News and updates"
             onPress={() => router.push('/(player)/broadcasts')}
+          />
+        </Card>
+      </View>
+
+      {/* Credits */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Credits</Text>
+        <Card style={styles.settingsCard}>
+          <View style={styles.balanceDisplay}>
+            <View style={styles.balanceInfo}>
+              <Text style={styles.balanceLabel}>Your Balance</Text>
+              <Text style={styles.balanceAmount}>{user?.credits || 0} GC</Text>
+              <Text style={styles.balanceDollar}>= ${((user?.credits || 0) / 100).toFixed(2)}</Text>
+            </View>
+            <Ionicons name="wallet" size={40} color={Colors.primary} />
+          </View>
+          <SettingsItem
+            icon="send"
+            title="Send Credits"
+            subtitle="Transfer GC to a client"
+            onPress={() => setShowTransferModal(true)}
           />
         </Card>
       </View>
@@ -761,6 +849,105 @@ export default function PlayerSettingsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Transfer Credits Modal */}
+      <Modal
+        visible={showTransferModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowTransferModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Send Credits</Text>
+              <TouchableOpacity onPress={() => setShowTransferModal(false)}>
+                <Ionicons name="close" size={24} color={Colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Balance Display */}
+            <View style={styles.transferBalanceCard}>
+              <Text style={styles.transferBalanceLabel}>Your Balance</Text>
+              <Text style={styles.transferBalanceAmount}>{user?.credits || 0} GC</Text>
+              <Text style={styles.transferBalanceDollar}>= ${((user?.credits || 0) / 100).toFixed(2)}</Text>
+            </View>
+
+            {/* Amount Input */}
+            <View style={styles.transferSection}>
+              <Text style={styles.transferSectionTitle}>Amount to Send</Text>
+              <TextInput
+                style={styles.transferInput}
+                placeholder="Enter amount in GC"
+                placeholderTextColor={Colors.textMuted}
+                keyboardType="number-pad"
+                value={transferAmount}
+                onChangeText={setTransferAmount}
+              />
+              {transferAmount && parseInt(transferAmount) > 0 && (
+                <Text style={styles.transferDollarPreview}>
+                  = ${(parseInt(transferAmount) / 100).toFixed(2)}
+                </Text>
+              )}
+              <Text style={styles.transferRate}>Rate: 100 GC = $1</Text>
+            </View>
+
+            {/* Client Selection */}
+            <View style={styles.transferSection}>
+              <Text style={styles.transferSectionTitle}>Select Client</Text>
+              {loadingClients ? (
+                <View style={styles.loadingClients}>
+                  <Loading text="Loading clients..." />
+                </View>
+              ) : clients.length === 0 ? (
+                <View style={styles.noClients}>
+                  <Ionicons name="business-outline" size={40} color={Colors.textMuted} />
+                  <Text style={styles.noClientsText}>No connected clients</Text>
+                  <Text style={styles.noClientsSubtext}>Add clients as friends to transfer credits</Text>
+                </View>
+              ) : (
+                <ScrollView style={styles.clientsList} nestedScrollEnabled>
+                  {clients.map((client) => (
+                    <TouchableOpacity
+                      key={client.id}
+                      style={[
+                        styles.clientItem,
+                        selectedClientId === client.id && styles.clientItemSelected,
+                      ]}
+                      onPress={() => setSelectedClientId(client.id)}
+                    >
+                      <Avatar
+                        source={client.profile_picture}
+                        name={client.company_name || client.username}
+                        size="sm"
+                      />
+                      <View style={styles.clientInfo}>
+                        <Text style={styles.clientName}>
+                          {client.company_name || client.full_name || client.username}
+                        </Text>
+                        <Text style={styles.clientUsername}>@{client.username}</Text>
+                      </View>
+                      {selectedClientId === client.id && (
+                        <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
+            </View>
+
+            {/* Transfer Button */}
+            <Button
+              title={`Send ${transferAmount || '0'} GC`}
+              onPress={handleTransferCredits}
+              loading={transferring}
+              disabled={!selectedClientId || !transferAmount || parseInt(transferAmount) <= 0 || clients.length === 0}
+              icon={<Ionicons name="send" size={18} color={Colors.background} />}
+              style={styles.transferButton}
+            />
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -1067,6 +1254,130 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     color: Colors.textSecondary,
     textAlign: 'center',
+    marginTop: Spacing.md,
+  },
+  // Credits section styles
+  balanceDisplay: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  balanceInfo: {
+    flex: 1,
+  },
+  balanceLabel: {
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+  },
+  balanceAmount: {
+    fontSize: FontSize.xxl,
+    fontWeight: FontWeight.bold,
+    color: Colors.primary,
+    marginVertical: Spacing.xs,
+  },
+  balanceDollar: {
+    fontSize: FontSize.sm,
+    color: Colors.success,
+  },
+  // Transfer modal styles
+  transferBalanceCard: {
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
+  },
+  transferBalanceLabel: {
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+  },
+  transferBalanceAmount: {
+    fontSize: FontSize.xxl,
+    fontWeight: FontWeight.bold,
+    color: Colors.primary,
+    marginVertical: Spacing.xs,
+  },
+  transferBalanceDollar: {
+    fontSize: FontSize.sm,
+    color: Colors.success,
+  },
+  transferSection: {
+    marginBottom: Spacing.lg,
+  },
+  transferSectionTitle: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+    color: Colors.text,
+    marginBottom: Spacing.sm,
+  },
+  transferInput: {
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    fontSize: FontSize.lg,
+    color: Colors.text,
+  },
+  transferDollarPreview: {
+    fontSize: FontSize.sm,
+    color: Colors.success,
+    marginTop: Spacing.xs,
+  },
+  transferRate: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    marginTop: Spacing.xs,
+  },
+  loadingClients: {
+    padding: Spacing.lg,
+    alignItems: 'center',
+  },
+  noClients: {
+    alignItems: 'center',
+    padding: Spacing.lg,
+  },
+  noClientsText: {
+    fontSize: FontSize.md,
+    color: Colors.textSecondary,
+    marginTop: Spacing.md,
+  },
+  noClientsSubtext: {
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
+    marginTop: Spacing.xs,
+  },
+  clientsList: {
+    maxHeight: 200,
+  },
+  clientItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  clientItemSelected: {
+    borderWidth: 2,
+    borderColor: Colors.primary,
+  },
+  clientInfo: {
+    flex: 1,
+    marginLeft: Spacing.md,
+  },
+  clientName: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.medium,
+    color: Colors.text,
+  },
+  clientUsername: {
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+  },
+  transferButton: {
     marginTop: Spacing.md,
   },
 });
