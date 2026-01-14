@@ -54,7 +54,7 @@ export default function ClientPlayersScreen() {
   const renderPlayer = ({ item }: { item: Friend }) => (
     <TouchableOpacity
       style={styles.playerCard}
-      onPress={() => router.push(`/chat/${item.id}`)}
+      onPress={() => router.push(`/profile/${item.id}`)}
       activeOpacity={0.7}
     >
       <Avatar
@@ -81,6 +81,12 @@ export default function ClientPlayersScreen() {
         </View>
       </View>
       <View style={styles.actions}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => router.push(`/profile/${item.id}`)}
+        >
+          <Ionicons name="person" size={20} color={Colors.primary} />
+        </TouchableOpacity>
         <TouchableOpacity
           style={styles.actionButton}
           onPress={() => router.push(`/chat/${item.id}`)}

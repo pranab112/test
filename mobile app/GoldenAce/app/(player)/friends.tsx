@@ -122,7 +122,7 @@ export default function PlayerFriendsScreen() {
     <Card style={styles.friendCard}>
       <TouchableOpacity
         style={styles.friendContent}
-        onPress={() => router.push(`/chat/${item.id}`)}
+        onPress={() => router.push(`/profile/${item.id}`)}
       >
         <Avatar
           source={item.profile_picture}
@@ -142,6 +142,12 @@ export default function PlayerFriendsScreen() {
         />
       </TouchableOpacity>
       <View style={styles.friendActions}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => router.push(`/profile/${item.id}`)}
+        >
+          <Ionicons name="person" size={20} color={Colors.primary} />
+        </TouchableOpacity>
         <TouchableOpacity
           style={styles.actionButton}
           onPress={() => router.push(`/chat/${item.id}`)}
@@ -192,7 +198,10 @@ export default function PlayerFriendsScreen() {
 
   const renderSearchResult = ({ item }: { item: Friend }) => (
     <Card style={styles.searchCard}>
-      <View style={styles.searchContent}>
+      <TouchableOpacity
+        style={styles.searchContent}
+        onPress={() => router.push(`/profile/${item.id}`)}
+      >
         <Avatar
           source={item.profile_picture}
           name={item.full_name || item.username}
@@ -203,13 +212,21 @@ export default function PlayerFriendsScreen() {
           <Text style={styles.friendUsername}>@{item.username}</Text>
         </View>
         <Badge text={item.user_type} variant="default" size="sm" />
+      </TouchableOpacity>
+      <View style={styles.searchActions}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => router.push(`/profile/${item.id}`)}
+        >
+          <Ionicons name="person" size={20} color={Colors.primary} />
+        </TouchableOpacity>
+        <Button
+          title="Add Friend"
+          onPress={() => handleSendRequest(item.id)}
+          size="sm"
+          icon={<Ionicons name="person-add" size={16} color={Colors.background} />}
+        />
       </View>
-      <Button
-        title="Add Friend"
-        onPress={() => handleSendRequest(item.id)}
-        size="sm"
-        icon={<Ionicons name="person-add" size={16} color={Colors.background} />}
-      />
     </Card>
   );
 
@@ -441,5 +458,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: Spacing.md,
+  },
+  searchActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
   },
 });
