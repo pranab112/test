@@ -11,7 +11,7 @@ import logging
 from app import models, schemas, auth
 from app.database import get_db
 from app.websocket import manager, WSMessage, WSMessageType
-from app.s3_storage import s3_storage, save_upload_file_locally
+from app.s3_storage import s3_storage, save_upload_file_locally, is_s3_url
 from app.rate_limit import conditional_rate_limit, RateLimits
 
 logger = logging.getLogger(__name__)
@@ -463,27 +463,29 @@ async def delete_message(
             detail="Message not found or you don't have permission to delete it"
         )
 
-    # Delete associated file if exists (local files only, not S3)
-    if message.file_url and not message.file_url.startswith("http"):
-        # Sanitize path to prevent traversal attacks
-        file_path = message.file_url.lstrip("/")
-        # Get absolute paths for comparison
-        abs_upload_dir = os.path.abspath(UPLOAD_DIR)
-        abs_file_path = os.path.abspath(file_path)
-        # Only delete if file is within upload directory (prevent path traversal)
-        if abs_file_path.startswith(abs_upload_dir) and os.path.exists(abs_file_path):
-            try:
-                os.remove(abs_file_path)
-                logger.info(f"Deleted local file: {abs_file_path}")
-            except OSError as e:
-                logger.error(f"Failed to delete file {abs_file_path}: {e}")
-        elif s3_storage.enabled and message.file_url.startswith("http"):
+    # Delete associated file if exists
+    if message.file_url:
+        if is_s3_url(message.file_url):
             # Handle S3 file deletion
             try:
                 s3_storage.delete_file(message.file_url)
                 logger.info(f"Deleted S3 file: {message.file_url}")
             except Exception as e:
                 logger.error(f"Failed to delete S3 file: {e}")
+        elif not message.file_url.startswith("http"):
+            # Handle local file deletion
+            # Sanitize path to prevent traversal attacks
+            file_path = message.file_url.lstrip("/")
+            # Get absolute paths for comparison
+            abs_upload_dir = os.path.abspath(UPLOAD_DIR)
+            abs_file_path = os.path.abspath(file_path)
+            # Only delete if file is within upload directory (prevent path traversal)
+            if abs_file_path.startswith(abs_upload_dir) and os.path.exists(abs_file_path):
+                try:
+                    os.remove(abs_file_path)
+                    logger.info(f"Deleted local file: {abs_file_path}")
+                except OSError as e:
+                    logger.error(f"Failed to delete file {abs_file_path}: {e}")
 
     db.delete(message)
     db.commit()

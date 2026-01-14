@@ -940,25 +940,60 @@ async def upload_game_image(
             detail=f"Invalid file type. Allowed: {', '.join(allowed_types)}"
         )
 
-    # Create uploads directory if it doesn't exist
-    upload_dir = "uploads/games"
-    os.makedirs(upload_dir, exist_ok=True)
+    # Read file content
+    content = await image.read()
+
+    # Validate file size (max 5MB)
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large. Maximum size is 5MB.")
 
     # Generate unique filename
-    file_ext = os.path.splitext(image.filename)[1] if image.filename else ".png"
+    file_ext = os.path.splitext(image.filename)[1].lower() if image.filename else ".png"
+    if file_ext not in [".jpg", ".jpeg", ".png", ".gif", ".webp"]:
+        file_ext = ".png"
     unique_filename = f"{uuid.uuid4()}{file_ext}"
-    file_path = os.path.join(upload_dir, unique_filename)
 
-    # Save file
-    try:
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(image.file, buffer)
-    except Exception as e:
-        logger.error(f"Failed to save game image: {e}")
-        raise HTTPException(status_code=500, detail="Failed to save image")
+    icon_url = None
+
+    if s3_storage.enabled:
+        # Upload to S3
+        try:
+            from io import BytesIO
+            file_obj = BytesIO(content)
+            icon_url = s3_storage.upload_file(
+                file_obj,
+                unique_filename,
+                folder="uploads/games",
+                content_type=image.content_type
+            )
+            if icon_url:
+                logger.info(f"Game image uploaded to S3: {icon_url}")
+            else:
+                raise Exception("S3 upload returned None")
+        except Exception as e:
+            logger.error(f"S3 upload failed: {e}, falling back to local storage")
+            # Fallback to local storage
+            upload_dir = "uploads/games"
+            os.makedirs(upload_dir, exist_ok=True)
+            file_path = os.path.join(upload_dir, unique_filename)
+            with open(file_path, "wb") as buffer:
+                buffer.write(content)
+            icon_url = f"/uploads/games/{unique_filename}"
+    else:
+        # Local storage (development/fallback)
+        upload_dir = "uploads/games"
+        os.makedirs(upload_dir, exist_ok=True)
+        file_path = os.path.join(upload_dir, unique_filename)
+        try:
+            with open(file_path, "wb") as buffer:
+                buffer.write(content)
+            icon_url = f"/uploads/games/{unique_filename}"
+            logger.warning(f"Game image saved locally (ephemeral): {icon_url}")
+        except Exception as e:
+            logger.error(f"Failed to save game image: {e}")
+            raise HTTPException(status_code=500, detail="Failed to save image")
 
     # Update game icon_url
-    icon_url = f"/uploads/games/{unique_filename}"
     db_game.icon_url = icon_url
     db.commit()
 
