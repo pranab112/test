@@ -58,11 +58,11 @@ export default function PlayerTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="rewards"
+        name="promotions"
         options={{
-          title: 'Rewards',
+          title: 'Promos',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="gift" size={size} color={color} />
+            <Ionicons name="megaphone" size={size} color={color} />
           ),
         }}
       />
@@ -76,6 +76,13 @@ export default function PlayerTabLayout() {
         }}
       />
       {/* Hidden screens - accessible via navigation but not shown in tab bar */}
+      <Tabs.Screen
+        name="rewards"
+        options={{
+          href: null, // Hide from tab bar - accessible via home quick action
+          title: 'Rewards',
+        }}
+      />
       <Tabs.Screen
         name="friends"
         options={{
@@ -95,13 +102,6 @@ export default function PlayerTabLayout() {
         options={{
           href: null, // Hide from tab bar
           title: 'Announcements',
-        }}
-      />
-      <Tabs.Screen
-        name="promotions"
-        options={{
-          href: null, // Hide from tab bar
-          title: 'Promotions',
         }}
       />
     </Tabs>
