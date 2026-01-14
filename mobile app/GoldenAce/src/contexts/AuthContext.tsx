@@ -57,6 +57,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const tokenResponse = await authApi.login(credentials);
+
+      // Check if user is admin - mobile app doesn't support admin access
+      if (tokenResponse.user_type === UserType.ADMIN) {
+        // Clear the stored token since we're rejecting admin login
+        await clearAllStorage();
+        throw { detail: 'Admin accounts cannot access the mobile app. Please use the web dashboard instead.' };
+      }
+
       setUserType(tokenResponse.user_type as UserType);
 
       const currentUser = await authApi.getCurrentUser();

@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, FontSize } from '../../src/constants/theme';
 
@@ -13,12 +14,13 @@ export default function ClientTabLayout() {
           backgroundColor: Colors.surface,
           borderTopColor: Colors.border,
           borderTopWidth: 1,
-          height: 60,
-          paddingBottom: 8,
+          height: Platform.OS === 'ios' ? 88 : 64,
+          paddingBottom: Platform.OS === 'ios' ? 28 : 8,
           paddingTop: 8,
         },
         tabBarLabelStyle: {
           fontSize: FontSize.xs,
+          fontWeight: '500',
         },
         headerStyle: {
           backgroundColor: Colors.surface,
@@ -33,7 +35,7 @@ export default function ClientTabLayout() {
         name="dashboard"
         options={{
           title: 'Dashboard',
-          headerTitle: 'GoldenAce - Client',
+          headerTitle: 'Green Palace',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="grid" size={size} color={color} />
           ),

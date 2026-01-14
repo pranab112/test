@@ -342,7 +342,7 @@ export default function ClientSettingsScreen() {
         textStyle={{ color: Colors.error }}
       />
 
-      <Text style={styles.versionText}>GoldenAce Client v1.0.0</Text>
+      <Text style={styles.versionText}>Green Palace v1.0.0</Text>
 
       {/* Password Change Modal */}
       <Modal

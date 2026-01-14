@@ -1,4 +1,4 @@
-// API Configuration for GoldenAce Mobile App
+// API Configuration for Green Palace Mobile App
 // Update BASE_URL to your production server URL when deploying
 // Environment variables are loaded from .env file with EXPO_PUBLIC_ prefix
 

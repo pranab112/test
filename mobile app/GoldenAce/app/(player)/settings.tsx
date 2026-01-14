@@ -95,7 +95,7 @@ export default function PlayerSettingsScreen() {
     if (referralCode?.code) {
       try {
         await Share.share({
-          message: `Join GoldenAce using my referral code: ${referralCode.code}`,
+          message: `Join Green Palace using my referral code: ${referralCode.code}`,
         });
       } catch (error) {
         console.error('Error sharing:', error);
@@ -325,6 +325,31 @@ export default function PlayerSettingsScreen() {
         </Card>
       </View>
 
+      {/* Quick Access */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Quick Access</Text>
+        <Card style={styles.settingsCard}>
+          <SettingsItem
+            icon="people"
+            title="Friends"
+            subtitle="View and manage your friends"
+            onPress={() => router.push('/(player)/friends')}
+          />
+          <SettingsItem
+            icon="globe"
+            title="Community"
+            subtitle="Posts and discussions"
+            onPress={() => router.push('/(player)/community')}
+          />
+          <SettingsItem
+            icon="megaphone"
+            title="Announcements"
+            subtitle="News and updates"
+            onPress={() => router.push('/(player)/broadcasts')}
+          />
+        </Card>
+      </View>
+
       {/* Referrals */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Referrals</Text>
@@ -399,7 +424,7 @@ export default function PlayerSettingsScreen() {
         textStyle={{ color: Colors.error }}
       />
 
-      <Text style={styles.versionText}>GoldenAce v1.0.0</Text>
+      <Text style={styles.versionText}>Green Palace v1.0.0</Text>
 
       {/* Password Change Modal */}
       <Modal
