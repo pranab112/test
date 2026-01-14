@@ -75,7 +75,7 @@ export default function ClientPlayersScreen() {
           {item.credits !== undefined && (
             <View style={styles.metaItem}>
               <Ionicons name="wallet" size={14} color={Colors.success} />
-              <Text style={styles.metaText}>${item.credits.toFixed(2)}</Text>
+              <Text style={styles.metaText}>{item.credits} GC</Text>
             </View>
           )}
         </View>

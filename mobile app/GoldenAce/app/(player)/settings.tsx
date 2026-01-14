@@ -293,8 +293,8 @@ export default function PlayerSettingsScreen() {
           </View>
           <View style={styles.statDivider} />
           <View style={styles.profileStat}>
-            <Text style={styles.statValue}>${user?.credits?.toFixed(2) || '0.00'}</Text>
-            <Text style={styles.statLabel}>Credits</Text>
+            <Text style={styles.statValue}>{user?.credits || 0} GC</Text>
+            <Text style={styles.statLabel}>Game Credits</Text>
           </View>
         </View>
       </Card>
@@ -680,7 +680,7 @@ export default function PlayerSettingsScreen() {
                       </View>
                       <View style={styles.referralStatItem}>
                         <Text style={[styles.referralStatValue, { color: Colors.primary }]}>
-                          ${referralStats.total_credits_earned.toFixed(2)}
+                          {referralStats.total_credits_earned} GC
                         </Text>
                         <Text style={styles.referralStatLabel}>Earned</Text>
                       </View>
@@ -740,7 +740,7 @@ export default function PlayerSettingsScreen() {
                         </View>
                         {referral.status === 'completed' && (
                           <Text style={styles.referralBonus}>
-                            +${referral.bonus_amount.toFixed(2)} earned
+                            +{referral.bonus_amount} GC earned
                           </Text>
                         )}
                       </Card>

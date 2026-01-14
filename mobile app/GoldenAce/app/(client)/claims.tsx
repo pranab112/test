@@ -115,7 +115,7 @@ export default function ClientClaimsScreen() {
           <Text style={styles.offerTitle}>{item.promotion_title || 'Promotion'}</Text>
           <Badge text="Pending" variant="warning" size="sm" />
         </View>
-        <Text style={styles.bonusAmount}>${(item.claimed_value || item.value || 0).toFixed(2)}</Text>
+        <Text style={styles.bonusAmount}>{item.claimed_value || item.value || 0} GC</Text>
       </View>
 
       <View style={styles.playerRow}>
@@ -166,7 +166,7 @@ export default function ClientClaimsScreen() {
         </View>
         <View style={styles.historyRight}>
           <Badge text={item.status.replace('_', ' ')} variant={getStatusVariant(item.status)} size="sm" />
-          <Text style={styles.historyAmount}>${(item.claimed_value || item.value || 0).toFixed(2)}</Text>
+          <Text style={styles.historyAmount}>{item.claimed_value || item.value || 0} GC</Text>
         </View>
       </View>
       <View style={styles.historyDates}>

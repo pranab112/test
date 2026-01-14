@@ -137,7 +137,7 @@ export default function PlayerRewardsScreen() {
         </View>
         <View style={styles.bonusContainer}>
           <Text style={styles.bonusLabel}>Bonus</Text>
-          <Text style={styles.bonusAmount}>${item.bonus_amount}</Text>
+          <Text style={styles.bonusAmount}>{item.bonus_amount} GC</Text>
         </View>
       </View>
       <Text style={styles.offerDescription}>{item.description}</Text>
@@ -176,7 +176,7 @@ export default function PlayerRewardsScreen() {
         <View style={styles.claimDetail}>
           <Ionicons name="wallet" size={16} color={Colors.primary} />
           <Text style={styles.claimDetailText}>
-            Bonus: ${item.bonus_amount}
+            Bonus: {item.bonus_amount} GC
           </Text>
         </View>
         <View style={styles.claimDetail}>

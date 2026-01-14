@@ -131,6 +131,16 @@ export default function ClientDashboardScreen() {
           </View>
           <Badge text="Client" variant="emerald" />
         </View>
+        <View style={styles.balanceRow}>
+          <View style={styles.balanceItem}>
+            <Ionicons name="wallet" size={20} color={Colors.success} />
+            <Text style={styles.balanceValue}>{user?.credits || 0} GC</Text>
+          </View>
+          <View style={styles.balanceItem}>
+            <Ionicons name="cash" size={20} color={Colors.warning} />
+            <Text style={styles.balanceValue}>${((user?.credits || 0) / 100).toFixed(2)}</Text>
+          </View>
+        </View>
       </Card>
 
       {/* Stats Grid */}
@@ -184,7 +194,7 @@ export default function ClientDashboardScreen() {
                   Player: {claim.player_username || claim.player_name || `#${claim.player_id}`}
                 </Text>
                 <Text style={styles.claimBonus}>
-                  ${(claim.claimed_value || claim.value || 0).toFixed(2)}
+                  {claim.claimed_value || claim.value || 0} GC
                 </Text>
               </View>
             </Card>
@@ -258,6 +268,21 @@ const styles = StyleSheet.create({
   companyName: {
     fontSize: FontSize.xl,
     fontWeight: FontWeight.bold,
+    color: Colors.text,
+  },
+  balanceRow: {
+    flexDirection: 'row',
+    marginTop: Spacing.md,
+    gap: Spacing.lg,
+  },
+  balanceItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  balanceValue: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.medium,
     color: Colors.text,
   },
   statsGrid: {

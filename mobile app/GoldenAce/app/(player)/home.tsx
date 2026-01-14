@@ -84,7 +84,11 @@ export default function PlayerHomeScreen() {
           </View>
           <View style={styles.stat}>
             <Ionicons name="wallet" size={20} color={Colors.success} />
-            <Text style={styles.statValue}>${user?.credits?.toFixed(2) || '0.00'}</Text>
+            <Text style={styles.statValue}>{user?.credits || 0} GC</Text>
+          </View>
+          <View style={styles.stat}>
+            <Ionicons name="cash" size={20} color={Colors.warning} />
+            <Text style={styles.statValue}>${((user?.credits || 0) / 100).toFixed(2)}</Text>
           </View>
         </View>
       </Card>
@@ -153,7 +157,7 @@ export default function PlayerHomeScreen() {
                 {offer.description}
               </Text>
               <Text style={styles.offerBonus}>
-                Bonus: ${offer.bonus_amount.toFixed(2)}
+                Bonus: {offer.bonus_amount} GC
               </Text>
             </Card>
           ))}
