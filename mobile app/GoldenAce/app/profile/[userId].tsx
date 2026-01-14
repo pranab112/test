@@ -14,10 +14,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { friendsApi } from '../../src/api/friends.api';
 import { reviewsApi } from '../../src/api/reviews.api';
 import { reportsApi } from '../../src/api/reports.api';
+import { gamesApi } from '../../src/api/games.api';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { Card, Avatar, Badge, Button, Loading } from '../../src/components/ui';
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../../src/constants/theme';
-import type { Friend, Review, ReviewStats, Report } from '../../src/types';
+import { getFileUrl } from '../../src/config/api.config';
+import { Image } from 'expo-image';
+import type { Friend, Review, ReviewStats, Report, Game } from '../../src/types';
 
 export default function ProfileScreen() {
   const { userId } = useLocalSearchParams<{ userId: string }>();
@@ -43,6 +46,9 @@ export default function ProfileScreen() {
   const [reportReason, setReportReason] = useState('');
   const [reportEvidence, setReportEvidence] = useState('');
   const [submittingReport, setSubmittingReport] = useState(false);
+
+  // Games state (for client profiles)
+  const [clientGames, setClientGames] = useState<Game[]>([]);
 
   const loadProfile = async () => {
     if (!userId) return;
@@ -83,6 +89,16 @@ export default function ProfileScreen() {
         setCanReview(canReviewData.can_review);
       } catch (err) {
         console.error('Error loading reviews:', err);
+      }
+
+      // Load games if this is a client profile and current user is a player
+      if (user?.user_type === 'player') {
+        try {
+          const games = await gamesApi.getGamesForClient(parseInt(userId));
+          setClientGames(games);
+        } catch (err) {
+          console.error('Error loading client games:', err);
+        }
       }
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -293,6 +309,54 @@ export default function ProfileScreen() {
                 <Text style={styles.statLabel}>Member Since</Text>
               </View>
             </View>
+          </Card>
+        )}
+
+        {/* Available Games - for client profiles viewed by players */}
+        {profile.user_type === 'client' && user?.user_type === 'player' && (
+          <Card style={styles.gamesCard}>
+            <View style={styles.gamesSectionHeader}>
+              <Ionicons name="game-controller" size={24} color={Colors.primary} />
+              <Text style={styles.sectionTitle}>Available Games</Text>
+              <Badge text={`${clientGames.length} games`} variant="default" size="sm" />
+            </View>
+
+            {clientGames.length === 0 ? (
+              <View style={styles.emptyGames}>
+                <Ionicons name="game-controller-outline" size={40} color={Colors.textMuted} />
+                <Text style={styles.emptyGamesText}>No games available</Text>
+              </View>
+            ) : (
+              <View style={styles.gamesGrid}>
+                {clientGames.slice(0, 6).map((game) => (
+                  <View key={game.id} style={styles.gameItem}>
+                    <Image
+                      source={{ uri: getFileUrl(game.icon_url) }}
+                      style={styles.gameImage}
+                      contentFit="cover"
+                      placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
+                    />
+                    <Text style={styles.gameItemName} numberOfLines={1}>
+                      {game.display_name}
+                    </Text>
+                    {game.category && (
+                      <Text style={styles.gameCategory} numberOfLines={1}>
+                        {game.category}
+                      </Text>
+                    )}
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {clientGames.length > 6 && (
+              <TouchableOpacity style={styles.viewAllGames}>
+                <Text style={styles.viewAllGamesText}>
+                  View all {clientGames.length} games
+                </Text>
+                <Ionicons name="chevron-forward" size={16} color={Colors.primary} />
+              </TouchableOpacity>
+            )}
           </Card>
         )}
 
@@ -781,5 +845,68 @@ const styles = StyleSheet.create({
   },
   reportSubmitButton: {
     backgroundColor: Colors.error,
+  },
+  // Games section styles
+  gamesCard: {
+    marginBottom: Spacing.md,
+  },
+  gamesSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  emptyGames: {
+    alignItems: 'center',
+    paddingVertical: Spacing.lg,
+  },
+  emptyGamesText: {
+    fontSize: FontSize.md,
+    color: Colors.textMuted,
+    marginTop: Spacing.sm,
+  },
+  gamesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+  },
+  gameItem: {
+    width: '31%',
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: BorderRadius.md,
+    overflow: 'hidden',
+  },
+  gameImage: {
+    width: '100%',
+    height: 60,
+    backgroundColor: Colors.border,
+  },
+  gameItemName: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.medium,
+    color: Colors.text,
+    paddingHorizontal: Spacing.xs,
+    paddingTop: Spacing.xs,
+  },
+  gameCategory: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    paddingHorizontal: Spacing.xs,
+    paddingBottom: Spacing.xs,
+  },
+  viewAllGames: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.md,
+    paddingTop: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    gap: Spacing.xs,
+  },
+  viewAllGamesText: {
+    fontSize: FontSize.sm,
+    color: Colors.primary,
+    fontWeight: FontWeight.medium,
   },
 });
