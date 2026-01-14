@@ -20,6 +20,14 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
+    // Debug logging in development
+    if (__DEV__) {
+      console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`, {
+        hasToken: !!token,
+        tokenPreview: token ? `${token.substring(0, 20)}...` : 'none',
+      });
+    }
+
     // If sending FormData, remove Content-Type header so axios can set it with proper boundary
     if (config.data instanceof FormData) {
       delete config.headers['Content-Type'];
@@ -37,6 +45,14 @@ api.interceptors.response.use(
   (response) => response.data, // Return data directly
   async (error: AxiosError) => {
     const requestUrl = error.config?.url || '';
+
+    // Debug logging in development
+    if (__DEV__) {
+      console.log(`[API ERROR] ${error.config?.method?.toUpperCase()} ${requestUrl}`, {
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+    }
 
     // Handle 401 Unauthorized - but NOT for login endpoints
     const isLoginEndpoint = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/token');
