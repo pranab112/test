@@ -154,13 +154,20 @@ export interface Message {
   id: number;
   sender_id: number;
   receiver_id: number;
-  message_type: 'text' | 'image' | 'voice' | 'promotion';
+  message_type: 'text' | 'image' | 'voice' | 'promotion' | 'credit_transfer';
   content?: string;
   file_url?: string;
   file_name?: string;
   duration?: number;
   is_read: boolean;
   created_at: string;
+  // Credit transfer specific fields
+  transfer_amount?: number;
+  transfer_type?: 'add' | 'deduct';
+  // Promotion specific fields
+  promotion_id?: number;
+  promotion_title?: string;
+  promotion_image_url?: string;
   sender?: {
     id: number;
     username: string;

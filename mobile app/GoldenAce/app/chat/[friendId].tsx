@@ -338,6 +338,18 @@ export default function ChatScreen() {
   // Load game credentials
   const handleOpenCredentials = async () => {
     setShowCredentialsModal(true);
+
+    // For clients, always load client games if not already loaded
+    if (user?.user_type === 'client' && friend?.user_type === 'player' && friendId && clientGames.length === 0) {
+      try {
+        const games = await gamesApi.getClientGames();
+        setClientGames(games);
+      } catch (error) {
+        console.error('Error loading client games:', error);
+      }
+    }
+
+    // Skip credential loading if already loaded
     if (gameCredentials.length > 0) return;
 
     setLoadingCredentials(true);
@@ -363,12 +375,22 @@ export default function ChatScreen() {
   };
 
   // Open add credential modal
-  const handleOpenAddCredential = () => {
+  const handleOpenAddCredential = async () => {
     setEditingCredential(null);
     setSelectedGameId(null);
     setCredentialUsername('');
     setCredentialPassword('');
     setShowAddCredentialModal(true);
+
+    // Make sure client games are loaded
+    if (user?.user_type === 'client' && clientGames.length === 0) {
+      try {
+        const games = await gamesApi.getClientGames();
+        setClientGames(games);
+      } catch (error) {
+        console.error('Error loading client games:', error);
+      }
+    }
   };
 
   // Open edit credential modal
@@ -520,6 +542,62 @@ export default function ChatScreen() {
               {item.duration ? formatDuration(item.duration) : '0:00'}
             </Text>
           </TouchableOpacity>
+        );
+      }
+
+      // Credit transfer message
+      if (item.message_type === 'credit_transfer') {
+        const isAddCredits = item.transfer_type === 'add';
+        return (
+          <View style={styles.transferMessage}>
+            <View style={[styles.transferIconBg, isAddCredits ? styles.transferAddBg : styles.transferDeductBg]}>
+              <Ionicons
+                name={isAddCredits ? 'arrow-down' : 'arrow-up'}
+                size={20}
+                color={isAddCredits ? Colors.success : Colors.error}
+              />
+            </View>
+            <View style={styles.transferInfo}>
+              <Text style={[styles.transferLabel, isOwnMessage ? styles.ownMessageText : styles.otherMessageText]}>
+                {isAddCredits ? 'Credits Added' : 'Credits Deducted'}
+              </Text>
+              <Text style={[styles.transferAmount, isAddCredits ? styles.transferAddText : styles.transferDeductText]}>
+                {isAddCredits ? '+' : '-'}{item.transfer_amount || 0} GC
+              </Text>
+            </View>
+            <View style={styles.transferBadge}>
+              <Ionicons name="wallet" size={14} color={Colors.primary} />
+            </View>
+          </View>
+        );
+      }
+
+      // Promotion message
+      if (item.message_type === 'promotion') {
+        return (
+          <View style={styles.promotionMessage}>
+            {item.promotion_image_url && (
+              <Image
+                source={{ uri: getFileUrl(item.promotion_image_url) }}
+                style={styles.promotionImage}
+                resizeMode="cover"
+              />
+            )}
+            <View style={styles.promotionContent}>
+              <View style={styles.promotionHeader}>
+                <Ionicons name="megaphone" size={16} color={Colors.primary} />
+                <Text style={styles.promotionTag}>Promotion</Text>
+              </View>
+              <Text style={[styles.promotionTitle, isOwnMessage ? styles.ownMessageText : styles.otherMessageText]}>
+                {item.promotion_title || item.content || 'New Promotion'}
+              </Text>
+              {item.content && item.promotion_title && (
+                <Text style={[styles.promotionDescription, isOwnMessage ? { color: Colors.background + 'cc' } : { color: Colors.textSecondary }]}>
+                  {item.content}
+                </Text>
+              )}
+            </View>
+          </View>
         );
       }
 
@@ -1524,5 +1602,78 @@ const styles = StyleSheet.create({
     color: Colors.background,
     fontSize: FontSize.md,
     fontWeight: FontWeight.semibold,
+  },
+  // Credit transfer message styles
+  transferMessage: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: 200,
+    gap: Spacing.sm,
+  },
+  transferIconBg: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  transferAddBg: {
+    backgroundColor: Colors.success + '20',
+  },
+  transferDeductBg: {
+    backgroundColor: Colors.error + '20',
+  },
+  transferInfo: {
+    flex: 1,
+  },
+  transferLabel: {
+    fontSize: FontSize.sm,
+    marginBottom: 2,
+  },
+  transferAmount: {
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
+  },
+  transferAddText: {
+    color: Colors.success,
+  },
+  transferDeductText: {
+    color: Colors.error,
+  },
+  transferBadge: {
+    padding: Spacing.xs,
+  },
+  // Promotion message styles
+  promotionMessage: {
+    minWidth: 220,
+    maxWidth: screenWidth * 0.65,
+  },
+  promotionImage: {
+    width: '100%',
+    height: 120,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.sm,
+  },
+  promotionContent: {
+    paddingHorizontal: Spacing.xs,
+  },
+  promotionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginBottom: Spacing.xs,
+  },
+  promotionTag: {
+    fontSize: FontSize.xs,
+    color: Colors.primary,
+    fontWeight: FontWeight.semibold,
+  },
+  promotionTitle: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+  },
+  promotionDescription: {
+    fontSize: FontSize.sm,
+    marginTop: Spacing.xs,
   },
 });
