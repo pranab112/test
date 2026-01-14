@@ -579,12 +579,27 @@ async def delete_profile_picture(
     if not user.profile_picture:
         raise HTTPException(status_code=404, detail="No profile picture to delete")
 
-    # Delete file from filesystem
-    if os.path.exists(user.profile_picture.lstrip('/')):
+    old_file_url = user.profile_picture
+
+    # Delete file from S3 or local filesystem
+    if s3_storage.is_s3_url(old_file_url):
+        # Delete from S3
         try:
-            os.remove(user.profile_picture.lstrip('/'))
-        except:
-            pass  # Continue even if file deletion fails
+            s3_storage.delete_file(old_file_url)
+            logger.info(f"Deleted profile picture from S3: {old_file_url}")
+        except Exception as e:
+            logger.error(f"Failed to delete profile picture from S3: {e}")
+            # Continue even if S3 deletion fails
+    elif old_file_url.startswith('/'):
+        # Delete from local filesystem
+        local_path = old_file_url.lstrip('/')
+        if os.path.exists(local_path):
+            try:
+                os.remove(local_path)
+                logger.info(f"Deleted local profile picture: {local_path}")
+            except Exception as e:
+                logger.error(f"Failed to delete local file: {e}")
+                # Continue even if file deletion fails
 
     # Remove from database
     user.profile_picture = None

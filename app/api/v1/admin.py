@@ -11,6 +11,7 @@ from app import models, schemas, auth
 from app.database import get_db
 from app.models import UserType, ReferralStatus, REFERRAL_BONUS_CREDITS
 from app.services import send_referral_bonus_email
+from app.s3_storage import s3_storage
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_, or_
 import logging
@@ -99,6 +100,77 @@ def get_dashboard_stats(
             "pending": pending_reports
         }
     }
+
+@router.get("/s3-diagnostics")
+def get_s3_diagnostics(
+    admin: models.User = Depends(get_admin_user)
+):
+    """
+    Get S3 storage configuration and connection status.
+    Use this endpoint to diagnose S3 upload issues.
+    """
+    # Get basic bucket info
+    bucket_info = s3_storage.get_bucket_info()
+
+    # Test connection if S3 is enabled
+    if s3_storage.enabled:
+        success, message = s3_storage.test_connection()
+        bucket_info['connection_test'] = {
+            'success': success,
+            'message': message
+        }
+
+    # Add environment info (without exposing secrets)
+    bucket_info['environment'] = os.getenv('ENVIRONMENT', 'development')
+    bucket_info['aws_region_configured'] = os.getenv('AWS_REGION', 'us-east-1')
+
+    return {
+        "status": "ok" if bucket_info.get('bucket_accessible', False) else "warning",
+        "s3_storage": bucket_info,
+        "recommendations": _get_s3_recommendations(bucket_info)
+    }
+
+
+def _get_s3_recommendations(bucket_info: dict) -> list:
+    """Generate recommendations based on S3 configuration status"""
+    recommendations = []
+
+    if not bucket_info.get('enabled'):
+        recommendations.append({
+            "level": "warning",
+            "message": "S3 storage is disabled. Files are stored locally and will be lost on deployment.",
+            "action": "Set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_S3_BUCKET_NAME environment variables."
+        })
+
+    if bucket_info.get('enabled') and not bucket_info.get('bucket_accessible'):
+        recommendations.append({
+            "level": "error",
+            "message": f"Cannot access S3 bucket: {bucket_info.get('bucket_error', 'Unknown error')}",
+            "action": "Check bucket name, region, and IAM permissions."
+        })
+
+    if bucket_info.get('acl_supported') is False:
+        recommendations.append({
+            "level": "info",
+            "message": "S3 bucket has ACLs disabled (Object Ownership = Bucket owner enforced).",
+            "action": "This is fine. Files are uploaded without ACL. Ensure bucket policy allows public read if needed."
+        })
+
+    if bucket_info.get('environment') == 'production' and not bucket_info.get('enabled'):
+        recommendations.append({
+            "level": "critical",
+            "message": "S3 is disabled in production! Files will be lost on each deployment.",
+            "action": "Configure S3 storage immediately for production use."
+        })
+
+    if not recommendations:
+        recommendations.append({
+            "level": "success",
+            "message": "S3 storage is properly configured and accessible.",
+            "action": None
+        })
+
+    return recommendations
 
 @router.get("/users")
 def get_all_users(
