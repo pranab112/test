@@ -79,4 +79,19 @@ export const friendsApi = {
       throw error;
     }
   },
+
+  // Search user by unique ID
+  searchByUniqueId: async (uniqueId: string): Promise<Friend | null> => {
+    try {
+      const response = await api.get(`${API_ENDPOINTS.FRIENDS.SEARCH}/unique`, {
+        params: { user_id: uniqueId },
+      });
+      return response as unknown as Friend;
+    } catch (error: any) {
+      if (error?.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  },
 };

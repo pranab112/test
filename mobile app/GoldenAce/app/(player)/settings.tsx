@@ -364,6 +364,24 @@ export default function PlayerSettingsScreen() {
             <Text style={styles.statLabel}>Game Credits</Text>
           </View>
         </View>
+        {user?.user_id && (
+          <TouchableOpacity
+            style={styles.uniqueIdContainer}
+            onPress={async () => {
+              await Clipboard.setStringAsync(user.user_id);
+              Alert.alert('Copied!', 'Your unique ID has been copied to clipboard. Share it with clients to add you.');
+            }}
+          >
+            <View style={styles.uniqueIdLeft}>
+              <Ionicons name="finger-print" size={20} color={Colors.primary} />
+              <View>
+                <Text style={styles.uniqueIdLabel}>Your Unique ID</Text>
+                <Text style={styles.uniqueIdValue}>{user.user_id}</Text>
+              </View>
+            </View>
+            <Ionicons name="copy-outline" size={20} color={Colors.textSecondary} />
+          </TouchableOpacity>
+        )}
       </Card>
 
       {/* Account Settings */}
@@ -414,9 +432,9 @@ export default function PlayerSettingsScreen() {
         <Text style={styles.sectionTitle}>Quick Access</Text>
         <Card style={styles.settingsCard}>
           <SettingsItem
-            icon="people"
-            title="Friends"
-            subtitle="View and manage your friends"
+            icon="business"
+            title="My Clients"
+            subtitle="View and add clients"
             onPress={() => router.push('/(player)/friends')}
           />
           <SettingsItem
@@ -1017,6 +1035,29 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     color: Colors.textSecondary,
     marginTop: Spacing.xs,
+  },
+  uniqueIdContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginTop: Spacing.md,
+  },
+  uniqueIdLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  uniqueIdLabel: {
+    fontSize: FontSize.xs,
+    color: Colors.textSecondary,
+  },
+  uniqueIdValue: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+    color: Colors.primary,
   },
   section: {
     marginBottom: Spacing.lg,

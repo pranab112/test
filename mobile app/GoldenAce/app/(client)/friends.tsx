@@ -16,10 +16,10 @@ import { Card, Avatar, Badge, Loading, EmptyState, Button } from '../../src/comp
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../../src/constants/theme';
 import type { Friend, FriendRequest } from '../../src/types';
 
-type TabType = 'clients' | 'requests' | 'add';
+type TabType = 'players' | 'requests' | 'add';
 
-export default function PlayerFriendsScreen() {
-  const [activeTab, setActiveTab] = useState<TabType>('clients');
+export default function ClientFriendsScreen() {
+  const [activeTab, setActiveTab] = useState<TabType>('players');
   const [friends, setFriends] = useState<Friend[]>([]);
   const [requests, setRequests] = useState<FriendRequest[]>([]);
   const [searchResult, setSearchResult] = useState<Friend | null>(null);
@@ -35,9 +35,9 @@ export default function PlayerFriendsScreen() {
         friendsApi.getFriends(),
         friendsApi.getPendingRequests(),
       ]);
-      // Filter to show only clients for players
-      const clientFriends = friendsData.filter(f => f.user_type === 'client');
-      setFriends(clientFriends);
+      // Filter to show only players for clients
+      const playerFriends = friendsData.filter(f => f.user_type === 'player');
+      setFriends(playerFriends);
       setRequests(requestsData);
     } catch (error) {
       console.error('Error loading friends:', error);
@@ -68,20 +68,20 @@ export default function PlayerFriendsScreen() {
       // First try searching by unique ID, then fall back to username search
       const result = await friendsApi.searchByUniqueId(uniqueIdQuery.trim());
       if (result) {
-        // Only show clients
-        if (result.user_type === 'client') {
+        // Only show players
+        if (result.user_type === 'player') {
           setSearchResult(result);
         } else {
-          Alert.alert('Not Found', 'No client found with this ID. Players can only add clients.');
+          Alert.alert('Not Found', 'No player found with this ID. Clients can only add players.');
         }
       } else {
         // Try username search as fallback
         const results = await friendsApi.searchUsers(uniqueIdQuery.trim());
-        const clientResult = results.find(u => u.user_type === 'client');
-        if (clientResult) {
-          setSearchResult(clientResult);
+        const playerResult = results.find(u => u.user_type === 'player');
+        if (playerResult) {
+          setSearchResult(playerResult);
         } else {
-          Alert.alert('Not Found', 'No client found with this ID or username.');
+          Alert.alert('Not Found', 'No player found with this ID or username.');
         }
       }
     } catch (error: any) {
@@ -96,7 +96,7 @@ export default function PlayerFriendsScreen() {
     setSendingRequest(true);
     try {
       await friendsApi.sendFriendRequest(userId);
-      Alert.alert('Success', 'Friend request sent to the client!');
+      Alert.alert('Success', 'Friend request sent to the player!');
       setSearchResult(null);
       setUniqueIdQuery('');
     } catch (error: any) {
@@ -127,8 +127,8 @@ export default function PlayerFriendsScreen() {
 
   const handleRemoveFriend = async (friendId: number) => {
     Alert.alert(
-      'Remove Client',
-      'Are you sure you want to remove this client from your friends?',
+      'Remove Player',
+      'Are you sure you want to remove this player from your friends?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -139,7 +139,7 @@ export default function PlayerFriendsScreen() {
               await friendsApi.removeFriend(friendId);
               setFriends((prev) => prev.filter((f) => f.id !== friendId));
             } catch (error: any) {
-              Alert.alert('Error', error?.detail || 'Failed to remove client');
+              Alert.alert('Error', error?.detail || 'Failed to remove player');
             }
           },
         },
@@ -147,7 +147,7 @@ export default function PlayerFriendsScreen() {
     );
   };
 
-  const renderClient = ({ item }: { item: Friend }) => (
+  const renderPlayer = ({ item }: { item: Friend }) => (
     <Card style={styles.friendCard}>
       <TouchableOpacity
         style={styles.friendContent}
@@ -166,8 +166,20 @@ export default function PlayerFriendsScreen() {
           {item.user_id && (
             <Text style={styles.friendUniqueId}>ID: {item.user_id}</Text>
           )}
+          <View style={styles.playerMeta}>
+            <View style={styles.metaItem}>
+              <Ionicons name="star" size={12} color={Colors.primary} />
+              <Text style={styles.metaText}>Level {item.player_level || 1}</Text>
+            </View>
+            {item.credits !== undefined && (
+              <View style={styles.metaItem}>
+                <Ionicons name="wallet" size={12} color={Colors.success} />
+                <Text style={styles.metaText}>{item.credits} GC</Text>
+              </View>
+            )}
+          </View>
         </View>
-        <Badge text="Client" variant="emerald" size="sm" />
+        <Badge text="Player" variant="default" size="sm" />
       </TouchableOpacity>
       <View style={styles.friendActions}>
         <TouchableOpacity
@@ -233,11 +245,11 @@ export default function PlayerFriendsScreen() {
       {/* Tabs */}
       <View style={styles.tabs}>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'clients' && styles.tabActive]}
-          onPress={() => setActiveTab('clients')}
+          style={[styles.tab, activeTab === 'players' && styles.tabActive]}
+          onPress={() => setActiveTab('players')}
         >
-          <Text style={[styles.tabText, activeTab === 'clients' && styles.tabTextActive]}>
-            My Clients ({friends.length})
+          <Text style={[styles.tabText, activeTab === 'players' && styles.tabTextActive]}>
+            My Players ({friends.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -258,17 +270,17 @@ export default function PlayerFriendsScreen() {
             color={activeTab === 'add' ? Colors.primary : Colors.textSecondary}
           />
           <Text style={[styles.tabText, activeTab === 'add' && styles.tabTextActive]}>
-            Add Client
+            Add Player
           </Text>
         </TouchableOpacity>
       </View>
 
       {/* Content */}
-      {activeTab === 'clients' && (
+      {activeTab === 'players' && (
         <FlatList
           data={friends}
           keyExtractor={(item) => item.id.toString()}
-          renderItem={renderClient}
+          renderItem={renderPlayer}
           contentContainerStyle={styles.list}
           refreshControl={
             <RefreshControl
@@ -279,10 +291,10 @@ export default function PlayerFriendsScreen() {
           }
           ListEmptyComponent={
             <EmptyState
-              icon="business-outline"
-              title="No Clients Yet"
-              description="Add a client using their unique ID to start playing"
-              actionLabel="Add Client"
+              icon="people-outline"
+              title="No Players Yet"
+              description="Add players using their unique ID to manage them"
+              actionLabel="Add Player"
               onAction={() => setActiveTab('add')}
             />
           }
@@ -299,7 +311,7 @@ export default function PlayerFriendsScreen() {
             <EmptyState
               icon="mail-outline"
               title="No Pending Requests"
-              description="Friend requests will appear here"
+              description="Friend requests from players will appear here"
             />
           }
         />
@@ -308,15 +320,15 @@ export default function PlayerFriendsScreen() {
       {activeTab === 'add' && (
         <View style={styles.addContainer}>
           <View style={styles.addHeader}>
-            <Ionicons name="business" size={48} color={Colors.primary} />
-            <Text style={styles.addTitle}>Add a Client</Text>
+            <Ionicons name="person-add" size={48} color={Colors.primary} />
+            <Text style={styles.addTitle}>Add a Player</Text>
             <Text style={styles.addDescription}>
-              Enter the client's unique ID to send them a friend request
+              Enter the player's unique ID to send them a friend request
             </Text>
           </View>
 
           <View style={styles.searchBox}>
-            <Text style={styles.searchLabel}>Client's Unique ID</Text>
+            <Text style={styles.searchLabel}>Player's Unique ID</Text>
             <View style={styles.searchInputRow}>
               <TextInput
                 style={styles.searchInput}
@@ -346,7 +358,7 @@ export default function PlayerFriendsScreen() {
           {searchResult && (
             <Card style={styles.resultCard}>
               <View style={styles.resultHeader}>
-                <Text style={styles.resultTitle}>Client Found!</Text>
+                <Text style={styles.resultTitle}>Player Found!</Text>
               </View>
               <View style={styles.resultContent}>
                 <Avatar
@@ -362,6 +374,12 @@ export default function PlayerFriendsScreen() {
                   {searchResult.user_id && (
                     <Text style={styles.resultUniqueId}>ID: {searchResult.user_id}</Text>
                   )}
+                  <View style={styles.playerMeta}>
+                    <View style={styles.metaItem}>
+                      <Ionicons name="star" size={12} color={Colors.primary} />
+                      <Text style={styles.metaText}>Level {searchResult.player_level || 1}</Text>
+                    </View>
+                  </View>
                 </View>
               </View>
               <View style={styles.resultActions}>
@@ -387,7 +405,7 @@ export default function PlayerFriendsScreen() {
           <View style={styles.helpBox}>
             <Ionicons name="information-circle" size={20} color={Colors.info} />
             <Text style={styles.helpText}>
-              Ask your client for their unique ID. They can find it in their profile settings.
+              Ask your player for their unique ID. They can find it in their profile settings.
             </Text>
           </View>
         </View>
@@ -456,6 +474,20 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     marginTop: 2,
   },
+  playerMeta: {
+    flexDirection: 'row',
+    marginTop: Spacing.xs,
+    gap: Spacing.md,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  metaText: {
+    fontSize: FontSize.xs,
+    color: Colors.textSecondary,
+  },
   friendActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -486,7 +518,7 @@ const styles = StyleSheet.create({
   acceptButton: {
     flex: 1,
   },
-  // Add Client Tab Styles
+  // Add Player Tab Styles
   addContainer: {
     flex: 1,
     padding: Spacing.lg,

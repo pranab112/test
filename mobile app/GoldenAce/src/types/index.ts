@@ -117,6 +117,7 @@ export interface OfferClaim {
 // Friend Types
 export interface Friend {
   id: number;
+  user_id?: string; // Unique ID for searching
   username: string;
   full_name: string;
   email?: string;

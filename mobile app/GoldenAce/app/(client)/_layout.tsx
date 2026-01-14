@@ -82,6 +82,13 @@ export default function ClientTabLayout() {
         }}
       />
       <Tabs.Screen
+        name="friends"
+        options={{
+          href: null, // Hide from tab bar - accessible via Players or Settings
+          title: 'Add Player',
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: 'More',

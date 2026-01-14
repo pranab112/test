@@ -163,8 +163,10 @@ export default function ClientPlayersScreen() {
             description={
               searchQuery
                 ? "No players match your search"
-                : "Players who add you as a friend will appear here"
+                : "Add players using their unique ID"
             }
+            actionLabel="Add Player"
+            onAction={() => router.push('/(client)/friends')}
           />
         }
         ListHeaderComponent={
@@ -173,6 +175,15 @@ export default function ClientPlayersScreen() {
           ) : null
         }
       />
+
+      {/* Floating Add Button */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => router.push('/(client)/friends')}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="person-add" size={24} color={Colors.background} />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -278,5 +289,21 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceLight,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  fab: {
+    position: 'absolute',
+    right: Spacing.lg,
+    bottom: Spacing.lg,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
 });

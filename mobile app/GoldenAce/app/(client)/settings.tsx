@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { settingsApi } from '../../src/api/settings.api';
 import { Card, Avatar, Button, Badge, Input } from '../../src/components/ui';
@@ -226,6 +227,24 @@ export default function ClientSettingsScreen() {
             </View>
           </View>
         </View>
+        {user?.user_id && (
+          <TouchableOpacity
+            style={styles.uniqueIdContainer}
+            onPress={async () => {
+              await Clipboard.setStringAsync(user.user_id);
+              Alert.alert('Copied!', 'Your unique ID has been copied to clipboard. Share it with players to add you.');
+            }}
+          >
+            <View style={styles.uniqueIdLeft}>
+              <Ionicons name="finger-print" size={20} color={Colors.primary} />
+              <View>
+                <Text style={styles.uniqueIdLabel}>Your Unique ID</Text>
+                <Text style={styles.uniqueIdValue}>{user.user_id}</Text>
+              </View>
+            </View>
+            <Ionicons name="copy-outline" size={20} color={Colors.textSecondary} />
+          </TouchableOpacity>
+        )}
       </Card>
 
       {/* Business Settings */}
@@ -254,6 +273,25 @@ export default function ClientSettingsScreen() {
             title="Analytics"
             subtitle="View detailed reports"
             onPress={() => Alert.alert('Coming Soon', 'Analytics will be available soon')}
+          />
+        </Card>
+      </View>
+
+      {/* Players */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Players</Text>
+        <Card style={styles.settingsCard}>
+          <SettingsItem
+            icon="person-add"
+            title="Add Player"
+            subtitle="Add a player using their unique ID"
+            onPress={() => router.push('/(client)/friends')}
+          />
+          <SettingsItem
+            icon="people"
+            title="My Players"
+            subtitle="View and manage your players"
+            onPress={() => router.push('/(client)/players')}
           />
         </Card>
       </View>
@@ -585,6 +623,29 @@ const styles = StyleSheet.create({
   profileEmail: {
     fontSize: FontSize.sm,
     color: Colors.textMuted,
+  },
+  uniqueIdContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginTop: Spacing.md,
+  },
+  uniqueIdLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  uniqueIdLabel: {
+    fontSize: FontSize.xs,
+    color: Colors.textSecondary,
+  },
+  uniqueIdValue: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+    color: Colors.primary,
   },
   section: {
     marginBottom: Spacing.lg,
