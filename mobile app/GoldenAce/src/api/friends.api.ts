@@ -10,7 +10,7 @@ export const friendsApi = {
   // Get all friends
   getFriends: async (): Promise<Friend[]> => {
     try {
-      const response = await api.get(API_ENDPOINTS.FRIENDS.BASE + '/');
+      const response = await api.get(API_ENDPOINTS.FRIENDS.LIST);
       const data = response as unknown as FriendsResponse;
       return data.friends || [];
     } catch (error) {
