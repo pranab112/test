@@ -212,7 +212,7 @@ async def update_my_games(
     invalid_ids = set(games.game_ids) - valid_game_ids
 
     if invalid_ids:
-        raise HTTPException(status_code=400, detail=f"Invalid game IDs: {invalid_ids}")
+        raise HTTPException(status_code=400, detail=f"Invalid game IDs: {list(invalid_ids)}. These games may have been removed or deactivated.")
 
     # Deactivate all existing selections
     db.query(models.ClientGame).filter(

@@ -117,7 +117,7 @@ export function ClientsSection() {
       label: 'Rating',
       render: (client: ClientWithDetails) => (
         <div className="flex items-center gap-1">
-          <MdStar className="text-gold-500" />
+          <MdStar className="text-emerald-500" />
           <span className="font-medium">
             {client.reviewStats?.average_rating
               ? `${client.reviewStats.average_rating.toFixed(1)}/5`
@@ -145,7 +145,7 @@ export function ClientsSection() {
         <div className="flex gap-2">
           <button
             onClick={() => handleViewGames(client)}
-            className="text-gold-500 hover:text-gold-400 text-sm font-medium"
+            className="text-emerald-500 hover:text-emerald-400 text-sm font-medium"
           >
             View Games
           </button>
@@ -163,7 +163,7 @@ export function ClientsSection() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gold-500">Loading clients...</div>
+        <div className="text-emerald-500">Loading clients...</div>
       </div>
     );
   }
@@ -172,21 +172,21 @@ export function ClientsSection() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gold-500 mb-2">Available Clients</h1>
+          <h1 className="text-3xl font-bold text-emerald-500 mb-2">Available Clients</h1>
           <p className="text-gray-400">Browse clients and explore their game libraries</p>
         </div>
         <button
           type="button"
           onClick={loadClients}
-          className="bg-dark-300 hover:bg-dark-400 text-gold-500 p-3 rounded-lg transition-colors"
+          className="bg-dark-300 hover:bg-dark-400 text-emerald-500 p-3 rounded-lg transition-colors"
           title="Refresh"
         >
           <MdRefresh size={20} />
         </button>
       </div>
 
-      <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-        <h2 className="text-xl font-bold text-gold-500 mb-4">Client Friends</h2>
+      <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
+        <h2 className="text-xl font-bold text-emerald-500 mb-4">Client Friends</h2>
         {clients.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-400 mb-2">No client friends yet</p>
@@ -256,13 +256,13 @@ function GamesLibrary({
               online={client.is_online}
             />
             <div>
-              <h3 className="text-xl font-bold text-gold-500">{client.full_name || client.username}</h3>
+              <h3 className="text-xl font-bold text-emerald-500">{client.full_name || client.username}</h3>
               <p className="text-gray-400 text-sm">@{client.username}</p>
             </div>
           </div>
           <div className="text-right">
             <div className="flex items-center gap-1 mb-1">
-              <MdStar className="text-gold-500 text-xl" />
+              <MdStar className="text-emerald-500 text-xl" />
               <span className="font-bold text-white text-lg">
                 {client.reviewStats?.average_rating
                   ? `${client.reviewStats.average_rating.toFixed(1)}/5`
@@ -294,7 +294,7 @@ function GamesLibrary({
       </div>
 
       <div>
-        <h4 className="text-lg font-bold text-gold-500 mb-4">Available Games</h4>
+        <h4 className="text-lg font-bold text-emerald-500 mb-4">Available Games</h4>
         {client.games.length === 0 ? (
           <div className="text-center py-12 bg-dark-300 rounded-lg">
             <p className="text-gray-400">No games available</p>
@@ -332,7 +332,7 @@ function GameCard({ game, clientName }: { game: Game; clientName: string }) {
   const [imageError, setImageError] = useState(false);
 
   return (
-    <div className="bg-dark-300 rounded-lg overflow-hidden border-2 border-gold-700 hover:shadow-gold transition-all transform hover:scale-105 cursor-pointer">
+    <div className="bg-dark-300 rounded-lg overflow-hidden border-2 border-emerald-700 hover:shadow-green transition-all transform hover:scale-105 cursor-pointer">
       <div className="aspect-square bg-dark-400 relative overflow-hidden">
         {imageError || !game.icon_url ? (
           <div className="absolute inset-0 flex items-center justify-center text-gray-500">

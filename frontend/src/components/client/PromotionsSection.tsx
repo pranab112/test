@@ -254,7 +254,7 @@ export function PromotionsSection() {
   };
 
   const promotionTypeColors: Record<string, string> = {
-    gc_bonus: 'bg-gold-600',
+    gc_bonus: 'bg-emerald-600',
   };
 
   const getPromotionTypeLabel = (type: string) => {
@@ -267,7 +267,7 @@ export function PromotionsSection() {
   if (dataLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gold-500" />
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-emerald-500" />
       </div>
     );
   }
@@ -276,12 +276,12 @@ export function PromotionsSection() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gold-500 mb-2">Promotions</h1>
+          <h1 className="text-3xl font-bold text-emerald-500 mb-2">Promotions</h1>
           <p className="text-gray-400">Create and manage your promotional offers</p>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="bg-gold-600 hover:bg-gold-700 text-dark-700 px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+          className="bg-emerald-600 hover:bg-emerald-700 text-dark-700 px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
         >
           <MdAdd size={20} />
           Create Promotion
@@ -294,7 +294,7 @@ export function PromotionsSection() {
           title="Active Promotions"
           value={stats.active}
           icon={<MdCardGiftcard />}
-          color="gold"
+          color="green"
         />
         <StatCard
           title="Pending Approvals"
@@ -340,15 +340,15 @@ export function PromotionsSection() {
       )}
 
       {/* Tab Filters */}
-      <div className="flex gap-2 border-b border-gold-700">
+      <div className="flex gap-2 border-b border-emerald-700">
         {(['active', 'pending', 'all'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`px-6 py-3 font-medium capitalize transition-colors relative ${
               activeTab === tab
-                ? 'text-gold-500 border-b-2 border-gold-500'
-                : 'text-gray-400 hover:text-gold-500'
+                ? 'text-emerald-500 border-b-2 border-emerald-500'
+                : 'text-gray-400 hover:text-emerald-500'
             }`}
           >
             {tab === 'pending' ? 'Pending Approvals' : tab}
@@ -366,7 +366,7 @@ export function PromotionsSection() {
         {activeTab === 'pending' ? (
           // Pending Claims List
           pendingClaims.length === 0 ? (
-            <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-12 text-center">
+            <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-12 text-center">
               <MdCheckCircle className="text-6xl text-green-500 mx-auto mb-4" />
               <p className="text-gray-400">No pending claims to review</p>
             </div>
@@ -374,7 +374,7 @@ export function PromotionsSection() {
             pendingClaims.map((claim) => (
               <div
                 key={claim.claim_id}
-                className="bg-dark-200 border-2 border-yellow-500 rounded-lg p-6 hover:shadow-gold transition-all"
+                className="bg-dark-200 border-2 border-yellow-500 rounded-lg p-6 hover:shadow-green transition-all"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -391,7 +391,7 @@ export function PromotionsSection() {
                         Level: <span className="text-white font-medium">{claim.player_level}</span>
                       </span>
                       <span>
-                        Value: <span className="text-gold-500 font-bold">{claim.value} GC</span>
+                        Value: <span className="text-emerald-500 font-bold">{claim.value} GC</span>
                       </span>
                       <span>
                         Claimed: <span className="text-white">{new Date(claim.claimed_at).toLocaleDateString()}</span>
@@ -421,7 +421,7 @@ export function PromotionsSection() {
         ) : (
           // Promotions List
           filteredPromotions.length === 0 ? (
-            <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-12 text-center">
+            <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-12 text-center">
               <MdCardGiftcard className="text-6xl text-gray-500 mx-auto mb-4" />
               <p className="text-gray-400">No promotions found</p>
             </div>
@@ -429,7 +429,7 @@ export function PromotionsSection() {
             filteredPromotions.map((promo) => (
               <div
                 key={promo.id}
-                className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6 hover:shadow-gold transition-all"
+                className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6 hover:shadow-green transition-all"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
@@ -503,7 +503,7 @@ export function PromotionsSection() {
                     </div>
                     <div className="w-full bg-dark-400 rounded-full h-2">
                       <div
-                        className={`${promotionTypeColors[promo.promotion_type] || 'bg-gold-600'} h-2 rounded-full transition-all`}
+                        className={`${promotionTypeColors[promo.promotion_type] || 'bg-emerald-600'} h-2 rounded-full transition-all`}
                         style={{
                           width: `${getProgressPercentage(promo.used_budget, promo.total_budget)}%`,
                         }}
@@ -542,13 +542,13 @@ export function PromotionsSection() {
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Enter promotion description..."
               rows={3}
-              className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-gold-500"
+              className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">Promotion Type</label>
-            <div className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg border border-gold-600">
-              <span className="text-gold-500 font-medium">GC Bonus</span>
+            <div className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg border border-emerald-600">
+              <span className="text-emerald-500 font-medium">GC Bonus</span>
               <span className="text-gray-400 ml-2">(Game Credits)</span>
             </div>
           </div>
@@ -606,7 +606,7 @@ export function PromotionsSection() {
               onChange={(e) => setFormData({ ...formData, terms: e.target.value })}
               placeholder="Enter terms and conditions..."
               rows={2}
-              className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-gold-500"
+              className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
           <div className="bg-blue-900/30 border border-blue-500 rounded-lg p-3 space-y-2">
@@ -660,7 +660,7 @@ export function PromotionsSection() {
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={3}
-              className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-gold-500"
+              className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -715,7 +715,7 @@ export function PromotionsSection() {
               onChange={(e) => setFormData({ ...formData, terms: e.target.value })}
               placeholder="Enter terms and conditions..."
               rows={2}
-              className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-gold-500"
+              className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
           <div className="bg-yellow-900/30 border border-yellow-500 rounded-lg p-3">

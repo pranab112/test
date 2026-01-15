@@ -10,10 +10,12 @@ import { friendsApi, type FriendDetails, type FriendRequest } from '@/api/endpoi
 import { reportsApi } from '@/api/endpoints/reports.api';
 import { formatDistanceToNow } from 'date-fns';
 import { useWebSocket } from '@/contexts/WebSocketContext';
+import { useDashboard } from '@/contexts/DashboardContext';
 
 type FriendsTab = 'friends' | 'received' | 'sent';
 
 export function FriendsSection() {
+  const { openChatWith } = useDashboard();
   const [showAddFriendModal, setShowAddFriendModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<FriendDetails[]>([]);
@@ -190,9 +192,14 @@ export function FriendsSection() {
     }
   };
 
-  const handleMessageFriend = (_friendId: number, username: string) => {
-    // TODO: Navigate to messages section with this friend selected
-    toast.success(`Opening chat with ${username}...`);
+  const handleMessageFriend = (friend: FriendDetails) => {
+    openChatWith({
+      id: friend.id,
+      username: friend.username,
+      full_name: friend.full_name,
+      profile_picture: friend.profile_picture,
+      is_online: isFriendOnline(friend.id, friend.is_online),
+    });
   };
 
   const openReportModal = async (friend: FriendDetails) => {
@@ -246,7 +253,7 @@ export function FriendsSection() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gold-500">Loading friends...</div>
+        <div className="text-emerald-500">Loading friends...</div>
       </div>
     );
   }
@@ -255,14 +262,14 @@ export function FriendsSection() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gold-500 mb-2">Friends</h1>
+          <h1 className="text-3xl font-bold text-emerald-500 mb-2">Friends</h1>
           <p className="text-gray-400">Manage your gaming network</p>
         </div>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={loadData}
-            className="bg-dark-300 hover:bg-dark-400 text-gold-500 p-3 rounded-lg transition-colors"
+            className="bg-dark-300 hover:bg-dark-400 text-emerald-500 p-3 rounded-lg transition-colors"
             title="Refresh"
           >
             <MdRefresh size={20} />
@@ -270,7 +277,7 @@ export function FriendsSection() {
           <button
             type="button"
             onClick={() => setShowAddFriendModal(true)}
-            className="bg-gold-600 hover:bg-gold-700 text-dark-700 px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+            className="bg-emerald-600 hover:bg-emerald-700 text-dark-700 px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
           >
             <MdPersonAdd size={20} />
             Add Friend
@@ -285,14 +292,14 @@ export function FriendsSection() {
           onClick={() => setActiveTab('friends')}
           className={`px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 ${
             activeTab === 'friends'
-              ? 'bg-gold-600 text-dark-700'
+              ? 'bg-emerald-600 text-dark-700'
               : 'bg-dark-300 text-gray-400 hover:bg-dark-400'
           }`}
         >
           <MdPersonAdd size={18} />
           My Friends
           {friends.length > 0 && (
-            <span className="bg-dark-700 text-gold-500 px-2 py-0.5 rounded-full text-xs">
+            <span className="bg-dark-700 text-emerald-500 px-2 py-0.5 rounded-full text-xs">
               {friends.length}
             </span>
           )}
@@ -302,7 +309,7 @@ export function FriendsSection() {
           onClick={() => setActiveTab('received')}
           className={`px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 ${
             activeTab === 'received'
-              ? 'bg-gold-600 text-dark-700'
+              ? 'bg-emerald-600 text-dark-700'
               : 'bg-dark-300 text-gray-400 hover:bg-dark-400'
           }`}
         >
@@ -319,7 +326,7 @@ export function FriendsSection() {
           onClick={() => setActiveTab('sent')}
           className={`px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 ${
             activeTab === 'sent'
-              ? 'bg-gold-600 text-dark-700'
+              ? 'bg-emerald-600 text-dark-700'
               : 'bg-dark-300 text-gray-400 hover:bg-dark-400'
           }`}
         >
@@ -335,8 +342,8 @@ export function FriendsSection() {
 
       {/* My Friends Tab */}
       {activeTab === 'friends' && (
-        <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-          <h2 className="text-xl font-bold text-gold-500 mb-4">
+        <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
+          <h2 className="text-xl font-bold text-emerald-500 mb-4">
             My Friends ({friends.length})
           </h2>
           {friends.length === 0 ? (
@@ -346,7 +353,7 @@ export function FriendsSection() {
               <button
                 type="button"
                 onClick={() => setShowAddFriendModal(true)}
-                className="mt-4 bg-gold-600 hover:bg-gold-700 text-dark-700 px-6 py-2 rounded-lg font-medium transition-colors"
+                className="mt-4 bg-emerald-600 hover:bg-emerald-700 text-dark-700 px-6 py-2 rounded-lg font-medium transition-colors"
               >
                 Find Players
               </button>
@@ -385,7 +392,7 @@ export function FriendsSection() {
                   <div className="flex gap-2">
                     <button
                       type="button"
-                      onClick={() => handleMessageFriend(friend.id, friend.username)}
+                      onClick={() => handleMessageFriend(friend)}
                       className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1"
                     >
                       <MdMessage size={16} />
@@ -417,8 +424,8 @@ export function FriendsSection() {
 
       {/* Received Requests Tab */}
       {activeTab === 'received' && (
-        <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-          <h2 className="text-xl font-bold text-gold-500 mb-4">
+        <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
+          <h2 className="text-xl font-bold text-emerald-500 mb-4">
             Received Requests ({receivedRequests.length})
           </h2>
           {receivedRequests.length === 0 ? (
@@ -479,8 +486,8 @@ export function FriendsSection() {
 
       {/* Sent Requests Tab */}
       {activeTab === 'sent' && (
-        <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-          <h2 className="text-xl font-bold text-gold-500 mb-4">
+        <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
+          <h2 className="text-xl font-bold text-emerald-500 mb-4">
             Sent Requests ({sentRequests.length})
           </h2>
           {sentRequests.length === 0 ? (
@@ -490,7 +497,7 @@ export function FriendsSection() {
               <button
                 type="button"
                 onClick={() => setShowAddFriendModal(true)}
-                className="mt-4 bg-gold-600 hover:bg-gold-700 text-dark-700 px-6 py-2 rounded-lg font-medium transition-colors"
+                className="mt-4 bg-emerald-600 hover:bg-emerald-700 text-dark-700 px-6 py-2 rounded-lg font-medium transition-colors"
               >
                 Find Players
               </button>
@@ -655,7 +662,7 @@ export function FriendsSection() {
                 onChange={(e) => setReportReason(e.target.value)}
                 placeholder="Describe why you are reporting this user..."
                 rows={4}
-                className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-gold-500"
+                className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
 

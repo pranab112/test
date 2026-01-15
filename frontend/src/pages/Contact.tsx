@@ -50,7 +50,7 @@ export default function Contact() {
       {/* Header */}
       <header className="p-6">
         <div className="container mx-auto flex justify-between items-center">
-          <Link to={ROUTES.LANDING} className="text-2xl font-bold text-gold-500 hover:text-gold-400 transition-colors">
+          <Link to={ROUTES.LANDING} className="text-2xl font-bold text-emerald-500 hover:text-emerald-400 transition-colors">
             Casino Royal
           </Link>
           <Link to={ROUTES.LOGIN}>
@@ -129,17 +129,17 @@ export default function Contact() {
                 <h3 className="text-lg font-semibold text-white mb-4">Other Ways to Reach Us</h3>
                 <div className="space-y-3 text-gray-300">
                   <p>
-                    <span className="text-gold-500 font-medium">Email:</span>{' '}
-                    <a href="mailto:support@casinoroyal.com" className="hover:text-gold-400 transition-colors">
+                    <span className="text-emerald-500 font-medium">Email:</span>{' '}
+                    <a href="mailto:support@casinoroyal.com" className="hover:text-emerald-400 transition-colors">
                       support@casinoroyal.com
                     </a>
                   </p>
                   <p>
-                    <span className="text-gold-500 font-medium">Business Hours:</span>{' '}
+                    <span className="text-emerald-500 font-medium">Business Hours:</span>{' '}
                     Monday - Friday, 9:00 AM - 6:00 PM (EST)
                   </p>
                   <p>
-                    <span className="text-gold-500 font-medium">Response Time:</span>{' '}
+                    <span className="text-emerald-500 font-medium">Response Time:</span>{' '}
                     We typically respond within 24-48 hours
                   </p>
                 </div>
@@ -149,7 +149,7 @@ export default function Contact() {
 
           {/* Back to home link */}
           <div className="text-center mt-6">
-            <Link to={ROUTES.LANDING} className="text-gold-500 hover:text-gold-400 transition-colors">
+            <Link to={ROUTES.LANDING} className="text-emerald-500 hover:text-emerald-400 transition-colors">
               ← Back to Home
             </Link>
           </div>

@@ -25,7 +25,8 @@ from app.api.v1 import (
     contact,
     tickets,
     referrals,
-    community
+    community,
+    settings
 )
 
 # Create main API v1 router
@@ -54,3 +55,4 @@ api_router.include_router(contact.router, tags=["contact"])
 api_router.include_router(tickets.router, tags=["support-tickets"])
 api_router.include_router(referrals.router, tags=["referrals"])
 api_router.include_router(community.router, tags=["community"])
+api_router.include_router(settings.router, tags=["settings"])

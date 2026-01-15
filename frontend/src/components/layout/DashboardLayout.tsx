@@ -51,19 +51,19 @@ export function DashboardLayout({ children, activeSection, onSectionChange }: Da
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto">
         {/* Mobile Header */}
-        <div className="lg:hidden sticky top-0 z-40 bg-dark-200 border-b-2 border-gold-600 px-4 py-3 flex items-center justify-between">
+        <div className="lg:hidden sticky top-0 z-40 bg-dark-200 border-b-2 border-emerald-600 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="text-gold-500 hover:text-gold-400 transition-colors"
+              className="text-emerald-500 hover:text-emerald-400 transition-colors"
             >
               {isMobileMenuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
             </button>
             <div className="flex items-center gap-2">
-              <GiCardAceSpades className="text-2xl text-gold-500" />
+              <GiCardAceSpades className="text-2xl text-emerald-500" />
               <div>
-                <h2 className="text-gold-500 font-bold text-sm tracking-wider">GOLDEN ACE</h2>
-                <p className="text-xs text-gold-700 uppercase">{user?.user_type} Portal</p>
+                <h2 className="text-emerald-500 font-bold text-sm tracking-wider">GOLDEN ACE</h2>
+                <p className="text-xs text-emerald-700 uppercase">{user?.user_type} Portal</p>
               </div>
             </div>
           </div>

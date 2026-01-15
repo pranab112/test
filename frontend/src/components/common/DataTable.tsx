@@ -23,16 +23,16 @@ export function DataTable<T extends { id?: number | string }>({
   onRowClick
 }: DataTableProps<T>) {
   return (
-    <div className="bg-dark-200 border border-gold-700 rounded-lg overflow-hidden">
+    <div className="bg-dark-200 border border-emerald-700 rounded-lg overflow-hidden">
       {/* Desktop Table View */}
       <div className="hidden sm:block overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-dark-300 border-b border-gold-700">
+          <thead className="bg-dark-300 border-b border-emerald-700">
             <tr>
               {columns.map((column, index) => (
                 <th
                   key={String(column.key) + index}
-                  className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gold-500 uppercase tracking-wider whitespace-nowrap"
+                  className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-emerald-500 uppercase tracking-wider whitespace-nowrap"
                   style={{ width: column.width }}
                 >
                   {column.label}
@@ -45,7 +45,7 @@ export function DataTable<T extends { id?: number | string }>({
               <tr>
                 <td colSpan={columns.length} className="px-6 py-12 text-center">
                   <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gold-500"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
                     <span className="ml-3 text-gray-400">Loading...</span>
                   </div>
                 </td>
@@ -79,7 +79,7 @@ export function DataTable<T extends { id?: number | string }>({
       <div className="sm:hidden">
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gold-500"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
             <span className="ml-3 text-gray-400">Loading...</span>
           </div>
         ) : data.length === 0 ? (
@@ -96,7 +96,7 @@ export function DataTable<T extends { id?: number | string }>({
               >
                 {columns.map((column, colIndex) => (
                   <div key={String(column.key) + colIndex} className="flex justify-between items-start">
-                    <span className="text-xs font-medium text-gold-500 uppercase">{column.label}:</span>
+                    <span className="text-xs font-medium text-emerald-500 uppercase">{column.label}:</span>
                     <span className="text-sm text-gray-300 text-right ml-2">
                       {column.render ? column.render(item) : String(item[column.key as keyof T] ?? '')}
                     </span>

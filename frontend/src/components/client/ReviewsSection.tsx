@@ -275,7 +275,7 @@ export function ReviewsSection() {
             className={`${interactive ? 'cursor-pointer hover:scale-110' : 'cursor-default'} transition-transform`}
           >
             {star <= rating ? (
-              <MdStar className="text-gold-500" size={24} />
+              <MdStar className="text-emerald-500" size={24} />
             ) : (
               <MdStarBorder className="text-gray-500" size={24} />
             )}
@@ -303,13 +303,13 @@ export function ReviewsSection() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gold-500 mb-2">Reviews</h1>
+          <h1 className="text-3xl font-bold text-emerald-500 mb-2">Reviews</h1>
           <p className="text-gray-400">Manage your reviews and reputation</p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={loadReviews}
-            className="bg-dark-300 hover:bg-dark-400 text-gold-500 p-3 rounded-lg transition-colors"
+            className="bg-dark-300 hover:bg-dark-400 text-emerald-500 p-3 rounded-lg transition-colors"
             title="Refresh"
           >
             <MdRefresh size={20} />
@@ -319,7 +319,7 @@ export function ReviewsSection() {
               resetForm();
               setShowWriteReviewModal(true);
             }}
-            className="bg-gold-600 hover:bg-gold-700 text-dark-700 px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+            className="bg-emerald-600 hover:bg-emerald-700 text-dark-700 px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
           >
             <MdRateReview size={20} />
             Write Review
@@ -345,7 +345,7 @@ export function ReviewsSection() {
           title="Avg Rating Given"
           value={stats.avgRatingGiven.toFixed(1)}
           icon={<MdStar />}
-          color="gold"
+          color="green"
         />
         <StatCard
           title="Avg Rating Received"
@@ -356,7 +356,7 @@ export function ReviewsSection() {
       </div>
 
       {/* Tab Interface */}
-      <div className="flex gap-2 border-b border-gold-700">
+      <div className="flex gap-2 border-b border-emerald-700">
         {[
           { key: 'given', label: 'Given' },
           { key: 'received', label: 'Received' },
@@ -367,8 +367,8 @@ export function ReviewsSection() {
             onClick={() => setActiveTab(tab.key as typeof activeTab)}
             className={`px-6 py-3 font-medium transition-colors ${
               activeTab === tab.key
-                ? 'text-gold-500 border-b-2 border-gold-500'
-                : 'text-gray-400 hover:text-gold-500'
+                ? 'text-emerald-500 border-b-2 border-emerald-500'
+                : 'text-gray-400 hover:text-emerald-500'
             }`}
           >
             {tab.label}
@@ -379,18 +379,18 @@ export function ReviewsSection() {
       {/* Content */}
       <div className="space-y-4">
         {loadingReviews ? (
-          <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-12 text-center">
-            <div className="text-gold-500">Loading reviews...</div>
+          <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-12 text-center">
+            <div className="text-emerald-500">Loading reviews...</div>
           </div>
         ) : activeTab === 'review_players' ? (
           // Review Players Tab
           <div>
             {loadingFriends ? (
-              <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-12 text-center">
-                <div className="text-gold-500">Loading players...</div>
+              <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-12 text-center">
+                <div className="text-emerald-500">Loading players...</div>
               </div>
             ) : friends.length === 0 ? (
-              <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-12 text-center">
+              <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-12 text-center">
                 <MdRateReview className="text-6xl text-gray-500 mx-auto mb-4" />
                 <p className="text-gray-400 mb-2">No players to review</p>
                 <p className="text-sm text-gray-500">Add players as friends first to review them</p>
@@ -400,7 +400,7 @@ export function ReviewsSection() {
                 {friends.map((friend) => (
                   <div
                     key={friend.id}
-                    className="bg-dark-200 border-2 border-gold-700 rounded-lg p-4 hover:shadow-gold transition-all"
+                    className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-4 hover:shadow-green transition-all"
                   >
                     <div className="flex items-center gap-3 mb-3">
                       <Avatar
@@ -429,7 +429,7 @@ export function ReviewsSection() {
             )}
           </div>
         ) : currentReviews.length === 0 ? (
-          <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-12 text-center">
+          <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-12 text-center">
             <MdRateReview className="text-6xl text-gray-500 mx-auto mb-4" />
             <p className="text-gray-400">No reviews found</p>
           </div>
@@ -445,7 +445,7 @@ export function ReviewsSection() {
             return (
               <div
                 key={review.id}
-                className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6 hover:shadow-gold transition-all"
+                className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6 hover:shadow-green transition-all"
               >
                 <div className="flex items-start gap-4">
                   <Avatar
@@ -466,7 +466,7 @@ export function ReviewsSection() {
                         </div>
                         <p className="text-sm text-gray-400">
                           {isGiven ? 'To' : 'From'}:{' '}
-                          <span className="text-gold-500">{displayName}</span>
+                          <span className="text-emerald-500">{displayName}</span>
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -577,7 +577,7 @@ export function ReviewsSection() {
                     playerUsername: selectedFriend?.username || '',
                   });
                 }}
-                className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500"
+                className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
                 <option value={0}>Select a player...</option>
                 {friends.map((friend) => (
@@ -608,7 +608,7 @@ export function ReviewsSection() {
               onChange={(e) => setFormData({ ...formData, comment: e.target.value })}
               placeholder="Share your experience..."
               rows={4}
-              className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-gold-500"
+              className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
           <div className="flex gap-3 pt-4">
@@ -660,7 +660,7 @@ export function ReviewsSection() {
               onChange={(e) => setFormData({ ...formData, comment: e.target.value })}
               rows={4}
               placeholder="Update your review..."
-              className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-gold-500"
+              className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
           <div className="flex gap-3 pt-4">
@@ -699,7 +699,7 @@ export function ReviewsSection() {
               <div className="bg-dark-300 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-gray-400">Review from:</span>
-                  <span className="text-gold-500 font-medium">
+                  <span className="text-emerald-500 font-medium">
                     {selectedReview.reviewer?.username || 'Unknown'}
                   </span>
                 </div>
@@ -739,7 +739,7 @@ export function ReviewsSection() {
                   onChange={(e) => setAppealReason(e.target.value)}
                   placeholder="Explain why this review should be removed or reconsidered..."
                   rows={4}
-                  className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 

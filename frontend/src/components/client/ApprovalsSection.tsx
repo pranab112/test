@@ -148,7 +148,7 @@ export function ApprovalsSection() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gold-500">Player Approvals</h1>
+        <h1 className="text-3xl font-bold text-emerald-500">Player Approvals</h1>
         <p className="text-gray-400">Review and approve player registrations</p>
       </div>
 
@@ -187,9 +187,9 @@ export function ApprovalsSection() {
 
       {/* Table */}
       {loading ? (
-        <div className="text-center py-12 text-gold-500">Loading pending players...</div>
+        <div className="text-center py-12 text-emerald-500">Loading pending players...</div>
       ) : pendingPlayers.length === 0 ? (
-        <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-12 text-center">
+        <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-12 text-center">
           <MdCheckCircle className="text-6xl text-green-500 mx-auto mb-4" />
           <p className="text-xl text-white font-bold mb-2">All Clear!</p>
           <p className="text-gray-400">No pending player approvals</p>

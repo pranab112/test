@@ -4,11 +4,16 @@ from sqlalchemy import desc
 from typing import Optional
 import os
 import uuid
+import logging
 from datetime import datetime, timezone
+from io import BytesIO
 
 from app import models, schemas, auth
 from app.database import get_db
 from app.models import PostVisibility
+from app.s3_storage import s3_storage
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/community", tags=["community"])
 
@@ -150,21 +155,46 @@ async def upload_post_image(
     if len(content) > 5 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="File too large. Maximum size is 5MB.")
 
-    # Create uploads directory if it doesn't exist
-    upload_dir = "uploads/community"
-    os.makedirs(upload_dir, exist_ok=True)
-
     # Generate unique filename
-    ext = file.filename.split(".")[-1] if file.filename else "jpg"
+    ext = file.filename.split(".")[-1].lower() if file.filename and "." in file.filename else "jpg"
+    if ext not in ["jpg", "jpeg", "png", "gif", "webp"]:
+        ext = "jpg"
     filename = f"{uuid.uuid4()}.{ext}"
-    filepath = os.path.join(upload_dir, filename)
 
-    # Save file
-    with open(filepath, "wb") as f:
-        f.write(content)
+    image_url = None
 
-    # Return the URL path
-    image_url = f"/uploads/community/{filename}"
+    if s3_storage.enabled:
+        # Upload to S3
+        try:
+            file_obj = BytesIO(content)
+            image_url = s3_storage.upload_file(
+                file_obj,
+                filename,
+                folder="uploads/community",
+                content_type=file.content_type
+            )
+            if image_url:
+                logger.info(f"Community image uploaded to S3: {image_url}")
+            else:
+                raise Exception("S3 upload returned None")
+        except Exception as e:
+            logger.error(f"S3 upload failed: {e}, falling back to local storage")
+            # Fallback to local storage
+            upload_dir = "uploads/community"
+            os.makedirs(upload_dir, exist_ok=True)
+            filepath = os.path.join(upload_dir, filename)
+            with open(filepath, "wb") as f:
+                f.write(content)
+            image_url = f"/uploads/community/{filename}"
+    else:
+        # Local storage (development/fallback)
+        upload_dir = "uploads/community"
+        os.makedirs(upload_dir, exist_ok=True)
+        filepath = os.path.join(upload_dir, filename)
+        with open(filepath, "wb") as f:
+            f.write(content)
+        image_url = f"/uploads/community/{filename}"
+        logger.warning(f"Community image saved locally (ephemeral): {image_url}")
 
     return {"image_url": image_url}
 

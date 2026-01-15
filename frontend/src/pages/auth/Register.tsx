@@ -141,21 +141,21 @@ export default function Register() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-dark-700 via-dark-600 to-dark-500 p-4">
       {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <GiPokerHand className="absolute top-10 right-20 text-gold-800 opacity-5 text-9xl transform rotate-12" />
-        <GiCardAceSpades className="absolute bottom-20 left-10 text-gold-800 opacity-5 text-9xl transform -rotate-12" />
+        <GiPokerHand className="absolute top-10 right-20 text-emerald-800 opacity-5 text-9xl transform rotate-12" />
+        <GiCardAceSpades className="absolute bottom-20 left-10 text-emerald-800 opacity-5 text-9xl transform -rotate-12" />
       </div>
 
       <div className="max-w-md w-full relative z-10">
-        <div className="card bg-dark-200 border-2 border-gold-600 shadow-gold-lg">
+        <div className="card bg-dark-200 border-2 border-emerald-600 shadow-green-lg">
           {/* Header */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center mb-4">
-              <GiCardAceSpades className="text-6xl text-gold-500 animate-pulse" />
+              <GiCardAceSpades className="text-6xl text-emerald-500 animate-pulse" />
             </div>
-            <h1 className="text-4xl font-bold text-gold-500 glow-gold mb-2 tracking-wider">
+            <h1 className="text-4xl font-bold text-emerald-500 glow-green mb-2 tracking-wider">
               GOLDEN ACE
             </h1>
-            <p className="text-gold-700 text-sm uppercase tracking-widest">Create Your Account</p>
+            <p className="text-emerald-700 text-sm uppercase tracking-widest">Create Your Account</p>
           </div>
 
           {/* Form */}
@@ -163,7 +163,7 @@ export default function Register() {
             {/* User Type Selection */}
             <div className="form-group">
               <label className="label flex items-center gap-2">
-                <FaIdCard className="text-gold-500" />
+                <FaIdCard className="text-emerald-500" />
                 Account Type
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -176,8 +176,8 @@ export default function Register() {
                       onClick={() => handleUserTypeChange(type)}
                       className={`py-3 px-4 rounded-lg font-semibold transition-all flex flex-col items-center gap-1 ${
                         selectedUserType === type
-                          ? 'bg-gold-gradient text-dark-700 shadow-gold'
-                          : 'bg-dark-400 text-gray-400 hover:bg-dark-300 border border-gold-900'
+                          ? 'bg-emerald-gradient text-dark-700 shadow-green'
+                          : 'bg-dark-400 text-gray-400 hover:bg-dark-300 border border-emerald-900'
                       }`}
                     >
                       <Icon className="text-xl" />
@@ -189,7 +189,7 @@ export default function Register() {
             </div>
 
             <div className="relative">
-              <div className="absolute left-3 top-[38px] text-gold-600">
+              <div className="absolute left-3 top-[38px] text-emerald-600">
                 <FaEnvelope />
               </div>
               <Input
@@ -203,7 +203,7 @@ export default function Register() {
             </div>
 
             <div className="relative">
-              <div className="absolute left-3 top-[38px] text-gold-600">
+              <div className="absolute left-3 top-[38px] text-emerald-600">
                 <FaUser />
               </div>
               <Input
@@ -217,7 +217,7 @@ export default function Register() {
             </div>
 
             <div className="relative">
-              <div className="absolute left-3 top-[38px] text-gold-600">
+              <div className="absolute left-3 top-[38px] text-emerald-600">
                 <IoMdPerson />
               </div>
               <Input
@@ -232,7 +232,7 @@ export default function Register() {
 
             {selectedUserType === UserType.CLIENT && (
               <div className="relative">
-                <div className="absolute left-3 top-[38px] text-gold-600">
+                <div className="absolute left-3 top-[38px] text-emerald-600">
                   <FaBuilding />
                 </div>
                 <Input
@@ -248,7 +248,7 @@ export default function Register() {
 
             {selectedUserType === UserType.PLAYER && (
               <div className="relative">
-                <div className="absolute left-3 top-[38px] text-gold-600">
+                <div className="absolute left-3 top-[38px] text-emerald-600">
                   <FaBuilding />
                 </div>
                 <Input
@@ -263,7 +263,7 @@ export default function Register() {
             )}
 
             <div className="relative">
-              <div className="absolute left-3 top-[38px] text-gold-600">
+              <div className="absolute left-3 top-[38px] text-emerald-600">
                 <FaLock />
               </div>
               <Input
@@ -277,7 +277,7 @@ export default function Register() {
             </div>
 
             <div className="relative">
-              <div className="absolute left-3 top-[38px] text-gold-600">
+              <div className="absolute left-3 top-[38px] text-emerald-600">
                 <FaGift />
               </div>
               <Input
@@ -318,7 +318,7 @@ export default function Register() {
               Already have an account?{' '}
               <Link
                 to={ROUTES.LOGIN}
-                className="text-gold-500 hover:text-gold-400 hover:underline font-semibold transition-colors"
+                className="text-emerald-500 hover:text-emerald-400 hover:underline font-semibold transition-colors"
               >
                 Sign In
               </Link>

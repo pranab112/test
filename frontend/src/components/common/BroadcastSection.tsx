@@ -76,7 +76,7 @@ export function BroadcastSection() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gold-500">Loading broadcasts...</div>
+        <div className="text-emerald-500">Loading broadcasts...</div>
       </div>
     );
   }
@@ -86,7 +86,7 @@ export function BroadcastSection() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gold-500 mb-2 flex items-center gap-3">
+          <h1 className="text-3xl font-bold text-emerald-500 mb-2 flex items-center gap-3">
             <MdCampaign className="text-4xl" />
             Broadcasts
           </h1>
@@ -109,7 +109,7 @@ export function BroadcastSection() {
           <button
             type="button"
             onClick={loadBroadcasts}
-            className="bg-dark-300 hover:bg-dark-400 text-gold-500 p-3 rounded-lg transition-colors"
+            className="bg-dark-300 hover:bg-dark-400 text-emerald-500 p-3 rounded-lg transition-colors"
             title="Refresh"
           >
             <MdRefresh size={20} />
@@ -120,7 +120,7 @@ export function BroadcastSection() {
       {/* Broadcasts List */}
       <div className="space-y-4">
         {broadcasts.length === 0 ? (
-          <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-8 text-center">
+          <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-8 text-center">
             <MdCampaign className="text-6xl text-gray-500 mx-auto mb-4" />
             <p className="text-gray-400 text-lg">No broadcasts yet</p>
             <p className="text-gray-500 text-sm mt-2">
@@ -134,7 +134,7 @@ export function BroadcastSection() {
               className={`bg-dark-200 border-2 rounded-lg p-5 transition-all ${
                 broadcast.is_read
                   ? 'border-dark-400'
-                  : 'border-gold-500 shadow-gold'
+                  : 'border-emerald-500 shadow-green'
               }`}
             >
               <div className="flex items-start justify-between gap-4">
@@ -142,14 +142,14 @@ export function BroadcastSection() {
                   <div className="flex items-center gap-2 mb-2">
                     <MdCampaign
                       className={`text-xl ${
-                        broadcast.is_read ? 'text-gray-500' : 'text-gold-500'
+                        broadcast.is_read ? 'text-gray-500' : 'text-emerald-500'
                       }`}
                     />
                     <span className="text-xs text-gray-400">
                       {formatTimeAgo(broadcast.created_at)}
                     </span>
                     {!broadcast.is_read && (
-                      <span className="bg-gold-500 text-dark-700 text-xs font-bold px-2 py-0.5 rounded">
+                      <span className="bg-emerald-500 text-dark-700 text-xs font-bold px-2 py-0.5 rounded">
                         NEW
                       </span>
                     )}
@@ -185,13 +185,13 @@ export function BroadcastSection() {
       {total > 0 && (
         <div className="bg-dark-300 rounded-lg p-4 flex items-center justify-center gap-6 text-sm">
           <div className="flex items-center gap-2">
-            <MdCampaign className="text-gold-500" />
+            <MdCampaign className="text-emerald-500" />
             <span className="text-gray-400">
               Total: <span className="text-white font-medium">{total}</span>
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <MdMarkunread className="text-gold-500" />
+            <MdMarkunread className="text-emerald-500" />
             <span className="text-gray-400">
               Unread: <span className="text-white font-medium">{unread}</span>
             </span>

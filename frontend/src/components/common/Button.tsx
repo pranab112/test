@@ -3,7 +3,7 @@ import clsx from 'clsx';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
-  variant?: 'primary' | 'secondary' | 'danger';
+  variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
   loading?: boolean;
   fullWidth?: boolean;
 }
@@ -23,6 +23,7 @@ export function Button({
       'btn-primary': variant === 'primary',
       'btn-secondary': variant === 'secondary',
       'btn-danger': variant === 'danger',
+      'btn-ghost': variant === 'ghost',
       'w-full': fullWidth,
     },
     className

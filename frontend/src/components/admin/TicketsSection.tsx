@@ -228,7 +228,7 @@ export function TicketsSection() {
       key: 'ticket_number',
       label: 'Ticket #',
       render: (ticket: Ticket) => (
-        <span className="font-mono text-gold-500">{ticket.ticket_number}</span>
+        <span className="font-mono text-emerald-500">{ticket.ticket_number}</span>
       ),
     },
     {
@@ -307,7 +307,7 @@ export function TicketsSection() {
       render: (ticket: Ticket) => (
         <button
           onClick={() => openTicketModal(ticket)}
-          className="bg-gold-600 hover:bg-gold-700 text-dark-700 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-1"
+          className="bg-emerald-600 hover:bg-emerald-700 text-dark-700 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-1"
         >
           <MdSearch size={14} />
           View
@@ -320,7 +320,7 @@ export function TicketsSection() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gold-500 mb-2">Support Tickets</h1>
+        <h1 className="text-3xl font-bold text-emerald-500 mb-2">Support Tickets</h1>
         <p className="text-gray-400">Manage and respond to support tickets</p>
       </div>
 
@@ -349,10 +349,10 @@ export function TicketsSection() {
       )}
 
       {/* Filters */}
-      <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-4">
+      <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-4">
         <div className="flex items-center gap-2 mb-3">
-          <MdFilterList className="text-gold-500" size={20} />
-          <h3 className="text-lg font-semibold text-gold-500">Filters</h3>
+          <MdFilterList className="text-emerald-500" size={20} />
+          <h3 className="text-lg font-semibold text-emerald-500">Filters</h3>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
@@ -360,7 +360,7 @@ export function TicketsSection() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as TicketStatus | '')}
-            className="bg-dark-400 text-white px-3 py-2 rounded border border-gold-700 focus:outline-none focus:ring-2 focus:ring-gold-500"
+            className="bg-dark-400 text-white px-3 py-2 rounded border border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           >
             <option value="">All Status</option>
             {Object.values(TicketStatus).map((status) => (
@@ -374,7 +374,7 @@ export function TicketsSection() {
           <select
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value as TicketPriority | '')}
-            className="bg-dark-400 text-white px-3 py-2 rounded border border-gold-700 focus:outline-none focus:ring-2 focus:ring-gold-500"
+            className="bg-dark-400 text-white px-3 py-2 rounded border border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           >
             <option value="">All Priority</option>
             {Object.values(TicketPriority).map((priority) => (
@@ -388,7 +388,7 @@ export function TicketsSection() {
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value as TicketCategory | '')}
-            className="bg-dark-400 text-white px-3 py-2 rounded border border-gold-700 focus:outline-none focus:ring-2 focus:ring-gold-500"
+            className="bg-dark-400 text-white px-3 py-2 rounded border border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           >
             <option value="">All Categories</option>
             {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
@@ -399,7 +399,7 @@ export function TicketsSection() {
           </select>
 
           {/* Assigned to me */}
-          <label className="flex items-center gap-2 bg-dark-400 px-3 py-2 rounded border border-gold-700 cursor-pointer">
+          <label className="flex items-center gap-2 bg-dark-400 px-3 py-2 rounded border border-emerald-700 cursor-pointer">
             <input
               type="checkbox"
               checked={assignedToMe}
@@ -407,13 +407,13 @@ export function TicketsSection() {
                 setAssignedToMe(e.target.checked);
                 if (e.target.checked) setUnassigned(false);
               }}
-              className="w-4 h-4 text-gold-500 bg-dark-500 border-gold-700 rounded focus:ring-gold-500"
+              className="w-4 h-4 text-emerald-500 bg-dark-500 border-emerald-700 rounded focus:ring-emerald-500"
             />
             <span className="text-white text-sm">Assigned to Me</span>
           </label>
 
           {/* Unassigned */}
-          <label className="flex items-center gap-2 bg-dark-400 px-3 py-2 rounded border border-gold-700 cursor-pointer">
+          <label className="flex items-center gap-2 bg-dark-400 px-3 py-2 rounded border border-emerald-700 cursor-pointer">
             <input
               type="checkbox"
               checked={unassigned}
@@ -421,7 +421,7 @@ export function TicketsSection() {
                 setUnassigned(e.target.checked);
                 if (e.target.checked) setAssignedToMe(false);
               }}
-              className="w-4 h-4 text-gold-500 bg-dark-500 border-gold-700 rounded focus:ring-gold-500"
+              className="w-4 h-4 text-emerald-500 bg-dark-500 border-emerald-700 rounded focus:ring-emerald-500"
             />
             <span className="text-white text-sm">Unassigned</span>
           </label>
@@ -429,7 +429,7 @@ export function TicketsSection() {
       </div>
 
       {/* Tickets Table */}
-      <div className="bg-dark-200 border-2 border-gold-700 rounded-lg overflow-hidden">
+      <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg overflow-hidden">
         <DataTable
           columns={columns}
           data={tickets}
@@ -441,11 +441,11 @@ export function TicketsSection() {
       {/* Ticket Detail Modal */}
       {showModal && selectedTicket && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-dark-200 border-2 border-gold-700 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+          <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gold-700">
+            <div className="flex items-center justify-between p-4 border-b border-emerald-700">
               <div>
-                <h2 className="text-xl font-bold text-gold-500">
+                <h2 className="text-xl font-bold text-emerald-500">
                   {selectedTicket.ticket_number}
                 </h2>
                 <p className="text-sm text-gray-400">{selectedTicket.subject}</p>
@@ -459,7 +459,7 @@ export function TicketsSection() {
             </div>
 
             {/* Ticket Info */}
-            <div className="p-4 border-b border-gold-700 bg-dark-300">
+            <div className="p-4 border-b border-emerald-700 bg-dark-300">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
                   <span className="text-gray-400">User:</span>
@@ -493,7 +493,7 @@ export function TicketsSection() {
             </div>
 
             {/* Quick Actions */}
-            <div className="p-4 border-b border-gold-700 bg-dark-300">
+            <div className="p-4 border-b border-emerald-700 bg-dark-300">
               <div className="flex flex-wrap gap-2">
                 {!selectedTicket.assigned_admin_id && (
                   <button
@@ -523,7 +523,7 @@ export function TicketsSection() {
                   value={selectedTicket.status}
                   onChange={(e) => handleUpdateStatus(e.target.value as TicketStatus)}
                   disabled={updatingTicket}
-                  className="bg-dark-400 text-white px-3 py-1.5 rounded text-sm border border-gold-700 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  className="bg-dark-400 text-white px-3 py-1.5 rounded text-sm border border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   {Object.values(TicketStatus).map((status) => (
                     <option key={status} value={status}>
@@ -537,7 +537,7 @@ export function TicketsSection() {
                   value={selectedTicket.priority}
                   onChange={(e) => handleUpdatePriority(e.target.value as TicketPriority)}
                   disabled={updatingTicket}
-                  className="bg-dark-400 text-white px-3 py-1.5 rounded text-sm border border-gold-700 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  className="bg-dark-400 text-white px-3 py-1.5 rounded text-sm border border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   {Object.values(TicketPriority).map((priority) => (
                     <option key={priority} value={priority}>
@@ -563,7 +563,7 @@ export function TicketsSection() {
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-gold-500">
+                      <span className="font-semibold text-emerald-500">
                         {message.sender?.username || 'Unknown'}
                       </span>
                       <span className="text-xs text-gray-500">
@@ -587,14 +587,14 @@ export function TicketsSection() {
 
             {/* Reply Section */}
             {selectedTicket.status !== TicketStatus.CLOSED && (
-              <div className="p-4 border-t border-gold-700 bg-dark-300">
+              <div className="p-4 border-t border-emerald-700 bg-dark-300">
                 <div className="space-y-3">
                   <textarea
                     value={replyContent}
                     onChange={(e) => setReplyContent(e.target.value)}
                     placeholder="Type your reply..."
                     rows={4}
-                    className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-gold-500 border border-gold-700"
+                    className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500 border border-emerald-700"
                   />
 
                   <div className="flex items-center justify-between">
@@ -614,7 +614,7 @@ export function TicketsSection() {
                     <button
                       onClick={handleSendReply}
                       disabled={sendingReply || !replyContent.trim()}
-                      className="bg-gold-600 hover:bg-gold-700 disabled:opacity-50 disabled:cursor-not-allowed text-dark-700 px-4 py-2 rounded font-medium transition-colors flex items-center gap-2"
+                      className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-dark-700 px-4 py-2 rounded font-medium transition-colors flex items-center gap-2"
                     >
                       <MdSend size={16} />
                       {sendingReply ? 'Sending...' : 'Send Reply'}

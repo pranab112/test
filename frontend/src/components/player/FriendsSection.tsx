@@ -247,7 +247,7 @@ export function FriendsSection() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gold-500">Loading friends...</div>
+        <div className="text-emerald-500">Loading friends...</div>
       </div>
     );
   }
@@ -257,14 +257,14 @@ export function FriendsSection() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gold-500">Friends</h1>
+          <h1 className="text-3xl font-bold text-emerald-500">Friends</h1>
           <p className="text-gray-400">Connect with clients</p>
         </div>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={loadData}
-            className="bg-dark-300 hover:bg-dark-400 text-gold-500 p-3 rounded-lg transition-colors"
+            className="bg-dark-300 hover:bg-dark-400 text-emerald-500 p-3 rounded-lg transition-colors"
             title="Refresh"
           >
             <MdRefresh size={20} />
@@ -282,8 +282,8 @@ export function FriendsSection() {
           onClick={() => setActiveTab('friends')}
           className={`px-4 py-3 font-medium transition-all border-b-2 whitespace-nowrap flex items-center gap-2 ${
             activeTab === 'friends'
-              ? 'text-gold-500 border-gold-500'
-              : 'text-gray-400 border-transparent hover:text-gold-500'
+              ? 'text-emerald-500 border-emerald-500'
+              : 'text-gray-400 border-transparent hover:text-emerald-500'
           }`}
         >
           <MdPersonAdd size={18} />
@@ -294,8 +294,8 @@ export function FriendsSection() {
           onClick={() => setActiveTab('received')}
           className={`px-4 py-3 font-medium transition-all border-b-2 whitespace-nowrap flex items-center gap-2 ${
             activeTab === 'received'
-              ? 'text-gold-500 border-gold-500'
-              : 'text-gray-400 border-transparent hover:text-gold-500'
+              ? 'text-emerald-500 border-emerald-500'
+              : 'text-gray-400 border-transparent hover:text-emerald-500'
           }`}
         >
           <MdInbox size={18} />
@@ -308,8 +308,8 @@ export function FriendsSection() {
           onClick={() => setActiveTab('sent')}
           className={`px-4 py-3 font-medium transition-all border-b-2 whitespace-nowrap flex items-center gap-2 ${
             activeTab === 'sent'
-              ? 'text-gold-500 border-gold-500'
-              : 'text-gray-400 border-transparent hover:text-gold-500'
+              ? 'text-emerald-500 border-emerald-500'
+              : 'text-gray-400 border-transparent hover:text-emerald-500'
           }`}
         >
           <MdSend size={18} />
@@ -322,8 +322,8 @@ export function FriendsSection() {
 
       {/* Friends Tab */}
       {activeTab === 'friends' && (
-        <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-          <h2 className="text-xl font-bold text-gold-500 mb-4">
+        <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
+          <h2 className="text-xl font-bold text-emerald-500 mb-4">
             My Friends ({friends.length})
           </h2>
 
@@ -402,8 +402,8 @@ export function FriendsSection() {
 
       {/* Received Requests Tab */}
       {activeTab === 'received' && (
-        <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-          <h2 className="text-xl font-bold text-gold-500 mb-4">
+        <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
+          <h2 className="text-xl font-bold text-emerald-500 mb-4">
             Received Friend Requests ({receivedRequests.length})
           </h2>
 
@@ -465,8 +465,8 @@ export function FriendsSection() {
 
       {/* Sent Requests Tab */}
       {activeTab === 'sent' && (
-        <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-          <h2 className="text-xl font-bold text-gold-500 mb-4">
+        <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
+          <h2 className="text-xl font-bold text-emerald-500 mb-4">
             Sent Friend Requests ({sentRequests.length})
           </h2>
 
@@ -634,7 +634,7 @@ export function FriendsSection() {
                 onChange={(e) => setReportReason(e.target.value)}
                 placeholder="Describe why you are reporting this user..."
                 rows={4}
-                className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-gold-500"
+                className="w-full bg-dark-400 text-white px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
 

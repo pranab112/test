@@ -1,0 +1,155 @@
+import { api } from '../services/api';
+import { API_ENDPOINTS } from '../config/api.config';
+import type { Message, Conversation, MessageListResponse } from '../types';
+
+interface ChatStats {
+  messages_sent: number;
+  messages_received: number;
+  total_messages: number;
+  unread_messages: number;
+  unique_conversations: number;
+}
+
+export const chatApi = {
+  // Send text message
+  sendTextMessage: async (receiverId: number, content: string): Promise<Message> => {
+    try {
+      // Use URLSearchParams for form-encoded data (more reliable than FormData for non-file uploads)
+      const params = new URLSearchParams();
+      params.append('receiver_id', receiverId.toString());
+      params.append('content', content);
+
+      const response = await api.post(API_ENDPOINTS.CHAT.SEND_TEXT, params.toString(), {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      });
+      return response as unknown as Message;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Send image message
+  sendImageMessage: async (
+    receiverId: number,
+    imageUri: string,
+    caption?: string
+  ): Promise<Message> => {
+    try {
+      const formData = new FormData();
+      formData.append('receiver_id', receiverId.toString());
+
+      // Get filename and type from URI
+      const filename = imageUri.split('/').pop() || 'image.jpg';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+      formData.append('file', {
+        uri: imageUri,
+        name: filename,
+        type,
+      } as unknown as Blob);
+
+      if (caption) {
+        formData.append('caption', caption);
+      }
+
+      // Don't set Content-Type header - let axios set it with proper boundary
+      const response = await api.post(API_ENDPOINTS.CHAT.SEND_IMAGE, formData);
+      return response as unknown as Message;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Send voice message
+  sendVoiceMessage: async (
+    receiverId: number,
+    audioUri: string,
+    duration: number
+  ): Promise<Message> => {
+    try {
+      const formData = new FormData();
+      formData.append('receiver_id', receiverId.toString());
+      formData.append('duration', duration.toString());
+
+      // Get filename from URI and determine MIME type
+      const filename = audioUri.split('/').pop() || 'audio.m4a';
+      const extension = filename.split('.').pop()?.toLowerCase() || 'm4a';
+
+      // Map extensions to MIME types the backend accepts
+      const mimeTypes: Record<string, string> = {
+        'm4a': 'audio/mp4',
+        'mp4': 'audio/mp4',
+        'mp3': 'audio/mpeg',
+        'webm': 'audio/webm',
+        'ogg': 'audio/ogg',
+        'wav': 'audio/wav',
+      };
+      const mimeType = mimeTypes[extension] || 'audio/mp4';
+
+      formData.append('file', {
+        uri: audioUri,
+        name: filename,
+        type: mimeType,
+      } as unknown as Blob);
+
+      // Don't set Content-Type header - let axios set it with proper boundary
+      const response = await api.post(API_ENDPOINTS.CHAT.SEND_VOICE, formData);
+      return response as unknown as Message;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get conversations
+  getConversations: async (): Promise<Conversation[]> => {
+    try {
+      const response = await api.get(API_ENDPOINTS.CHAT.CONVERSATIONS);
+      return response as unknown as Conversation[];
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get messages with a friend
+  getMessages: async (friendId: number, skip = 0, limit = 50): Promise<MessageListResponse> => {
+    try {
+      const response = await api.get(`${API_ENDPOINTS.CHAT.MESSAGES}/${friendId}`, {
+        params: { skip, limit },
+      });
+      return response as unknown as MessageListResponse;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Mark message as read
+  markMessageAsRead: async (messageId: number): Promise<void> => {
+    try {
+      await api.put(`${API_ENDPOINTS.CHAT.MESSAGES}/${messageId}/read`);
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Delete message
+  deleteMessage: async (messageId: number): Promise<void> => {
+    try {
+      await api.delete(`${API_ENDPOINTS.CHAT.MESSAGES}/${messageId}`);
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get chat stats
+  getChatStats: async (): Promise<ChatStats> => {
+    try {
+      const response = await api.get(API_ENDPOINTS.CHAT.STATS);
+      return response as unknown as ChatStats;
+    } catch (error) {
+      throw error;
+    }
+  },
+};

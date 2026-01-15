@@ -305,7 +305,7 @@ export function CommunitySection({ userType }: CommunityProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gold-500">Loading community...</div>
+        <div className="text-emerald-500">Loading community...</div>
       </div>
     );
   }
@@ -315,7 +315,7 @@ export function CommunitySection({ userType }: CommunityProps) {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gold-500 mb-2">
+          <h1 className="text-3xl font-bold text-emerald-500 mb-2">
             {userType === 'player' ? 'Player' : 'Client'} Community
           </h1>
           <p className="text-gray-400">
@@ -325,7 +325,7 @@ export function CommunitySection({ userType }: CommunityProps) {
         <button
           type="button"
           onClick={() => loadPosts()}
-          className="bg-dark-300 hover:bg-dark-400 text-gold-500 p-3 rounded-lg transition-colors"
+          className="bg-dark-300 hover:bg-dark-400 text-emerald-500 p-3 rounded-lg transition-colors"
           title="Refresh"
         >
           <MdRefresh size={20} />
@@ -333,7 +333,7 @@ export function CommunitySection({ userType }: CommunityProps) {
       </div>
 
       {/* Create Post */}
-      <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-4">
+      <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-4">
         <div className="flex gap-3">
           <Avatar
             src={user?.profile_picture}
@@ -345,7 +345,7 @@ export function CommunitySection({ userType }: CommunityProps) {
               value={newPostContent}
               onChange={(e) => setNewPostContent(e.target.value)}
               placeholder="What's on your mind?"
-              className="w-full bg-dark-300 border border-dark-400 rounded-lg p-3 text-white placeholder-gray-500 resize-none focus:outline-none focus:border-gold-500"
+              className="w-full bg-dark-300 border border-dark-400 rounded-lg p-3 text-white placeholder-gray-500 resize-none focus:outline-none focus:border-emerald-500"
               rows={3}
             />
 
@@ -381,7 +381,7 @@ export function CommunitySection({ userType }: CommunityProps) {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadingImage}
-                  className="flex items-center gap-1 text-gray-400 hover:text-gold-500 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1 text-gray-400 hover:text-emerald-500 transition-colors disabled:opacity-50"
                 >
                   <MdImage size={20} />
                   <span className="text-sm">{uploadingImage ? 'Uploading...' : 'Photo'}</span>
@@ -405,7 +405,7 @@ export function CommunitySection({ userType }: CommunityProps) {
       {/* Posts List */}
       <div className="space-y-4">
         {posts.length === 0 ? (
-          <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-8 text-center">
+          <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-8 text-center">
             <p className="text-gray-400">No posts yet. Be the first to share something!</p>
           </div>
         ) : (
@@ -499,7 +499,7 @@ export function CommunitySection({ userType }: CommunityProps) {
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder="Write a comment..."
-                className="flex-1 bg-dark-300 border border-dark-400 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-gold-500"
+                className="flex-1 bg-dark-300 border border-dark-400 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -534,7 +534,7 @@ export function CommunitySection({ userType }: CommunityProps) {
             <textarea
               value={editContent}
               onChange={(e) => setEditContent(e.target.value)}
-              className="w-full bg-dark-300 border border-dark-400 rounded-lg p-3 text-white placeholder-gray-500 resize-none focus:outline-none focus:border-gold-500"
+              className="w-full bg-dark-300 border border-dark-400 rounded-lg p-3 text-white placeholder-gray-500 resize-none focus:outline-none focus:border-emerald-500"
               rows={4}
             />
             <div className="flex justify-end gap-2">
@@ -584,7 +584,7 @@ function PostCard({
   const isOwner = post.author.id === currentUserId;
 
   return (
-    <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-4">
+    <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-4">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
@@ -669,7 +669,7 @@ function PostCard({
         <button
           type="button"
           onClick={onComment}
-          className="flex items-center gap-2 text-gray-400 hover:text-gold-500 transition-colors"
+          className="flex items-center gap-2 text-gray-400 hover:text-emerald-500 transition-colors"
         >
           {post.comments_count > 0 ? <FaComment size={18} /> : <FaRegComment size={18} />}
           <span>{post.comments_count}</span>

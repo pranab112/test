@@ -175,7 +175,7 @@ export default function ChatMessage({ message, isOwn, showAvatar = true }: ChatM
                     <a
                       href={message.file_url}
                       download={message.file_name || 'image'}
-                      className="px-4 py-2 bg-gold-500 hover:bg-gold-600 text-dark-700 rounded-lg font-medium flex items-center gap-2 transition-colors"
+                      className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-dark-700 rounded-lg font-medium flex items-center gap-2 transition-colors"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <MdDownload className="w-5 h-5" />
@@ -192,7 +192,7 @@ export default function ChatMessage({ message, isOwn, showAvatar = true }: ChatM
         const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
         return (
           <div className={`flex items-center gap-3 min-w-[240px] p-2 rounded-xl ${
-            isOwn ? 'bg-yellow-600/20' : 'bg-dark-400/50'
+            isOwn ? 'bg-emerald-600/20' : 'bg-dark-400/50'
           }`}>
             {/* Play/Pause button */}
             <button
@@ -200,8 +200,8 @@ export default function ChatMessage({ message, isOwn, showAvatar = true }: ChatM
               onClick={togglePlayPause}
               className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
                 isOwn
-                  ? 'bg-yellow-500 hover:bg-yellow-400 text-dark-700'
-                  : 'bg-gold-500 hover:bg-gold-400 text-dark-700'
+                  ? 'bg-emerald-500 hover:bg-emerald-400 text-dark-700'
+                  : 'bg-emerald-500 hover:bg-emerald-400 text-dark-700'
               } shadow-lg`}
               title={isPlaying ? 'Pause' : 'Play'}
             >
@@ -229,7 +229,7 @@ export default function ChatMessage({ message, isOwn, showAvatar = true }: ChatM
                         key={i}
                         className={`flex-1 rounded-full transition-colors ${
                           isActive
-                            ? isOwn ? 'bg-yellow-500' : 'bg-gold-500'
+                            ? isOwn ? 'bg-emerald-500' : 'bg-emerald-500'
                             : 'bg-gray-500/40'
                         }`}
                         style={{ height: `${height}%` }}
@@ -241,17 +241,17 @@ export default function ChatMessage({ message, isOwn, showAvatar = true }: ChatM
 
               {/* Time display */}
               <div className="flex justify-between items-center mt-1">
-                <span className={`text-xs font-medium ${isOwn ? 'text-yellow-200' : 'text-gray-300'}`}>
+                <span className={`text-xs font-medium ${isOwn ? 'text-emerald-200' : 'text-gray-300'}`}>
                   {formatDuration(currentTime)}
                 </span>
-                <span className={`text-xs ${isOwn ? 'text-yellow-200/70' : 'text-gray-400'}`}>
+                <span className={`text-xs ${isOwn ? 'text-emerald-200/70' : 'text-gray-400'}`}>
                   {formatDuration(duration)}
                 </span>
               </div>
             </div>
 
             {/* Mic icon */}
-            <div className={`flex-shrink-0 ${isOwn ? 'text-yellow-300' : 'text-gold-400'}`}>
+            <div className={`flex-shrink-0 ${isOwn ? 'text-emerald-300' : 'text-emerald-400'}`}>
               <MdMic className="w-5 h-5" />
             </div>
 
@@ -303,7 +303,7 @@ export default function ChatMessage({ message, isOwn, showAvatar = true }: ChatM
           <div
             className={`px-4 py-2 rounded-2xl ${
               isOwn
-                ? 'bg-yellow-500 text-gray-900 rounded-br-md'
+                ? 'bg-emerald-500 text-gray-900 rounded-br-md'
                 : 'bg-gray-700 text-white rounded-bl-md'
             }`}
           >

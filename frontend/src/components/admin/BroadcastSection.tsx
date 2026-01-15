@@ -41,18 +41,18 @@ export function BroadcastSection() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gold-500 mb-2">Broadcast Message</h1>
+        <h1 className="text-3xl font-bold text-emerald-500 mb-2">Broadcast Message</h1>
         <p className="text-gray-400">Send announcements to all users or specific groups</p>
       </div>
 
-      <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
+      <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">Target Audience</label>
             <select
               value={targetAudience}
               onChange={(e) => setTargetAudience(e.target.value as any)}
-              className="w-full bg-dark-300 border-2 border-gold-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-gold-500"
+              className="w-full bg-dark-300 border-2 border-emerald-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
               <option value="all">All Users</option>
               <option value="client">All Clients</option>
@@ -65,14 +65,14 @@ export function BroadcastSection() {
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={6}
-              className="w-full bg-dark-300 border-2 border-gold-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-gold-500"
+              className="w-full bg-dark-300 border-2 border-emerald-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="Enter your broadcast message..."
             />
           </div>
           <button
             onClick={handleSendBroadcast}
             disabled={sending || !message.trim()}
-            className="w-full bg-gold-gradient text-dark-700 font-bold py-3 rounded-lg hover:shadow-gold transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-emerald-gradient text-dark-700 font-bold py-3 rounded-lg hover:shadow-green transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FaBroadcastTower />
             {sending ? 'Sending...' : 'Send Broadcast'}

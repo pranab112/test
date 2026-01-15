@@ -151,7 +151,7 @@ export function GamesSection() {
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-gold-500">
+            <div className="w-full h-full flex items-center justify-center text-emerald-500">
               <FaGamepad size={24} />
             </div>
           )}
@@ -199,7 +199,7 @@ export function GamesSection() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setEditingGame(game)}
-            className="text-gold-500 hover:text-gold-400 transition-colors"
+            className="text-emerald-500 hover:text-emerald-400 transition-colors"
             title="Edit"
           >
             <MdEdit size={20} />
@@ -232,7 +232,7 @@ export function GamesSection() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gold-500">Game Library</h1>
+          <h1 className="text-3xl font-bold text-emerald-500">Game Library</h1>
           <p className="text-gray-400">Manage available games for clients</p>
         </div>
         <div className="flex gap-3">
@@ -249,23 +249,23 @@ export function GamesSection() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-dark-200 border border-gold-700 rounded-lg p-4">
+        <div className="bg-dark-200 border border-emerald-700 rounded-lg p-4">
           <p className="text-gray-400 text-sm">Total Games</p>
-          <p className="text-2xl font-bold text-gold-500">{games.length}</p>
+          <p className="text-2xl font-bold text-emerald-500">{games.length}</p>
         </div>
-        <div className="bg-dark-200 border border-gold-700 rounded-lg p-4">
+        <div className="bg-dark-200 border border-emerald-700 rounded-lg p-4">
           <p className="text-gray-400 text-sm">Active Games</p>
           <p className="text-2xl font-bold text-green-500">
             {games.filter(g => g.is_active).length}
           </p>
         </div>
-        <div className="bg-dark-200 border border-gold-700 rounded-lg p-4">
+        <div className="bg-dark-200 border border-emerald-700 rounded-lg p-4">
           <p className="text-gray-400 text-sm">Categories</p>
           <p className="text-2xl font-bold text-blue-500">
             {[...new Set(games.map(g => g.category).filter(Boolean))].length}
           </p>
         </div>
-        <div className="bg-dark-200 border border-gold-700 rounded-lg p-4">
+        <div className="bg-dark-200 border border-emerald-700 rounded-lg p-4">
           <p className="text-gray-400 text-sm">Inactive</p>
           <p className="text-2xl font-bold text-red-500">
             {games.filter(g => !g.is_active).length}
@@ -275,7 +275,7 @@ export function GamesSection() {
 
       {/* Games Table */}
       {loading ? (
-        <div className="text-center py-12 text-gold-500">Loading games...</div>
+        <div className="text-center py-12 text-emerald-500">Loading games...</div>
       ) : (
         <DataTable
           data={games}
@@ -455,7 +455,7 @@ function GameFormModal({
                 id="is_active"
                 checked={formData.is_active}
                 onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                className="w-4 h-4 text-gold-500 bg-dark-200 border-gold-700 rounded focus:ring-gold-500"
+                className="w-4 h-4 text-emerald-500 bg-dark-200 border-emerald-700 rounded focus:ring-emerald-500"
               />
               <label htmlFor="is_active" className="text-gray-300">
                 Game is active and available
@@ -467,7 +467,7 @@ function GameFormModal({
           <div className="space-y-4">
             <div>
               <label className="label">Game Cover Image</label>
-              <div className="bg-dark-300 border-2 border-dashed border-gold-700 rounded-lg p-4">
+              <div className="bg-dark-300 border-2 border-dashed border-emerald-700 rounded-lg p-4">
                 {(imagePreview && !imageError) ? (
                   <div className="space-y-3">
                     <img
@@ -491,8 +491,8 @@ function GameFormModal({
                 ) : (
                   <label className="cursor-pointer block">
                     <div className="flex flex-col items-center justify-center py-8">
-                      <MdImage className="text-4xl text-gold-500 mb-2" />
-                      <p className="text-gold-500 font-medium">Click to upload image</p>
+                      <MdImage className="text-4xl text-emerald-500 mb-2" />
+                      <p className="text-emerald-500 font-medium">Click to upload image</p>
                       <p className="text-gray-400 text-xs mt-1">PNG, JPG up to 5MB</p>
                     </div>
                     <input
@@ -517,7 +517,7 @@ function GameFormModal({
             </div>
 
             <div className="bg-dark-300 rounded-lg p-3">
-              <h4 className="text-gold-500 font-medium mb-2 flex items-center gap-2">
+              <h4 className="text-emerald-500 font-medium mb-2 flex items-center gap-2">
                 <MdCategory size={18} />
                 Category Guidelines
               </h4>

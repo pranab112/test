@@ -211,7 +211,7 @@ export function UsersSection() {
         const dollars = (credits / 100).toFixed(2);
         return (
           <div className="text-right">
-            <div className="text-gold-500 font-medium">{credits.toLocaleString()}</div>
+            <div className="text-emerald-500 font-medium">{credits.toLocaleString()}</div>
             <div className="text-xs text-gray-400">${dollars}</div>
           </div>
         );
@@ -240,7 +240,7 @@ export function UsersSection() {
             <button
               type="button"
               onClick={() => openCreditsModal(user)}
-              className="bg-gold-600 hover:bg-gold-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-1"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-1"
               title="Manage Credits"
             >
               <MdAccountBalanceWallet size={14} />
@@ -281,7 +281,7 @@ export function UsersSection() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gold-500">User Management</h1>
+          <h1 className="text-3xl font-bold text-emerald-500">User Management</h1>
           <p className="text-gray-400">Total: {total} users</p>
         </div>
         <div className="flex gap-2">
@@ -289,8 +289,8 @@ export function UsersSection() {
             onClick={() => setFilter('all')}
             className={`px-4 py-2 rounded-lg font-medium transition-all ${
               filter === 'all'
-                ? 'bg-gold-gradient text-dark-700'
-                : 'bg-dark-300 text-gray-400 hover:text-gold-500'
+                ? 'bg-emerald-gradient text-dark-700'
+                : 'bg-dark-300 text-gray-400 hover:text-emerald-500'
             }`}
           >
             All
@@ -299,8 +299,8 @@ export function UsersSection() {
             onClick={() => setFilter('client')}
             className={`px-4 py-2 rounded-lg font-medium transition-all ${
               filter === 'client'
-                ? 'bg-gold-gradient text-dark-700'
-                : 'bg-dark-300 text-gray-400 hover:text-gold-500'
+                ? 'bg-emerald-gradient text-dark-700'
+                : 'bg-dark-300 text-gray-400 hover:text-emerald-500'
             }`}
           >
             Clients
@@ -309,8 +309,8 @@ export function UsersSection() {
             onClick={() => setFilter('player')}
             className={`px-4 py-2 rounded-lg font-medium transition-all ${
               filter === 'player'
-                ? 'bg-gold-gradient text-dark-700'
-                : 'bg-dark-300 text-gray-400 hover:text-gold-500'
+                ? 'bg-emerald-gradient text-dark-700'
+                : 'bg-dark-300 text-gray-400 hover:text-emerald-500'
             }`}
           >
             Players
@@ -319,7 +319,7 @@ export function UsersSection() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-gold-500">Loading users...</div>
+        <div className="text-center py-12 text-emerald-500">Loading users...</div>
       ) : (
         <DataTable
           data={users}
@@ -340,7 +340,7 @@ export function UsersSection() {
             <div className="bg-dark-300 rounded-lg p-4">
               <p className="text-sm text-gray-400 mb-1">Current Balance</p>
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-bold text-gold-500">
+                <span className="text-3xl font-bold text-emerald-500">
                   {(selectedUser.credits || 0).toLocaleString()}
                 </span>
                 <span className="text-gray-400">credits</span>
@@ -395,7 +395,7 @@ export function UsersSection() {
                   </p>
                   <p className="text-sm text-gray-400 mt-1">
                     New balance will be:{' '}
-                    <span className="text-gold-500 font-medium">
+                    <span className="text-emerald-500 font-medium">
                       {((selectedUser.credits || 0) + parseInt(creditAmount, 10)).toLocaleString()} credits
                     </span>
                   </p>
@@ -448,7 +448,7 @@ export function UsersSection() {
                 <div className="bg-dark-400 rounded-lg p-4">
                   <p className="text-sm text-gray-400 mb-2">Temporary Password:</p>
                   <div className="flex items-center gap-2">
-                    <code className="flex-1 bg-dark-300 px-4 py-2 rounded text-gold-500 font-mono text-lg">
+                    <code className="flex-1 bg-dark-300 px-4 py-2 rounded text-emerald-500 font-mono text-lg">
                       {generatedPassword}
                     </code>
                     <button

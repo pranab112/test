@@ -183,7 +183,7 @@ export function PromotionsSection() {
       key: 'value',
       label: 'Value',
       render: (promo: Promotion) => (
-        <span className="font-bold text-gold-500">
+        <span className="font-bold text-emerald-500">
           {promo.value} GC
         </span>
       ),
@@ -229,7 +229,7 @@ export function PromotionsSection() {
                 setSelectedPromotion(promo);
                 handleClaimPromotion(promo);
               }}
-              className="bg-gold-gradient text-dark-700 font-bold px-3 py-1 rounded text-sm hover:shadow-gold transition-all"
+              className="bg-emerald-gradient text-dark-700 font-bold px-3 py-1 rounded text-sm hover:shadow-green transition-all"
             >
               Claim
             </button>
@@ -270,7 +270,7 @@ export function PromotionsSection() {
       key: 'value',
       label: 'Value',
       render: (claim: Claim) => (
-        <span className="font-bold text-gold-500">{claim.claimed_value} GC</span>
+        <span className="font-bold text-emerald-500">{claim.claimed_value} GC</span>
       ),
     },
     {
@@ -298,7 +298,7 @@ export function PromotionsSection() {
             </div>
             <div className="w-full bg-gray-700 rounded-full h-1 mt-1">
               <div
-                className="bg-gold-500 h-1 rounded-full"
+                className="bg-emerald-500 h-1 rounded-full"
                 style={{ width: `${Math.min(100, (claim.wagering_completed / claim.wagering_required) * 100)}%` }}
               />
             </div>
@@ -313,7 +313,7 @@ export function PromotionsSection() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gold-500" />
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-emerald-500" />
       </div>
     );
   }
@@ -322,7 +322,7 @@ export function PromotionsSection() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gold-500 mb-2">Promotions</h1>
+          <h1 className="text-3xl font-bold text-emerald-500 mb-2">Promotions</h1>
           <p className="text-gray-400">Available promotions from your clients</p>
         </div>
         <div className="flex gap-2">
@@ -331,8 +331,8 @@ export function PromotionsSection() {
             onClick={() => setFilter('all')}
             className={`px-4 py-2 rounded-lg font-medium transition-all ${
               filter === 'all'
-                ? 'bg-gold-gradient text-dark-700'
-                : 'bg-dark-300 text-gray-400 hover:text-gold-500'
+                ? 'bg-emerald-gradient text-dark-700'
+                : 'bg-dark-300 text-gray-400 hover:text-emerald-500'
             }`}
           >
             All ({promotions.length})
@@ -342,8 +342,8 @@ export function PromotionsSection() {
             onClick={() => setFilter('available')}
             className={`px-4 py-2 rounded-lg font-medium transition-all ${
               filter === 'available'
-                ? 'bg-gold-gradient text-dark-700'
-                : 'bg-dark-300 text-gray-400 hover:text-gold-500'
+                ? 'bg-emerald-gradient text-dark-700'
+                : 'bg-dark-300 text-gray-400 hover:text-emerald-500'
             }`}
           >
             Available ({promotions.filter((p) => p.can_claim).length})
@@ -367,10 +367,10 @@ export function PromotionsSection() {
           <p className="text-sm text-yellow-400">Pending Approval</p>
         </div>
 
-        <div className="bg-gradient-to-br from-gold-900/30 to-yellow-800/20 border-2 border-gold-700 rounded-lg p-6">
-          <MdCheckCircle className="text-4xl text-gold-500 mb-2" />
+        <div className="bg-gradient-to-br from-emerald-900/30 to-yellow-800/20 border-2 border-emerald-700 rounded-lg p-6">
+          <MdCheckCircle className="text-4xl text-emerald-500 mb-2" />
           <p className="text-2xl font-bold text-white">{approvedClaims.length}</p>
-          <p className="text-sm text-gold-400">Approved Claims</p>
+          <p className="text-sm text-emerald-400">Approved Claims</p>
         </div>
 
         <div className="bg-gradient-to-br from-purple-900/30 to-purple-800/20 border-2 border-purple-700 rounded-lg p-6">
@@ -400,7 +400,7 @@ export function PromotionsSection() {
       )}
 
       {/* Available Promotions Table */}
-      <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
+      <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
         <h2 className="text-xl font-bold text-white mb-4">Available Promotions</h2>
         <DataTable
           data={filteredPromotions}
@@ -411,7 +411,7 @@ export function PromotionsSection() {
 
       {/* My Claims Table */}
       {claims.length > 0 && (
-        <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
+        <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
           <h2 className="text-xl font-bold text-white mb-4">My Claims</h2>
           <DataTable
             data={claims}
@@ -436,7 +436,7 @@ export function PromotionsSection() {
             <div className="bg-dark-300 rounded-lg p-4">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold text-gold-500 mb-2">
+                  <h3 className="text-xl font-bold text-emerald-500 mb-2">
                     {selectedPromotion.title}
                   </h3>
                   <p className="text-gray-300">{selectedPromotion.description}</p>
@@ -455,7 +455,7 @@ export function PromotionsSection() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-400 mb-1">Value</p>
-                  <p className="font-bold text-gold-500 text-xl">
+                  <p className="font-bold text-emerald-500 text-xl">
                     {selectedPromotion.value} GC
                   </p>
                 </div>
@@ -495,7 +495,7 @@ export function PromotionsSection() {
 
             {selectedPromotion.terms && (
               <div className="bg-dark-300 rounded-lg p-4">
-                <h4 className="font-bold text-gold-500 mb-2">Terms & Conditions</h4>
+                <h4 className="font-bold text-emerald-500 mb-2">Terms & Conditions</h4>
                 <p className="text-sm text-gray-300">{selectedPromotion.terms}</p>
               </div>
             )}

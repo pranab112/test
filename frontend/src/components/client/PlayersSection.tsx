@@ -140,7 +140,7 @@ export function PlayersSection() {
       key: 'credits',
       label: 'Credits',
       render: (player: Player) => (
-        <span className="font-medium text-gold-500">{player.credits.toLocaleString()}</span>
+        <span className="font-medium text-emerald-500">{player.credits.toLocaleString()}</span>
       ),
     },
     {
@@ -173,13 +173,13 @@ export function PlayersSection() {
         <div className="relative">
           <button
             onClick={() => setActionMenuId(actionMenuId === player.id ? null : player.id)}
-            className="p-2 text-gray-400 hover:text-gold-500 transition-colors"
+            className="p-2 text-gray-400 hover:text-emerald-500 transition-colors"
             disabled={processingAction === player.id}
           >
             <FaEllipsisV />
           </button>
           {actionMenuId === player.id && (
-            <div className="absolute right-0 top-full mt-1 bg-dark-300 border border-gold-700 rounded-lg shadow-lg z-10 min-w-[160px]">
+            <div className="absolute right-0 top-full mt-1 bg-dark-300 border border-emerald-700 rounded-lg shadow-lg z-10 min-w-[160px]">
               <button
                 onClick={() => handleBlockPlayer(player)}
                 disabled={processingAction === player.id}
@@ -207,20 +207,20 @@ export function PlayersSection() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gold-500">Player Management</h1>
+          <h1 className="text-3xl font-bold text-emerald-500">Player Management</h1>
           <p className="text-gray-400">Total: {players.length} players</p>
         </div>
         <div className="flex gap-2">
           <Button
             onClick={() => setShowRegisterModal(true)}
-            className="bg-gold-gradient text-dark-700"
+            className="bg-emerald-gradient text-dark-700"
           >
             <FaUserPlus className="mr-2" />
             Register Player
           </Button>
           <Button
             onClick={() => setShowBulkModal(true)}
-            className="bg-dark-300 text-gold-500 border-2 border-gold-700"
+            className="bg-dark-300 text-emerald-500 border-2 border-emerald-700"
           >
             <FaUsers className="mr-2" />
             Bulk Register
@@ -229,7 +229,7 @@ export function PlayersSection() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-gold-500">Loading players...</div>
+        <div className="text-center py-12 text-emerald-500">Loading players...</div>
       ) : (
         <DataTable data={players} columns={columns} emptyMessage="No players found" />
       )}
@@ -307,7 +307,7 @@ export function PlayersSection() {
                 Reset password for <span className="text-white font-medium">{selectedPlayer?.username}</span>?
               </p>
               <p className="text-sm mt-1">
-                The new password will be: <code className="bg-dark-400 px-2 py-0.5 rounded text-gold-500">{selectedPlayer?.username}@135</code>
+                The new password will be: <code className="bg-dark-400 px-2 py-0.5 rounded text-emerald-500">{selectedPlayer?.username}@135</code>
               </p>
             </div>
           </div>
@@ -399,7 +399,7 @@ function RegisterPlayerModal({
               type="checkbox"
               checked={useAutoPassword}
               onChange={(e) => setUseAutoPassword(e.target.checked)}
-              className="rounded border-gold-700 bg-dark-300 text-gold-500 focus:ring-gold-500"
+              className="rounded border-emerald-700 bg-dark-300 text-emerald-500 focus:ring-emerald-500"
             />
             <span className="text-sm text-gray-300">
               Use auto-generated password (username@135)
@@ -418,7 +418,7 @@ function RegisterPlayerModal({
         )}
 
         <div className="relative">
-          <div className="absolute left-3 top-[38px] text-gold-600">
+          <div className="absolute left-3 top-[38px] text-emerald-600">
             <FaGift />
           </div>
           <Input
@@ -434,7 +434,7 @@ function RegisterPlayerModal({
           <Button type="button" onClick={onClose} className="flex-1 bg-dark-300">
             Cancel
           </Button>
-          <Button type="submit" loading={isRegistering} className="flex-1 bg-gold-gradient text-dark-700">
+          <Button type="submit" loading={isRegistering} className="flex-1 bg-emerald-gradient text-dark-700">
             Register Player
           </Button>
         </div>
@@ -510,7 +510,7 @@ function BulkRegisterModal({
             value={csvText}
             onChange={(e) => setCsvText(e.target.value)}
             rows={10}
-            className="w-full bg-dark-300 border-2 border-gold-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-gold-500 font-mono text-sm"
+            className="w-full bg-dark-300 border-2 border-emerald-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-sm"
             placeholder="player1, John Doe&#10;player2, Jane Smith&#10;player3, Bob Johnson"
           />
         </div>
@@ -541,7 +541,7 @@ function BulkRegisterModal({
           <Button
             onClick={handleBulkRegister}
             loading={processing}
-            className="flex-1 bg-gold-gradient text-dark-700"
+            className="flex-1 bg-emerald-gradient text-dark-700"
             disabled={preview.length === 0}
           >
             Register All

@@ -611,7 +611,7 @@ export function MessagesSection() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gold-500">Loading messages...</div>
+        <div className="text-emerald-500">Loading messages...</div>
       </div>
     );
   }
@@ -621,9 +621,9 @@ export function MessagesSection() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
         {/* Conversations List */}
         <div className="lg:col-span-1 h-full min-h-0">
-          <div className="bg-dark-200 border-2 border-gold-700 rounded-lg overflow-hidden h-full flex flex-col">
-            <div className="p-4 border-b border-gold-700 bg-gradient-to-r from-dark-300 to-dark-200 flex-shrink-0">
-              <h2 className="text-xl font-bold text-gold-500">Conversations</h2>
+          <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg overflow-hidden h-full flex flex-col">
+            <div className="p-4 border-b border-emerald-700 bg-gradient-to-r from-dark-300 to-dark-200 flex-shrink-0">
+              <h2 className="text-xl font-bold text-emerald-500">Conversations</h2>
               <p className="text-sm text-gray-400 mt-1">
                 {conversations.filter(c => c.unread_count > 0).length} unread
               </p>
@@ -686,9 +686,9 @@ export function MessagesSection() {
         {/* Chat Window */}
         {selectedConversation ? (
           <div className="lg:col-span-2 h-full min-h-0">
-            <div className="bg-dark-200 border-2 border-gold-700 rounded-lg overflow-hidden h-full flex flex-col">
+            <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg overflow-hidden h-full flex flex-col">
               {/* Header */}
-              <div className="p-4 border-b border-gold-700 bg-gradient-to-r from-dark-300 to-dark-200 flex-shrink-0">
+              <div className="p-4 border-b border-emerald-700 bg-gradient-to-r from-dark-300 to-dark-200 flex-shrink-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Avatar
@@ -698,7 +698,7 @@ export function MessagesSection() {
                     src={selectedConversation.friend.profile_picture}
                   />
                   <div>
-                    <h3 className="font-bold text-gold-500">
+                    <h3 className="font-bold text-emerald-500">
                       {selectedConversation.friend.username}
                     </h3>
                     <p className="text-xs text-gray-400">
@@ -710,7 +710,7 @@ export function MessagesSection() {
                 <button
                   type="button"
                   onClick={openPlayerSettings}
-                  className="bg-dark-400 hover:bg-dark-300 text-gold-500 p-2 rounded-lg transition-colors"
+                  className="bg-dark-400 hover:bg-dark-300 text-emerald-500 p-2 rounded-lg transition-colors"
                   title="Player Settings"
                 >
                   <MdSettings size={20} />
@@ -741,7 +741,7 @@ export function MessagesSection() {
                               ? 'bg-gradient-to-br from-red-600 to-rose-600 text-white'
                               : 'bg-gradient-to-br from-purple-600 to-blue-600 text-white'
                             : isOwnMessage
-                            ? 'bg-gold-gradient text-dark-700'
+                            ? 'bg-emerald-gradient text-dark-700'
                             : 'bg-dark-300 text-white'
                         }`}
                       >
@@ -931,7 +931,7 @@ export function MessagesSection() {
                               </button>
                               {deleteMenuOpen === message.id && (
                                 <div
-                                  className="absolute right-0 bottom-6 bg-dark-200 border border-gold-700 rounded-lg shadow-lg z-10 min-w-[160px] py-1"
+                                  className="absolute right-0 bottom-6 bg-dark-200 border border-emerald-700 rounded-lg shadow-lg z-10 min-w-[160px] py-1"
                                   onClick={(e) => e.stopPropagation()}
                                 >
                                   <button
@@ -966,7 +966,7 @@ export function MessagesSection() {
               </div>
 
               {/* Input */}
-              <div className="p-4 border-t border-gold-700 bg-dark-300 flex-shrink-0">
+              <div className="p-4 border-t border-emerald-700 bg-dark-300 flex-shrink-0">
               {/* Image Preview */}
               {imagePreview && (
                 <div className="mb-3">
@@ -1015,7 +1015,7 @@ export function MessagesSection() {
               ) : (
                 <div className="flex items-center gap-2">
                   {/* Image attachment */}
-                  <label className="cursor-pointer text-gray-400 hover:text-gold-500 transition-colors p-2" title="Attach image">
+                  <label className="cursor-pointer text-gray-400 hover:text-emerald-500 transition-colors p-2" title="Attach image">
                     <MdImage size={24} />
                     <input
                       ref={fileInputRef}
@@ -1031,7 +1031,7 @@ export function MessagesSection() {
                   <button
                     type="button"
                     onClick={startRecording}
-                    className="text-gray-400 hover:text-gold-500 transition-colors p-2"
+                    className="text-gray-400 hover:text-emerald-500 transition-colors p-2"
                     title="Record voice message"
                   >
                     <MdMic size={24} />
@@ -1043,7 +1043,7 @@ export function MessagesSection() {
                     onChange={(e) => setNewMessage(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && !imagePreview && handleSendMessage()}
                     placeholder={imagePreview ? "Press send to share image..." : "Type a message..."}
-                    className="flex-1 bg-dark-200 border border-gold-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gold-500 disabled:opacity-50"
+                    className="flex-1 bg-dark-200 border border-emerald-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
                     disabled={sendingMessage || !!imagePreview}
                   />
                   <button
@@ -1051,7 +1051,7 @@ export function MessagesSection() {
                     title={imagePreview ? "Send image" : "Send message"}
                     onClick={imagePreview ? handleSendImagePreview : handleSendMessage}
                     disabled={(!newMessage.trim() && !imagePreview) || sendingMessage}
-                    className="bg-gold-gradient text-dark-700 p-2 rounded-lg hover:shadow-gold transition-all disabled:opacity-50"
+                    className="bg-emerald-gradient text-dark-700 p-2 rounded-lg hover:shadow-green transition-all disabled:opacity-50"
                   >
                     <MdSend size={20} />
                   </button>
@@ -1062,9 +1062,9 @@ export function MessagesSection() {
           </div>
         ) : (
           <div className="lg:col-span-2 h-full min-h-0">
-            <div className="bg-dark-200 border-2 border-gold-700 rounded-lg h-full flex items-center justify-center">
+            <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg h-full flex items-center justify-center">
               <div className="text-center">
-                <MdMessage className="text-6xl text-gold-500 mx-auto mb-4 opacity-50" />
+                <MdMessage className="text-6xl text-emerald-500 mx-auto mb-4 opacity-50" />
                 <p className="text-gray-400">Select a conversation to start messaging</p>
               </div>
             </div>
@@ -1075,9 +1075,9 @@ export function MessagesSection() {
       {/* Player Settings Modal */}
       {showSettingsModal && selectedConversation && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-dark-200 border-2 border-gold-700 rounded-lg w-full max-w-2xl max-h-[80vh] overflow-hidden">
+          <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg w-full max-w-2xl max-h-[80vh] overflow-hidden">
             {/* Modal Header */}
-            <div className="p-4 border-b border-gold-700 bg-gradient-to-r from-dark-300 to-dark-200 flex items-center justify-between">
+            <div className="p-4 border-b border-emerald-700 bg-gradient-to-r from-dark-300 to-dark-200 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Avatar
                   name={selectedConversation.friend.full_name || selectedConversation.friend.username}
@@ -1085,7 +1085,7 @@ export function MessagesSection() {
                   src={selectedConversation.friend.profile_picture}
                 />
                 <div>
-                  <h3 className="font-bold text-gold-500">
+                  <h3 className="font-bold text-emerald-500">
                     {selectedConversation.friend.username}'s Settings
                   </h3>
                   <p className="text-xs text-gray-400">Manage game credentials for this player</p>
@@ -1104,7 +1104,7 @@ export function MessagesSection() {
             {/* Modal Content */}
             <div className="p-4 overflow-y-auto max-h-[calc(80vh-80px)]">
               <div className="flex items-center justify-between mb-4">
-                <h4 className="text-lg font-bold text-gold-500 flex items-center gap-2">
+                <h4 className="text-lg font-bold text-emerald-500 flex items-center gap-2">
                   <FaKey />
                   Game Credentials
                 </h4>
@@ -1145,9 +1145,9 @@ export function MessagesSection() {
       {/* Add/Edit Credential Modal */}
       {showCredentialForm && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4">
-          <div className="bg-dark-200 border-2 border-gold-700 rounded-lg w-full max-w-md">
-            <div className="p-4 border-b border-gold-700 bg-gradient-to-r from-dark-300 to-dark-200 flex items-center justify-between">
-              <h3 className="font-bold text-gold-500">
+          <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg w-full max-w-md">
+            <div className="p-4 border-b border-emerald-700 bg-gradient-to-r from-dark-300 to-dark-200 flex items-center justify-between">
+              <h3 className="font-bold text-emerald-500">
                 {editingCredential ? 'Edit Credential' : 'Add Credential'}
               </h3>
               <button
@@ -1164,7 +1164,7 @@ export function MessagesSection() {
               {/* Game Selection */}
               <div>
                 <label className="text-sm text-gray-400 mb-2 flex items-center gap-1">
-                  <FaGamepad className="text-gold-500" />
+                  <FaGamepad className="text-emerald-500" />
                   Game
                 </label>
                 <select
@@ -1172,7 +1172,7 @@ export function MessagesSection() {
                   onChange={(e) => setCredentialForm(prev => ({ ...prev, game_id: Number(e.target.value) }))}
                   disabled={!!editingCredential}
                   title="Select a game"
-                  className="w-full bg-dark-300 border-2 border-gold-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-gold-500 disabled:opacity-50"
+                  className="w-full bg-dark-300 border-2 border-emerald-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
                 >
                   {loadingGames ? (
                     <option value="">Loading games...</option>
@@ -1197,7 +1197,7 @@ export function MessagesSection() {
               {/* Username */}
               <div>
                 <label className="text-sm text-gray-400 mb-2 flex items-center gap-1">
-                  <FaUser className="text-gold-500" />
+                  <FaUser className="text-emerald-500" />
                   Username
                 </label>
                 <input
@@ -1205,14 +1205,14 @@ export function MessagesSection() {
                   value={credentialForm.game_username}
                   onChange={(e) => setCredentialForm(prev => ({ ...prev, game_username: e.target.value }))}
                   placeholder="Enter username"
-                  className="w-full bg-dark-300 border-2 border-gold-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  className="w-full bg-dark-300 border-2 border-emerald-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
               {/* Password */}
               <div>
                 <label className="text-sm text-gray-400 mb-2 flex items-center gap-1">
-                  <FaKey className="text-gold-500" />
+                  <FaKey className="text-emerald-500" />
                   Password
                 </label>
                 <input
@@ -1220,7 +1220,7 @@ export function MessagesSection() {
                   value={credentialForm.game_password}
                   onChange={(e) => setCredentialForm(prev => ({ ...prev, game_password: e.target.value }))}
                   placeholder="Enter password"
-                  className="w-full bg-dark-300 border-2 border-gold-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  className="w-full bg-dark-300 border-2 border-emerald-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
@@ -1311,7 +1311,7 @@ export function MessagesSection() {
               value={rejectionReason}
               onChange={(e) => setRejectionReason(e.target.value)}
               placeholder="Enter reason for rejection..."
-              className="w-full bg-dark-300 border-2 border-gold-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gold-500 resize-none"
+              className="w-full bg-dark-300 border-2 border-emerald-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
               rows={3}
             />
           </div>
@@ -1400,16 +1400,16 @@ function PlayerCredentialCard({
   };
 
   return (
-    <div className="bg-dark-300 border-2 border-gold-700 rounded-lg p-4">
+    <div className="bg-dark-300 border-2 border-emerald-700 rounded-lg p-4">
       <div className="flex items-start justify-between mb-3">
         <div>
-          <h3 className="font-bold text-gold-500">{gameName}</h3>
+          <h3 className="font-bold text-emerald-500">{gameName}</h3>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={onEdit}
-            className="text-gold-500 hover:text-gold-400 transition-colors"
+            className="text-emerald-500 hover:text-emerald-400 transition-colors"
             title="Edit"
           >
             <MdEdit size={18} />
@@ -1433,7 +1433,7 @@ function PlayerCredentialCard({
             <button
               type="button"
               onClick={() => copyToClipboard(credential.game_username || credential.username || '', 'Username')}
-              className="text-gold-500 hover:text-gold-400 transition-colors"
+              className="text-emerald-500 hover:text-emerald-400 transition-colors"
               title="Copy username"
             >
               <MdContentCopy size={14} />
@@ -1450,7 +1450,7 @@ function PlayerCredentialCard({
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="text-gold-500 hover:text-gold-400 transition-colors"
+                className="text-emerald-500 hover:text-emerald-400 transition-colors"
                 title={showPassword ? 'Hide' : 'Show'}
               >
                 {showPassword ? <MdVisibilityOff size={14} /> : <MdVisibility size={14} />}
@@ -1458,7 +1458,7 @@ function PlayerCredentialCard({
               <button
                 type="button"
                 onClick={() => copyToClipboard(credential.game_password || credential.password || '', 'Password')}
-                className="text-gold-500 hover:text-gold-400 transition-colors"
+                className="text-emerald-500 hover:text-emerald-400 transition-colors"
                 title="Copy password"
               >
                 <MdContentCopy size={14} />

@@ -79,6 +79,8 @@ class User(Base):
     # OTP-based email verification
     email_otp = Column(String(6), nullable=True)
     email_otp_expires_at = Column(DateTime(timezone=True), nullable=True)
+    email_otp_resend_count = Column(Integer, default=0)  # Track resend attempts for progressive rate limiting
+    email_otp_last_resend_at = Column(DateTime(timezone=True), nullable=True)  # Track last resend time
 
     # Two-Factor Authentication (2FA)
     two_factor_enabled = Column(Boolean, default=False)
@@ -97,6 +99,9 @@ class User(Base):
 
     # Referral system
     referral_code = Column(String(12), unique=True, index=True, nullable=True)  # Unique code for referring others
+
+    # Notification settings
+    notification_sounds = Column(Boolean, default=True)  # Enable/disable notification sounds
 
     # Community relationships
     community_posts = relationship("CommunityPost", back_populates="author", cascade="all, delete-orphan")

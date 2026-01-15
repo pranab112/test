@@ -31,6 +31,9 @@ export interface EmailVerificationStatus {
   secondary_email: string | null;
   is_email_verified: boolean;
   verification_pending: boolean;
+  resend_count: number;
+  next_resend_available_at: string | null;
+  cooldown_seconds: number;
 }
 
 export interface ActiveSession {

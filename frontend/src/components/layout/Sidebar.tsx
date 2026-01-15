@@ -120,27 +120,27 @@ export function Sidebar({ activeSection, onSectionChange, isMobile = false }: Si
   const navItems = getNavItems();
 
   return (
-    <aside className={`${isCollapsed && !isMobile ? 'w-20' : 'w-64'} bg-dark-200 border-r-2 border-gold-600 flex flex-col transition-all duration-300 h-screen ${isMobile ? '' : 'sticky top-0'}`}>
+    <aside className={`${isCollapsed && !isMobile ? 'w-20' : 'w-64'} bg-dark-200 border-r-2 border-emerald-600 flex flex-col transition-all duration-300 h-screen ${isMobile ? '' : 'sticky top-0'}`}>
       {/* Header */}
-      <div className="p-4 border-b border-gold-700 bg-gradient-to-r from-dark-300 to-dark-200">
+      <div className="p-4 border-b border-emerald-700 bg-gradient-to-r from-dark-300 to-dark-200">
         <div className="flex items-center justify-between">
           {!isCollapsed && (
             <div className="flex items-center gap-2">
-              <GiCardAceSpades className="text-3xl text-gold-500" />
+              <GiCardAceSpades className="text-3xl text-emerald-500" />
               <div>
-                <h2 className="text-gold-500 font-bold tracking-wider">GOLDEN ACE</h2>
-                <p className="text-xs text-gold-700 uppercase">{user?.user_type} Portal</p>
+                <h2 className="text-emerald-500 font-bold tracking-wider">GOLDEN ACE</h2>
+                <p className="text-xs text-emerald-700 uppercase">{user?.user_type} Portal</p>
               </div>
             </div>
           )}
           {isCollapsed && (
-            <GiCardAceSpades className="text-3xl text-gold-500 mx-auto" />
+            <GiCardAceSpades className="text-3xl text-emerald-500 mx-auto" />
           )}
         </div>
         {!isMobile && (
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="mt-2 w-full text-gold-500 hover:text-gold-400 flex items-center justify-center"
+            className="mt-2 w-full text-emerald-500 hover:text-emerald-400 flex items-center justify-center"
           >
             {isCollapsed ? <FiChevronRight size={20} /> : <FiChevronLeft size={20} />}
           </button>
@@ -151,11 +151,11 @@ export function Sidebar({ activeSection, onSectionChange, isMobile = false }: Si
       {!isCollapsed && (
         <div className="p-4 border-b border-dark-400">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gold-gradient flex items-center justify-center text-dark-700 font-bold">
+            <div className="w-10 h-10 rounded-full bg-emerald-gradient flex items-center justify-center text-dark-700 font-bold">
               {user?.username?.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-gold-500 font-medium truncate">{user?.username}</p>
+              <p className="text-emerald-500 font-medium truncate">{user?.username}</p>
               <p className="text-xs text-gray-400 truncate">{user?.email}</p>
             </div>
           </div>
@@ -175,8 +175,8 @@ export function Sidebar({ activeSection, onSectionChange, isMobile = false }: Si
               onClick={() => handleSectionChange(item.id)}
               className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
                 isActive
-                  ? 'bg-gold-gradient text-dark-700 shadow-gold'
-                  : 'text-gray-300 hover:bg-dark-300 hover:text-gold-500'
+                  ? 'bg-emerald-gradient text-dark-700 shadow-green'
+                  : 'text-gray-300 hover:bg-dark-300 hover:text-emerald-500'
               }`}
               title={isCollapsed ? item.label : ''}
             >
@@ -201,7 +201,7 @@ export function Sidebar({ activeSection, onSectionChange, isMobile = false }: Si
       </nav>
 
       {/* Logout */}
-      <div className="p-3 border-t border-gold-700">
+      <div className="p-3 border-t border-emerald-700">
         <button
           onClick={logout}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-300 hover:bg-red-900/20 hover:text-red-400 transition-all"

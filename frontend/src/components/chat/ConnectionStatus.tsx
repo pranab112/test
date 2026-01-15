@@ -11,7 +11,7 @@ export default function ConnectionStatus() {
     <div
       className={`fixed bottom-4 right-4 px-4 py-2 rounded-lg shadow-lg flex items-center space-x-2 z-50 ${
         connectionStatus === 'connecting'
-          ? 'bg-yellow-500 text-gray-900'
+          ? 'bg-emerald-500 text-gray-900'
           : 'bg-red-500 text-white'
       }`}
     >

@@ -66,6 +66,8 @@ export function SettingsSection() {
   const [verificationEmail, setVerificationEmail] = useState('');
   const [emailOTP, setEmailOTP] = useState('');
   const [emailVerificationPending, setEmailVerificationPending] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendCount, setResendCount] = useState(0);
 
   // Notification settings
   const [notificationSettings, setNotificationSettings] = useState({
@@ -102,6 +104,23 @@ export function SettingsSection() {
     loadUserData();
   }, [user]);
 
+  // Countdown timer for resend cooldown
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
   const loadUserData = async () => {
     if (!user) return;
 
@@ -121,6 +140,8 @@ export function SettingsSection() {
         const emailStatus = await settingsApi.getEmailVerificationStatus();
         setEmailVerified(emailStatus.is_email_verified);
         setEmailVerificationPending(emailStatus.verification_pending);
+        setResendCount(emailStatus.resend_count || 0);
+        setResendCooldown(emailStatus.cooldown_seconds || 0);
         if (emailStatus.secondary_email) {
           setVerificationEmail(emailStatus.secondary_email);
           // If email is verified, use the verified email as the main email
@@ -314,6 +335,28 @@ export function SettingsSection() {
     }
   };
 
+  // Helper function to format cooldown time
+  const formatCooldownTime = (seconds: number): string => {
+    if (seconds < 60) {
+      return `${seconds}s`;
+    } else if (seconds < 3600) {
+      const minutes = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return secs > 0 ? `${minutes}m ${secs}s` : `${minutes}m`;
+    } else {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+    }
+  };
+
+  // Get cooldown duration based on resend count
+  const getCooldownForCount = (count: number): number => {
+    const cooldowns = [60, 600, 3600, 86400]; // 1min, 10min, 1hr, 24hr
+    const index = Math.min(count, cooldowns.length - 1);
+    return cooldowns[index];
+  };
+
   // Email Verification Functions
   const handleSendVerificationEmail = async () => {
     if (!verificationEmail || !verificationEmail.includes('@')) {
@@ -325,6 +368,10 @@ export function SettingsSection() {
     try {
       await settingsApi.sendEmailVerificationOTP(verificationEmail);
       setEmailVerificationPending(true);
+      // Set cooldown based on new resend count
+      const newCount = resendCount + 1;
+      setResendCount(newCount);
+      setResendCooldown(getCooldownForCount(newCount));
       toast.success('Verification code sent! Check your email.');
     } catch (error: any) {
       toast.error(error?.detail || 'Failed to send verification email');
@@ -346,6 +393,9 @@ export function SettingsSection() {
       setEmailVerified(true);
       setShowEmailVerifyModal(false);
       setEmailOTP('');
+      // Reset cooldown state on successful verification
+      setResendCount(0);
+      setResendCooldown(0);
       toast.success('Email verified successfully!');
 
       // Update user state
@@ -363,9 +413,18 @@ export function SettingsSection() {
   };
 
   const handleResendOTP = async () => {
+    if (resendCooldown > 0) {
+      toast.error(`Please wait ${formatCooldownTime(resendCooldown)} before requesting another code`);
+      return;
+    }
+
     setLoading(true);
     try {
       await settingsApi.resendEmailOTP();
+      // Set cooldown based on new resend count
+      const newCount = resendCount + 1;
+      setResendCount(newCount);
+      setResendCooldown(getCooldownForCount(newCount));
       toast.success('New verification code sent!');
     } catch (error: any) {
       toast.error(error?.detail || 'Failed to resend code. Please wait before trying again.');
@@ -513,7 +572,7 @@ export function SettingsSection() {
   if (initialLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gold-500">Loading settings...</div>
+        <div className="text-emerald-500">Loading settings...</div>
       </div>
     );
   }
@@ -521,16 +580,16 @@ export function SettingsSection() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gold-500 mb-2">Settings</h1>
+        <h1 className="text-3xl font-bold text-emerald-500 mb-2">Settings</h1>
         <p className="text-gray-400">Manage your account settings and preferences</p>
       </div>
 
       {/* Account Overview Card */}
-      <div className="bg-gradient-to-r from-gold-900/40 to-yellow-900/40 border-2 border-gold-700 rounded-lg p-6">
+      <div className="bg-gradient-to-r from-emerald-900/40 to-yellow-900/40 border-2 border-emerald-700 rounded-lg p-6">
         <div className="flex items-center gap-6">
           <Avatar name={user?.full_name || user?.username || ''} size="lg" src={profilePicture} />
           <div className="flex-1">
-            <h2 className="text-2xl font-bold text-gold-500 mb-1">{user?.username}</h2>
+            <h2 className="text-2xl font-bold text-emerald-500 mb-1">{user?.username}</h2>
             <p className="text-gray-300 mb-3">{user?.full_name || 'Player'}</p>
             <div className="flex gap-4 flex-wrap">
               <div>
@@ -567,8 +626,8 @@ export function SettingsSection() {
           onClick={() => setActiveTab('profile')}
           className={`px-4 py-3 font-medium transition-all border-b-2 whitespace-nowrap ${
             activeTab === 'profile'
-              ? 'text-gold-500 border-gold-500'
-              : 'text-gray-400 border-transparent hover:text-gold-500'
+              ? 'text-emerald-500 border-emerald-500'
+              : 'text-gray-400 border-transparent hover:text-emerald-500'
           }`}
         >
           <MdAccountCircle className="inline mr-2 text-xl" />
@@ -578,8 +637,8 @@ export function SettingsSection() {
           onClick={() => setActiveTab('security')}
           className={`px-4 py-3 font-medium transition-all border-b-2 whitespace-nowrap ${
             activeTab === 'security'
-              ? 'text-gold-500 border-gold-500'
-              : 'text-gray-400 border-transparent hover:text-gold-500'
+              ? 'text-emerald-500 border-emerald-500'
+              : 'text-gray-400 border-transparent hover:text-emerald-500'
           }`}
         >
           <MdSecurity className="inline mr-2 text-xl" />
@@ -589,8 +648,8 @@ export function SettingsSection() {
           onClick={() => setActiveTab('notifications')}
           className={`px-4 py-3 font-medium transition-all border-b-2 whitespace-nowrap ${
             activeTab === 'notifications'
-              ? 'text-gold-500 border-gold-500'
-              : 'text-gray-400 border-transparent hover:text-gold-500'
+              ? 'text-emerald-500 border-emerald-500'
+              : 'text-gray-400 border-transparent hover:text-emerald-500'
           }`}
         >
           <MdNotifications className="inline mr-2 text-xl" />
@@ -600,8 +659,8 @@ export function SettingsSection() {
           onClick={() => setActiveTab('referrals')}
           className={`px-4 py-3 font-medium transition-all border-b-2 whitespace-nowrap ${
             activeTab === 'referrals'
-              ? 'text-gold-500 border-gold-500'
-              : 'text-gray-400 border-transparent hover:text-gold-500'
+              ? 'text-emerald-500 border-emerald-500'
+              : 'text-gray-400 border-transparent hover:text-emerald-500'
           }`}
         >
           <MdShare className="inline mr-2 text-xl" />
@@ -614,8 +673,8 @@ export function SettingsSection() {
           }}
           className={`px-4 py-3 font-medium transition-all border-b-2 whitespace-nowrap ${
             activeTab === 'payments'
-              ? 'text-gold-500 border-gold-500'
-              : 'text-gray-400 border-transparent hover:text-gold-500'
+              ? 'text-emerald-500 border-emerald-500'
+              : 'text-gray-400 border-transparent hover:text-emerald-500'
           }`}
         >
           <MdPayment className="inline mr-2 text-xl" />
@@ -625,8 +684,8 @@ export function SettingsSection() {
 
       {/* Profile Settings */}
       {activeTab === 'profile' && (
-        <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-          <h2 className="text-xl font-bold text-gold-500 mb-6 flex items-center gap-2">
+        <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
+          <h2 className="text-xl font-bold text-emerald-500 mb-6 flex items-center gap-2">
             <MdAccountCircle className="text-2xl" />
             Account Information
           </h2>
@@ -709,7 +768,7 @@ export function SettingsSection() {
                   <button
                     type="button"
                     onClick={() => setShowEmailVerifyModal(true)}
-                    className="bg-gold-600 hover:bg-gold-700 text-dark-700 px-4 py-2 rounded-lg font-medium transition-colors"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-dark-700 px-4 py-2 rounded-lg font-medium transition-colors"
                   >
                     Verify Email
                   </button>
@@ -734,8 +793,8 @@ export function SettingsSection() {
       {/* Security Settings */}
       {activeTab === 'security' && (
         <div className="space-y-6">
-          <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-            <h2 className="text-xl font-bold text-gold-500 mb-6 flex items-center gap-2">
+          <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
+            <h2 className="text-xl font-bold text-emerald-500 mb-6 flex items-center gap-2">
               <MdSecurity className="text-2xl" />
               Change Password
             </h2>
@@ -815,8 +874,8 @@ export function SettingsSection() {
 
       {/* Notification Settings */}
       {activeTab === 'notifications' && (
-        <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-          <h2 className="text-xl font-bold text-gold-500 mb-6 flex items-center gap-2">
+        <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
+          <h2 className="text-xl font-bold text-emerald-500 mb-6 flex items-center gap-2">
             <MdNotifications className="text-2xl" />
             Notification Preferences
           </h2>
@@ -906,14 +965,14 @@ export function SettingsSection() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-400 mb-1">Your Code</p>
-                      <p className="text-3xl font-bold text-gold-500 font-mono tracking-wider">
+                      <p className="text-3xl font-bold text-emerald-500 font-mono tracking-wider">
                         {referralCode || 'N/A'}
                       </p>
                     </div>
                     <div className="flex gap-2">
                       <button
                         onClick={handleCopyReferralCode}
-                        className="bg-gold-600 hover:bg-gold-700 text-dark-700 px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-dark-700 px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
                       >
                         <MdContentCopy size={18} />
                         Copy Code
@@ -959,9 +1018,9 @@ export function SettingsSection() {
 
           {/* Referral Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-4">
+            <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-4">
               <div className="flex items-center gap-3">
-                <FaUsers className="text-gold-500 text-2xl" />
+                <FaUsers className="text-emerald-500 text-2xl" />
                 <div>
                   <p className="text-sm text-gray-400">Total Referrals</p>
                   <p className="text-2xl font-bold text-white">{referralStats?.total_referrals || 0}</p>
@@ -998,8 +1057,8 @@ export function SettingsSection() {
           </div>
 
           {/* Referral List */}
-          <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-            <h3 className="text-lg font-bold text-gold-500 mb-4">Your Referrals</h3>
+          <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
+            <h3 className="text-lg font-bold text-emerald-500 mb-4">Your Referrals</h3>
             {referralList.length === 0 ? (
               <div className="text-center py-8">
                 <FaUsers className="text-gray-600 text-5xl mx-auto mb-3" />
@@ -1053,25 +1112,25 @@ export function SettingsSection() {
           </div>
 
           {/* How It Works */}
-          <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-            <h3 className="text-lg font-bold text-gold-500 mb-4">How Referrals Work</h3>
+          <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
+            <h3 className="text-lg font-bold text-emerald-500 mb-4">How Referrals Work</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="text-center">
-                <div className="w-12 h-12 bg-gold-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                <div className="w-12 h-12 bg-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3">
                   <span className="text-xl font-bold text-dark-700">1</span>
                 </div>
                 <h4 className="font-bold text-white mb-2">Share Your Code</h4>
                 <p className="text-gray-400 text-sm">Share your unique referral code with friends</p>
               </div>
               <div className="text-center">
-                <div className="w-12 h-12 bg-gold-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                <div className="w-12 h-12 bg-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3">
                   <span className="text-xl font-bold text-dark-700">2</span>
                 </div>
                 <h4 className="font-bold text-white mb-2">Friend Signs Up</h4>
                 <p className="text-gray-400 text-sm">They register using your referral code</p>
               </div>
               <div className="text-center">
-                <div className="w-12 h-12 bg-gold-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                <div className="w-12 h-12 bg-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3">
                   <span className="text-xl font-bold text-dark-700">3</span>
                 </div>
                 <h4 className="font-bold text-white mb-2">Earn 500 Credits</h4>
@@ -1099,12 +1158,12 @@ export function SettingsSection() {
           </div>
 
           {loadingPayments ? (
-            <div className="text-center py-12 text-gold-500">Loading payment methods...</div>
+            <div className="text-center py-12 text-emerald-500">Loading payment methods...</div>
           ) : (
             <>
               {/* Receive Methods */}
-              <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-                <h3 className="text-lg font-bold text-gold-500 mb-4 flex items-center gap-2">
+              <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
+                <h3 className="text-lg font-bold text-emerald-500 mb-4 flex items-center gap-2">
                   <MdPayment className="text-green-500" />
                   Payment Methods I Can Receive
                 </h3>
@@ -1121,7 +1180,7 @@ export function SettingsSection() {
                         className={`p-4 rounded-lg border-2 transition-all cursor-pointer ${
                           isSelected
                             ? 'border-green-500 bg-green-900/20'
-                            : 'border-dark-400 bg-dark-300 hover:border-gold-700'
+                            : 'border-dark-400 bg-dark-300 hover:border-emerald-700'
                         }`}
                         onClick={() => toggleReceiveMethod(method.id)}
                       >
@@ -1147,7 +1206,7 @@ export function SettingsSection() {
                             }}
                             onClick={(e) => e.stopPropagation()}
                             placeholder={`Your ${method.display_name} address/account...`}
-                            className="w-full mt-2 bg-dark-400 border border-gold-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-gold-500"
+                            className="w-full mt-2 bg-dark-400 border border-emerald-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
                           />
                         )}
                       </div>
@@ -1163,8 +1222,8 @@ export function SettingsSection() {
               </div>
 
               {/* Send Methods */}
-              <div className="bg-dark-200 border-2 border-gold-700 rounded-lg p-6">
-                <h3 className="text-lg font-bold text-gold-500 mb-4 flex items-center gap-2">
+              <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6">
+                <h3 className="text-lg font-bold text-emerald-500 mb-4 flex items-center gap-2">
                   <MdPayment className="text-blue-500" />
                   Payment Methods I Can Send
                 </h3>
@@ -1181,7 +1240,7 @@ export function SettingsSection() {
                         className={`p-4 rounded-lg border-2 transition-all cursor-pointer ${
                           isSelected
                             ? 'border-blue-500 bg-blue-900/20'
-                            : 'border-dark-400 bg-dark-300 hover:border-gold-700'
+                            : 'border-dark-400 bg-dark-300 hover:border-emerald-700'
                         }`}
                         onClick={() => toggleSendMethod(method.id)}
                       >
@@ -1207,7 +1266,7 @@ export function SettingsSection() {
                             }}
                             onClick={(e) => e.stopPropagation()}
                             placeholder={`Your ${method.display_name} address/account...`}
-                            className="w-full mt-2 bg-dark-400 border border-gold-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-gold-500"
+                            className="w-full mt-2 bg-dark-400 border border-emerald-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
                           />
                         )}
                       </div>
@@ -1351,12 +1410,27 @@ export function SettingsSection() {
               <button
                 type="button"
                 onClick={handleResendOTP}
-                disabled={loading}
-                className="text-gold-500 hover:text-gold-400 text-sm flex items-center gap-1 disabled:opacity-50"
+                disabled={loading || resendCooldown > 0}
+                className={`text-sm flex items-center gap-1 ${
+                  resendCooldown > 0
+                    ? 'text-gray-500 cursor-not-allowed'
+                    : 'text-emerald-500 hover:text-emerald-400'
+                } disabled:opacity-50`}
               >
-                <MdRefresh size={16} />
-                Resend Code
+                <MdRefresh size={16} className={resendCooldown > 0 ? '' : ''} />
+                {resendCooldown > 0
+                  ? `Resend in ${formatCooldownTime(resendCooldown)}`
+                  : 'Resend Code'
+                }
               </button>
+              {resendCount > 0 && (
+                <p className="text-xs text-gray-500">
+                  {resendCount >= 4
+                    ? 'Maximum resend limit reached. Wait 24 hours between attempts.'
+                    : `Attempt ${resendCount} of 4. Cooldown increases with each resend.`
+                  }
+                </p>
+              )}
               <div className="flex gap-3">
                 <Button
                   variant="secondary"
@@ -1465,7 +1539,7 @@ function ToggleSetting({
       <button
         onClick={() => onChange(!enabled)}
         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-          enabled ? 'bg-gold-500' : 'bg-gray-600'
+          enabled ? 'bg-emerald-500' : 'bg-gray-600'
         }`}
       >
         <span

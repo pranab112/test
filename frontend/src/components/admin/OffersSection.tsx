@@ -274,7 +274,7 @@ export function OffersSection() {
       key: 'bonus_amount',
       label: 'Bonus',
       render: (offer: PlatformOffer) => (
-        <span className="text-gold-500 font-semibold">${offer.bonus_amount}</span>
+        <span className="text-emerald-500 font-semibold">${offer.bonus_amount}</span>
       ),
     },
     {
@@ -372,7 +372,7 @@ export function OffersSection() {
       key: 'bonus_amount',
       label: 'Bonus',
       render: (claim: OfferClaim) => (
-        <span className="text-gold-500 font-semibold">${claim.bonus_amount}</span>
+        <span className="text-emerald-500 font-semibold">${claim.bonus_amount}</span>
       ),
     },
     {
@@ -439,7 +439,7 @@ export function OffersSection() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gold-500">Loading platform offers...</div>
+        <div className="text-emerald-500">Loading platform offers...</div>
       </div>
     );
   }
@@ -450,7 +450,7 @@ export function OffersSection() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            <FaGift className="text-gold-500" />
+            <FaGift className="text-emerald-500" />
             Platform Offers
           </h2>
           <p className="text-gray-400 mt-1">
@@ -476,7 +476,7 @@ export function OffersSection() {
           onClick={() => setActiveTab('offers')}
           className={`pb-3 px-4 font-semibold transition-colors ${
             activeTab === 'offers'
-              ? 'text-gold-500 border-b-2 border-gold-500'
+              ? 'text-emerald-500 border-b-2 border-emerald-500'
               : 'text-gray-400 hover:text-gray-300'
           }`}
         >
@@ -487,7 +487,7 @@ export function OffersSection() {
           onClick={() => setActiveTab('claims')}
           className={`pb-3 px-4 font-semibold transition-colors ${
             activeTab === 'claims'
-              ? 'text-gold-500 border-b-2 border-gold-500'
+              ? 'text-emerald-500 border-b-2 border-emerald-500'
               : 'text-gray-400 hover:text-gray-300'
           }`}
         >
@@ -512,7 +512,7 @@ export function OffersSection() {
                 onClick={() => setStatusFilter(status)}
                 className={`px-4 py-2 rounded-lg capitalize transition-colors ${
                   statusFilter === status
-                    ? 'bg-gold-500 text-dark-900 font-semibold'
+                    ? 'bg-emerald-500 text-dark-900 font-semibold'
                     : 'bg-dark-400 text-gray-300 hover:bg-dark-300'
                 }`}
               >
@@ -551,7 +551,7 @@ export function OffersSection() {
                   claimsStatusFilter === status
                     ? status === 'pending'
                       ? 'bg-yellow-500 text-dark-900 font-semibold'
-                      : 'bg-gold-500 text-dark-900 font-semibold'
+                      : 'bg-emerald-500 text-dark-900 font-semibold'
                     : 'bg-dark-400 text-gray-300 hover:bg-dark-300'
                 }`}
               >
@@ -603,7 +603,7 @@ export function OffersSection() {
               onChange={(e) =>
                 setFormData({ ...formData, description: e.target.value })
               }
-              className="w-full px-4 py-2 bg-dark-400 border border-dark-300 rounded-lg text-white focus:border-gold-500 focus:ring-1 focus:ring-gold-500"
+              className="w-full px-4 py-2 bg-dark-400 border border-dark-300 rounded-lg text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
               rows={3}
               placeholder="Describe the offer..."
             />
@@ -618,7 +618,7 @@ export function OffersSection() {
               onChange={(e) =>
                 setFormData({ ...formData, offer_type: e.target.value as OfferType })
               }
-              className="w-full px-4 py-2 bg-dark-400 border border-dark-300 rounded-lg text-white focus:border-gold-500 focus:ring-1 focus:ring-gold-500"
+              className="w-full px-4 py-2 bg-dark-400 border border-dark-300 rounded-lg text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
             >
               {offerTypes.map((type) => (
                 <option key={type.value} value={type.value}>
@@ -715,7 +715,7 @@ export function OffersSection() {
               onChange={(e) =>
                 setFormData({ ...formData, description: e.target.value })
               }
-              className="w-full px-4 py-2 bg-dark-400 border border-dark-300 rounded-lg text-white focus:border-gold-500 focus:ring-1 focus:ring-gold-500"
+              className="w-full px-4 py-2 bg-dark-400 border border-dark-300 rounded-lg text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
               rows={3}
               placeholder="Describe the offer..."
             />
@@ -730,7 +730,7 @@ export function OffersSection() {
               onChange={(e) =>
                 setFormData({ ...formData, offer_type: e.target.value as OfferType })
               }
-              className="w-full px-4 py-2 bg-dark-400 border border-dark-300 rounded-lg text-white focus:border-gold-500 focus:ring-1 focus:ring-gold-500"
+              className="w-full px-4 py-2 bg-dark-400 border border-dark-300 rounded-lg text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
             >
               {offerTypes.map((type) => (
                 <option key={type.value} value={type.value}>
