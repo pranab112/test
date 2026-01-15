@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,9 +7,10 @@ import {
   TouchableOpacity,
   RefreshControl,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { chatApi } from '../../src/api/chat.api';
+import { useChat } from '../../src/contexts/ChatContext';
 import { Card, Avatar, Badge, Loading, EmptyState } from '../../src/components/ui';
 import { Colors, FontSize, FontWeight, Spacing } from '../../src/constants/theme';
 import type { Conversation } from '../../src/types';
@@ -18,6 +19,7 @@ export default function ClientMessagesScreen() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { refreshUnreadCount } = useChat();
 
   const loadConversations = async () => {
     try {
@@ -33,12 +35,21 @@ export default function ClientMessagesScreen() {
   const onRefresh = async () => {
     setRefreshing(true);
     await loadConversations();
+    await refreshUnreadCount();
     setRefreshing(false);
   };
 
   useEffect(() => {
     loadConversations();
   }, []);
+
+  // Refresh unread count when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      loadConversations();
+      refreshUnreadCount();
+    }, [])
+  );
 
   const formatTime = (dateString: string): string => {
     const date = new Date(dateString);

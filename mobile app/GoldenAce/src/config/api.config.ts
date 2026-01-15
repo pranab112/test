@@ -147,4 +147,11 @@ export const API_ENDPOINTS = {
   REPORTS: {
     BASE: '/reports',
   },
+  CRYPTO: {
+    WALLETS: '/crypto/wallets', // Admin wallet addresses
+    PURCHASE: '/crypto/purchase', // Create purchase request
+    MY_PURCHASES: '/crypto/my-purchases', // Client's purchase history
+    CONFIRM: '/crypto/confirm', // Admin confirms payment
+    RATES: '/crypto/rates', // Current credit rates
+  },
 } as const;

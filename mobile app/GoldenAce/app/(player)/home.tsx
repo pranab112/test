@@ -13,6 +13,7 @@ import { useAuth } from '../../src/contexts/AuthContext';
 import { friendsApi } from '../../src/api/friends.api';
 import { offersApi } from '../../src/api/offers.api';
 import { Card, Avatar, Badge, Loading } from '../../src/components/ui';
+import AnnouncementTicker from '../../src/components/AnnouncementTicker';
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../../src/constants/theme';
 import type { Friend, PlatformOffer } from '../../src/types';
 
@@ -53,18 +54,22 @@ export default function PlayerHomeScreen() {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor={Colors.primary}
-        />
-      }
-    >
-      {/* Welcome Section */}
+    <View style={styles.container}>
+      {/* Announcement Ticker - News style scrolling banner */}
+      <AnnouncementTicker onPress={() => router.push('/(player)/broadcasts')} />
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={Colors.primary}
+          />
+        }
+      >
+        {/* Welcome Section */}
       <Card style={styles.welcomeCard}>
         <View style={styles.welcomeHeader}>
           <Avatar
@@ -195,7 +200,8 @@ export default function PlayerHomeScreen() {
           </ScrollView>
         </View>
       )}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -203,6 +209,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  scrollView: {
+    flex: 1,
   },
   content: {
     padding: Spacing.md,

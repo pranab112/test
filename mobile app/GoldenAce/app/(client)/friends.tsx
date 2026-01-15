@@ -8,6 +8,7 @@ import {
   RefreshControl,
   Alert,
   TextInput,
+  ScrollView,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +17,7 @@ import { Card, Avatar, Badge, Loading, EmptyState, Button } from '../../src/comp
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../../src/constants/theme';
 import type { Friend, FriendRequest } from '../../src/types';
 
-type TabType = 'players' | 'requests' | 'add';
+type TabType = 'players' | 'requests' | 'add' | 'bulk';
 
 export default function ClientFriendsScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('players');
@@ -28,6 +29,13 @@ export default function ClientFriendsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [searching, setSearching] = useState(false);
   const [sendingRequest, setSendingRequest] = useState(false);
+
+  // Bulk add state
+  const [bulkIds, setBulkIds] = useState('');
+  const [bulkSearching, setBulkSearching] = useState(false);
+  const [bulkResults, setBulkResults] = useState<{ found: Friend[]; notFound: string[] } | null>(null);
+  const [selectedForBulk, setSelectedForBulk] = useState<Set<number>>(new Set());
+  const [sendingBulkRequests, setSendingBulkRequests] = useState(false);
 
   const loadData = async () => {
     try {
@@ -145,6 +153,89 @@ export default function ClientFriendsScreen() {
         },
       ]
     );
+  };
+
+  // Bulk add functions
+  const handleBulkSearch = async () => {
+    const ids = bulkIds
+      .split(/[\n,;]+/)
+      .map((id) => id.trim())
+      .filter((id) => id.length > 0);
+
+    if (ids.length === 0) {
+      Alert.alert('Error', 'Please enter at least one unique ID');
+      return;
+    }
+
+    if (ids.length > 50) {
+      Alert.alert('Error', 'Maximum 50 IDs allowed at once');
+      return;
+    }
+
+    setBulkSearching(true);
+    setBulkResults(null);
+    setSelectedForBulk(new Set());
+
+    try {
+      const results = await friendsApi.bulkSearchByUniqueIds(ids);
+      setBulkResults(results);
+      // Auto-select all found players
+      setSelectedForBulk(new Set(results.found.map((f) => f.id)));
+    } catch (error: any) {
+      Alert.alert('Error', error?.detail || 'Failed to search players');
+    } finally {
+      setBulkSearching(false);
+    }
+  };
+
+  const toggleBulkSelection = (playerId: number) => {
+    setSelectedForBulk((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(playerId)) {
+        newSet.delete(playerId);
+      } else {
+        newSet.add(playerId);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllBulk = () => {
+    if (bulkResults) {
+      setSelectedForBulk(new Set(bulkResults.found.map((f) => f.id)));
+    }
+  };
+
+  const deselectAllBulk = () => {
+    setSelectedForBulk(new Set());
+  };
+
+  const handleSendBulkRequests = async () => {
+    if (selectedForBulk.size === 0) {
+      Alert.alert('Error', 'Please select at least one player');
+      return;
+    }
+
+    setSendingBulkRequests(true);
+    try {
+      const userIds = Array.from(selectedForBulk);
+      const results = await friendsApi.sendBulkFriendRequests(userIds);
+
+      const message = `Successfully sent ${results.success.length} request(s)${
+        results.failed.length > 0 ? `. ${results.failed.length} failed.` : ''
+      }`;
+
+      Alert.alert('Done', message);
+
+      // Clear the form
+      setBulkIds('');
+      setBulkResults(null);
+      setSelectedForBulk(new Set());
+    } catch (error: any) {
+      Alert.alert('Error', error?.detail || 'Failed to send requests');
+    } finally {
+      setSendingBulkRequests(false);
+    }
   };
 
   const renderPlayer = ({ item }: { item: Friend }) => (
@@ -265,12 +356,25 @@ export default function ClientFriendsScreen() {
           onPress={() => setActiveTab('add')}
         >
           <Ionicons
-            name="add-circle"
-            size={20}
+            name="person-add"
+            size={18}
             color={activeTab === 'add' ? Colors.primary : Colors.textSecondary}
           />
           <Text style={[styles.tabText, activeTab === 'add' && styles.tabTextActive]}>
-            Add Player
+            Add
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'bulk' && styles.tabActive]}
+          onPress={() => setActiveTab('bulk')}
+        >
+          <Ionicons
+            name="people"
+            size={18}
+            color={activeTab === 'bulk' ? Colors.primary : Colors.textSecondary}
+          />
+          <Text style={[styles.tabText, activeTab === 'bulk' && styles.tabTextActive]}>
+            Bulk Add
           </Text>
         </TouchableOpacity>
       </View>
@@ -409,6 +513,136 @@ export default function ClientFriendsScreen() {
             </Text>
           </View>
         </View>
+      )}
+
+      {activeTab === 'bulk' && (
+        <ScrollView style={styles.bulkContainer} contentContainerStyle={styles.bulkContent}>
+          <View style={styles.bulkHeader}>
+            <Ionicons name="people" size={48} color={Colors.primary} />
+            <Text style={styles.addTitle}>Bulk Add Players</Text>
+            <Text style={styles.addDescription}>
+              Enter multiple unique IDs (one per line, or separated by commas) to add several players at once
+            </Text>
+          </View>
+
+          <View style={styles.bulkInputBox}>
+            <Text style={styles.searchLabel}>Player Unique IDs</Text>
+            <TextInput
+              style={styles.bulkInput}
+              value={bulkIds}
+              onChangeText={setBulkIds}
+              placeholder="Enter IDs here...&#10;Example:&#10;ABC123&#10;XYZ789&#10;or: ABC123, XYZ789"
+              placeholderTextColor={Colors.textMuted}
+              multiline
+              numberOfLines={6}
+              textAlignVertical="top"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <Text style={styles.bulkHint}>
+              Supports comma (,), semicolon (;), or new line separated IDs. Max 50 at once.
+            </Text>
+          </View>
+
+          <Button
+            title={bulkSearching ? 'Searching...' : 'Search Players'}
+            onPress={handleBulkSearch}
+            loading={bulkSearching}
+            icon={<Ionicons name="search" size={18} color={Colors.background} />}
+            style={styles.bulkSearchButton}
+          />
+
+          {/* Bulk Results */}
+          {bulkResults && (
+            <View style={styles.bulkResultsContainer}>
+              {/* Found Players */}
+              {bulkResults.found.length > 0 && (
+                <Card style={styles.bulkResultCard}>
+                  <View style={styles.bulkResultHeader}>
+                    <View style={styles.bulkResultTitleRow}>
+                      <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
+                      <Text style={styles.bulkResultTitle}>
+                        Found {bulkResults.found.length} Player(s)
+                      </Text>
+                    </View>
+                    <View style={styles.bulkSelectActions}>
+                      <TouchableOpacity onPress={selectAllBulk} style={styles.selectAction}>
+                        <Text style={styles.selectActionText}>Select All</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={deselectAllBulk} style={styles.selectAction}>
+                        <Text style={styles.selectActionText}>Deselect</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  {bulkResults.found.map((player) => (
+                    <TouchableOpacity
+                      key={player.id}
+                      style={styles.bulkPlayerItem}
+                      onPress={() => toggleBulkSelection(player.id)}
+                    >
+                      <TouchableOpacity
+                        style={[
+                          styles.bulkCheckbox,
+                          selectedForBulk.has(player.id) && styles.bulkCheckboxSelected,
+                        ]}
+                        onPress={() => toggleBulkSelection(player.id)}
+                      >
+                        {selectedForBulk.has(player.id) && (
+                          <Ionicons name="checkmark" size={16} color={Colors.background} />
+                        )}
+                      </TouchableOpacity>
+                      <Avatar
+                        source={player.profile_picture}
+                        name={player.full_name || player.username}
+                        size="sm"
+                      />
+                      <View style={styles.bulkPlayerInfo}>
+                        <Text style={styles.bulkPlayerName}>
+                          {player.full_name || player.username}
+                        </Text>
+                        <Text style={styles.bulkPlayerUsername}>
+                          @{player.username} {player.user_id && `• ID: ${player.user_id}`}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </Card>
+              )}
+
+              {/* Not Found IDs */}
+              {bulkResults.notFound.length > 0 && (
+                <Card style={styles.bulkNotFoundCard}>
+                  <View style={styles.bulkResultTitleRow}>
+                    <Ionicons name="alert-circle" size={20} color={Colors.warning} />
+                    <Text style={styles.bulkNotFoundTitle}>
+                      {bulkResults.notFound.length} ID(s) Not Found
+                    </Text>
+                  </View>
+                  <Text style={styles.bulkNotFoundIds}>
+                    {bulkResults.notFound.join(', ')}
+                  </Text>
+                </Card>
+              )}
+
+              {/* Send Requests Button */}
+              {bulkResults.found.length > 0 && (
+                <Button
+                  title={
+                    sendingBulkRequests
+                      ? 'Sending...'
+                      : `Send ${selectedForBulk.size} Request(s)`
+                  }
+                  onPress={handleSendBulkRequests}
+                  loading={sendingBulkRequests}
+                  disabled={selectedForBulk.size === 0}
+                  icon={<Ionicons name="paper-plane" size={18} color={Colors.background} />}
+                  style={styles.bulkSendButton}
+                />
+              )}
+            </View>
+          )}
+        </ScrollView>
       )}
     </View>
   );
@@ -628,5 +862,124 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     color: Colors.info,
     lineHeight: 20,
+  },
+  // Bulk Add Styles
+  bulkContainer: {
+    flex: 1,
+  },
+  bulkContent: {
+    padding: Spacing.lg,
+  },
+  bulkHeader: {
+    alignItems: 'center',
+    marginBottom: Spacing.xl,
+  },
+  bulkInputBox: {
+    marginBottom: Spacing.lg,
+  },
+  bulkInput: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    fontSize: FontSize.md,
+    color: Colors.text,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    minHeight: 150,
+  },
+  bulkHint: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    marginTop: Spacing.sm,
+  },
+  bulkSearchButton: {
+    marginBottom: Spacing.lg,
+  },
+  bulkResultsContainer: {
+    marginTop: Spacing.md,
+  },
+  bulkResultCard: {
+    marginBottom: Spacing.md,
+  },
+  bulkResultHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+  bulkResultTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  bulkResultTitle: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+    color: Colors.success,
+  },
+  bulkSelectActions: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  selectAction: {
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+  },
+  selectActionText: {
+    fontSize: FontSize.sm,
+    color: Colors.primary,
+    fontWeight: FontWeight.medium,
+  },
+  bulkPlayerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    gap: Spacing.sm,
+  },
+  bulkCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bulkCheckboxSelected: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  bulkPlayerInfo: {
+    flex: 1,
+    marginLeft: Spacing.xs,
+  },
+  bulkPlayerName: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.medium,
+    color: Colors.text,
+  },
+  bulkPlayerUsername: {
+    fontSize: FontSize.xs,
+    color: Colors.textSecondary,
+  },
+  bulkNotFoundCard: {
+    marginBottom: Spacing.md,
+    backgroundColor: Colors.warning + '10',
+  },
+  bulkNotFoundTitle: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+    color: Colors.warning,
+  },
+  bulkNotFoundIds: {
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+    marginTop: Spacing.sm,
+  },
+  bulkSendButton: {
+    marginTop: Spacing.md,
   },
 });
