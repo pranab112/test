@@ -48,6 +48,12 @@ export default function AnnouncementTicker({ onPress }: AnnouncementTickerProps)
   const loadAnnouncements = async () => {
     try {
       const data = await broadcastsApi.getBroadcasts();
+      // Handle case where data might not be an array
+      if (!Array.isArray(data)) {
+        console.warn('Broadcasts API returned non-array:', data);
+        setAnnouncements([]);
+        return;
+      }
       // Filter to only show high priority or recent unread announcements
       const important = data.filter(
         (b) => b.priority === 'high' || (!b.is_read && isRecent(b.created_at))
@@ -55,6 +61,7 @@ export default function AnnouncementTicker({ onPress }: AnnouncementTickerProps)
       setAnnouncements(important.slice(0, 5)); // Max 5 announcements in ticker
     } catch (error) {
       console.error('Error loading announcements:', error);
+      setAnnouncements([]);
     }
   };
 
@@ -99,7 +106,11 @@ export default function AnnouncementTicker({ onPress }: AnnouncementTickerProps)
     return announcements
       .map((a) => {
         const prefix = a.priority === 'high' ? '🔴 ' : '📢 ';
-        return `${prefix}${a.title}: ${a.content}`;
+        // Handle case where title might just be "Announcement" (default)
+        const displayText = a.title && a.title !== 'Announcement'
+          ? `${a.title}: ${a.content}`
+          : a.content;
+        return `${prefix}${displayText}`;
       })
       .join('     •     ');
   };

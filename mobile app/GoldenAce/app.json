@@ -41,11 +41,25 @@
           }
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#C4A052"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "1ccf7cf4-a790-479b-bfc9-0597bef9a7cc"
+      }
+    },
+    "owner": "lusansapkota"
   }
 }

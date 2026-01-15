@@ -100,6 +100,9 @@ class User(Base):
     # Referral system
     referral_code = Column(String(12), unique=True, index=True, nullable=True)  # Unique code for referring others
 
+    # Notification settings
+    notification_sounds = Column(Boolean, default=True)  # Enable/disable notification sounds
+
     # Community relationships
     community_posts = relationship("CommunityPost", back_populates="author", cascade="all, delete-orphan")
     post_comments = relationship("PostComment", back_populates="author", cascade="all, delete-orphan")

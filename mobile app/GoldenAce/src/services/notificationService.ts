@@ -1,8 +1,12 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { api } from './api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Check if running in Expo Go
+const isExpoGo = Constants.appOwnership === 'expo';
 
 // Notification categories
 export type NotificationCategory =
@@ -131,6 +135,12 @@ class NotificationService {
 
   // Request permission and get push token
   async registerForPushNotifications(): Promise<string | null> {
+    // Push notifications don't work in Expo Go for SDK 53+
+    if (isExpoGo) {
+      console.log('Push notifications are not supported in Expo Go (SDK 53+). Use a development build.');
+      return null;
+    }
+
     if (!Device.isDevice) {
       console.log('Push notifications require a physical device');
       return null;
@@ -153,8 +163,15 @@ class NotificationService {
 
     // Get Expo push token
     try {
+      // Get project ID from app config
+      const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+      if (!projectId) {
+        console.log('No EAS project ID found in app.json. Push notifications disabled.');
+        return null;
+      }
+
       const token = await Notifications.getExpoPushTokenAsync({
-        projectId: 'your-project-id', // Will be auto-detected from app.json
+        projectId,
       });
 
       // Save token locally
@@ -213,11 +230,11 @@ class NotificationService {
   // Remove listeners
   removeListeners() {
     if (this.notificationListener) {
-      Notifications.removeNotificationSubscription(this.notificationListener);
+      this.notificationListener.remove();
       this.notificationListener = null;
     }
     if (this.responseListener) {
-      Notifications.removeNotificationSubscription(this.responseListener);
+      this.responseListener.remove();
       this.responseListener = null;
     }
   }

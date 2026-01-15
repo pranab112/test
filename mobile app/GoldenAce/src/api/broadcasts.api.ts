@@ -13,6 +13,18 @@ export interface Broadcast {
   sender_username?: string;
 }
 
+// Backend response structure
+interface BroadcastsResponse {
+  broadcasts: Array<{
+    id: number;
+    content: string;
+    is_read: boolean;
+    created_at: string | null;
+  }>;
+  total: number;
+  unread: number;
+}
+
 const BROADCAST_ENDPOINTS = {
   LIST: '/chat/broadcasts',
   MARK_READ: (id: number) => `/chat/broadcasts/${id}/read`,
@@ -23,8 +35,20 @@ export const broadcastsApi = {
   // Get all broadcasts
   getBroadcasts: async (): Promise<Broadcast[]> => {
     try {
-      const response = await api.get(BROADCAST_ENDPOINTS.LIST);
-      return response as unknown as Broadcast[];
+      const response = await api.get(BROADCAST_ENDPOINTS.LIST) as unknown as BroadcastsResponse;
+
+      // Transform backend response to match Broadcast interface
+      const broadcasts: Broadcast[] = (response.broadcasts || []).map((b) => ({
+        id: b.id,
+        title: 'Announcement', // Backend doesn't provide separate title
+        content: b.content,
+        broadcast_type: 'announcement' as const,
+        priority: 'medium' as const, // Backend doesn't provide priority, default to medium
+        is_read: b.is_read,
+        created_at: b.created_at || new Date().toISOString(),
+      }));
+
+      return broadcasts;
     } catch (error) {
       throw error;
     }
