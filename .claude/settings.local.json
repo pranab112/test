@@ -93,7 +93,10 @@
       "Bash(alembic upgrade:*)",
       "Bash(source .venv/bin/activate)",
       "Bash(ls:*)",
-      "Bash(npx expo install:*)"
+      "Bash(npx expo install:*)",
+      "Bash(alembic heads:*)",
+      "Bash(alembic history:*)",
+      "Bash(alembic merge:*)"
     ],
     "deny": [],
     "ask": []
