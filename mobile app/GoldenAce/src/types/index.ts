@@ -400,6 +400,74 @@ export interface GameCredential {
   updated_at: string;
 }
 
+// Notification Types
+export type NotificationCategory =
+  | 'message'
+  | 'credit_transfer'
+  | 'friend_request'
+  | 'promotion'
+  | 'broadcast'
+  | 'claim'
+  | 'system';
+
+export interface NotificationData {
+  id: string;
+  category: NotificationCategory;
+  title: string;
+  body: string;
+  data?: Record<string, any>;
+  timestamp: Date;
+  isRead: boolean;
+}
+
+export interface NotificationSettings {
+  push_notifications: boolean;
+  notification_sounds: boolean;
+  messages: boolean;
+  promotions: boolean;
+  broadcasts: boolean;
+  credits: boolean;
+}
+
+// Crypto Purchase Types
+export type CryptoType = 'BTC' | 'ETH' | 'USDT' | 'USDC';
+export type PurchaseStatus = 'pending' | 'confirmed' | 'rejected' | 'expired';
+
+export interface CryptoWallet {
+  crypto_type: CryptoType;
+  wallet_address: string;
+  network?: string; // e.g., "ERC20", "TRC20", "BEP20" for USDT
+  is_active: boolean;
+}
+
+export interface CreditRate {
+  credits_per_dollar: number;
+  min_purchase: number;
+  max_purchase: number;
+}
+
+export interface CryptoPurchase {
+  id: number;
+  client_id: number;
+  reference_code: string;
+  crypto_type: CryptoType;
+  crypto_amount: string;
+  usd_amount: number;
+  credits_amount: number;
+  wallet_address: string;
+  tx_hash?: string;
+  status: PurchaseStatus;
+  admin_notes?: string;
+  created_at: string;
+  confirmed_at?: string;
+  expires_at: string;
+}
+
+export interface CreatePurchaseRequest {
+  crypto_type: CryptoType;
+  usd_amount: number;
+}
+
 // API Response Types
 export interface ApiError {
   success: false;

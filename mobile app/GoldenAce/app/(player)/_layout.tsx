@@ -1,12 +1,40 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform } from 'react-native';
+import { Platform, View, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, FontSize } from '../../src/constants/theme';
+import { useChat } from '../../src/contexts/ChatContext';
+
+// Tab icon with badge component
+function TabIconWithBadge({
+  name,
+  color,
+  size,
+  badgeCount,
+}: {
+  name: keyof typeof Ionicons.glyphMap;
+  color: string;
+  size: number;
+  badgeCount: number;
+}) {
+  return (
+    <View style={styles.iconContainer}>
+      <Ionicons name={name} size={size} color={color} />
+      {badgeCount > 0 && (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>
+            {badgeCount > 99 ? '99+' : badgeCount}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
 
 export default function PlayerTabLayout() {
   const insets = useSafeAreaInsets();
+  const { unreadCount } = useChat();
 
   // Calculate proper bottom padding based on device safe area
   const bottomPadding = Math.max(insets.bottom, 10);
@@ -53,7 +81,12 @@ export default function PlayerTabLayout() {
         options={{
           title: 'Chat',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubbles" size={size} color={color} />
+            <TabIconWithBadge
+              name="chatbubbles"
+              size={size}
+              color={color}
+              badgeCount={unreadCount}
+            />
           ),
         }}
       />
@@ -104,6 +137,36 @@ export default function PlayerTabLayout() {
           title: 'Announcements',
         }}
       />
+      <Tabs.Screen
+        name="notifications"
+        options={{
+          href: null, // Hide from tab bar - accessible via settings
+          title: 'Notifications',
+        }}
+      />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  iconContainer: {
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    top: -6,
+    right: -10,
+    backgroundColor: Colors.error,
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+});

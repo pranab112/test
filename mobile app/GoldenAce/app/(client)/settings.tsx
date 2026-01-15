@@ -14,14 +14,16 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '../../src/contexts/AuthContext';
+import { useNotifications } from '../../src/contexts/NotificationContext';
 import { settingsApi } from '../../src/api/settings.api';
 import { Card, Avatar, Button, Badge, Input } from '../../src/components/ui';
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../../src/constants/theme';
 
 export default function ClientSettingsScreen() {
   const { user, logout, refreshUser } = useAuth();
+  const { settings: notificationSettings, unreadCount, updateSettings } = useNotifications();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [notifications, setNotifications] = useState(true);
+  const [updatingNotification, setUpdatingNotification] = useState(false);
 
   // Password change modal
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -269,6 +271,12 @@ export default function ClientSettingsScreen() {
             onPress={() => Alert.alert('Coming Soon', 'Payment settings will be available soon')}
           />
           <SettingsItem
+            icon="wallet"
+            title="Buy Credits"
+            subtitle="Purchase game credits with crypto"
+            onPress={() => router.push('/(client)/buy-credits')}
+          />
+          <SettingsItem
             icon="analytics"
             title="Analytics"
             subtitle="View detailed reports"
@@ -330,24 +338,100 @@ export default function ClientSettingsScreen() {
         </Card>
       </View>
 
+      {/* Notifications */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Notifications</Text>
+        <Card style={styles.settingsCard}>
+          <SettingsItem
+            icon="notifications"
+            title="Notification Center"
+            subtitle="View all notifications"
+            onPress={() => router.push('/(client)/notifications')}
+            rightElement={
+              unreadCount > 0 ? (
+                <View style={styles.notificationBadgeContainer}>
+                  <Badge text={unreadCount.toString()} variant="primary" size="sm" />
+                  <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
+                </View>
+              ) : undefined
+            }
+          />
+          <SettingsItem
+            icon="volume-high"
+            title="Notification Sounds"
+            subtitle="Play sound for new notifications"
+            showArrow={false}
+            rightElement={
+              <Switch
+                value={notificationSettings?.notification_sounds ?? true}
+                onValueChange={async (value) => {
+                  setUpdatingNotification(true);
+                  try {
+                    await updateSettings({ notification_sounds: value });
+                  } catch (error) {
+                    Alert.alert('Error', 'Failed to update notification settings');
+                  }
+                  setUpdatingNotification(false);
+                }}
+                trackColor={{ false: Colors.surfaceLight, true: Colors.primary + '50' }}
+                thumbColor={notificationSettings?.notification_sounds ? Colors.primary : Colors.textMuted}
+                disabled={updatingNotification}
+              />
+            }
+          />
+          <SettingsItem
+            icon="paper-plane"
+            title="Push Notifications"
+            subtitle="Receive push notifications"
+            showArrow={false}
+            rightElement={
+              <Switch
+                value={notificationSettings?.push_notifications ?? true}
+                onValueChange={async (value) => {
+                  setUpdatingNotification(true);
+                  try {
+                    await updateSettings({ push_notifications: value });
+                  } catch (error) {
+                    Alert.alert('Error', 'Failed to update notification settings');
+                  }
+                  setUpdatingNotification(false);
+                }}
+                trackColor={{ false: Colors.surfaceLight, true: Colors.primary + '50' }}
+                thumbColor={notificationSettings?.push_notifications ? Colors.primary : Colors.textMuted}
+                disabled={updatingNotification}
+              />
+            }
+          />
+          <SettingsItem
+            icon="chatbubble"
+            title="Message Notifications"
+            subtitle="Get notified for new messages"
+            showArrow={false}
+            rightElement={
+              <Switch
+                value={notificationSettings?.messages ?? true}
+                onValueChange={async (value) => {
+                  setUpdatingNotification(true);
+                  try {
+                    await updateSettings({ messages: value });
+                  } catch (error) {
+                    Alert.alert('Error', 'Failed to update notification settings');
+                  }
+                  setUpdatingNotification(false);
+                }}
+                trackColor={{ false: Colors.surfaceLight, true: Colors.primary + '50' }}
+                thumbColor={notificationSettings?.messages ? Colors.primary : Colors.textMuted}
+                disabled={updatingNotification}
+              />
+            }
+          />
+        </Card>
+      </View>
+
       {/* Preferences */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Preferences</Text>
         <Card style={styles.settingsCard}>
-          <SettingsItem
-            icon="notifications"
-            title="Push Notifications"
-            subtitle="Receive notifications for claims and messages"
-            showArrow={false}
-            rightElement={
-              <Switch
-                value={notifications}
-                onValueChange={setNotifications}
-                trackColor={{ false: Colors.surfaceLight, true: Colors.primary + '50' }}
-                thumbColor={notifications ? Colors.primary : Colors.textMuted}
-              />
-            }
-          />
           <SettingsItem
             icon="moon"
             title="Theme"
@@ -372,6 +456,12 @@ export default function ClientSettingsScreen() {
             title="Contact Support"
             subtitle="Create support ticket"
             onPress={() => router.push('/support')}
+          />
+          <SettingsItem
+            icon="megaphone"
+            title="Announcements"
+            subtitle="News and updates"
+            onPress={() => router.push('/(client)/broadcasts')}
           />
           <SettingsItem
             icon="document-text"
@@ -771,5 +861,10 @@ const styles = StyleSheet.create({
   resendText: {
     color: Colors.primary,
     fontSize: FontSize.md,
+  },
+  notificationBadgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
   },
 });

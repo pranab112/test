@@ -94,4 +94,52 @@ export const friendsApi = {
       throw error;
     }
   },
+
+  // Bulk search users by unique IDs
+  bulkSearchByUniqueIds: async (uniqueIds: string[]): Promise<{ found: Friend[]; notFound: string[] }> => {
+    const found: Friend[] = [];
+    const notFound: string[] = [];
+
+    // Search each unique ID
+    await Promise.all(
+      uniqueIds.map(async (uniqueId) => {
+        try {
+          const response = await api.get(`${API_ENDPOINTS.FRIENDS.SEARCH}/unique`, {
+            params: { user_id: uniqueId },
+          });
+          const user = response as unknown as Friend;
+          if (user && user.user_type === 'player') {
+            found.push(user);
+          } else if (user) {
+            notFound.push(uniqueId); // Not a player
+          } else {
+            notFound.push(uniqueId);
+          }
+        } catch (error: any) {
+          notFound.push(uniqueId);
+        }
+      })
+    );
+
+    return { found, notFound };
+  },
+
+  // Send bulk friend requests
+  sendBulkFriendRequests: async (userIds: number[]): Promise<{ success: number[]; failed: number[] }> => {
+    const success: number[] = [];
+    const failed: number[] = [];
+
+    await Promise.all(
+      userIds.map(async (userId) => {
+        try {
+          await api.post(`${API_ENDPOINTS.FRIENDS.SEND}/${userId}`);
+          success.push(userId);
+        } catch (error) {
+          failed.push(userId);
+        }
+      })
+    );
+
+    return { success, failed };
+  },
 };

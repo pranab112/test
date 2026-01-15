@@ -14,6 +14,7 @@ import { friendsApi } from '../../src/api/friends.api';
 import { gamesApi } from '../../src/api/games.api';
 import { promotionsApi, PromotionClaim } from '../../src/api/promotions.api';
 import { Card, Avatar, Badge, Loading } from '../../src/components/ui';
+import AnnouncementTicker from '../../src/components/AnnouncementTicker';
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../../src/constants/theme';
 import type { Friend, ClientGame } from '../../src/types';
 
@@ -106,18 +107,22 @@ export default function ClientDashboardScreen() {
   );
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor={Colors.primary}
-        />
-      }
-    >
-      {/* Welcome Section */}
+    <View style={styles.container}>
+      {/* Announcement Ticker - News style scrolling banner */}
+      <AnnouncementTicker onPress={() => router.push('/(client)/broadcasts')} />
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={Colors.primary}
+          />
+        }
+      >
+        {/* Welcome Section */}
       <Card style={styles.welcomeCard}>
         <View style={styles.welcomeHeader}>
           <Avatar
@@ -238,7 +243,8 @@ export default function ClientDashboardScreen() {
           ))}
         </View>
       )}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -246,6 +252,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  scrollView: {
+    flex: 1,
   },
   content: {
     padding: Spacing.md,

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import {
   Pressable,
   Dimensions,
 } from 'react-native';
-import { useLocalSearchParams, router, Stack } from 'expo-router';
+import { useLocalSearchParams, router, Stack, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -24,6 +24,7 @@ import { friendsApi } from '../../src/api/friends.api';
 import { gameCredentialsApi } from '../../src/api/gameCredentials.api';
 import { gamesApi } from '../../src/api/games.api';
 import { useAuth } from '../../src/contexts/AuthContext';
+import { useChat } from '../../src/contexts/ChatContext';
 import { Avatar, Loading, Card } from '../../src/components/ui';
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../../src/constants/theme';
 import { getFileUrl } from '../../src/config/api.config';
@@ -34,6 +35,7 @@ const { width: screenWidth } = Dimensions.get('window');
 export default function ChatScreen() {
   const { friendId } = useLocalSearchParams<{ friendId: string }>();
   const { user } = useAuth();
+  const { refreshUnreadCount } = useChat();
   const insets = useSafeAreaInsets();
   const [friend, setFriend] = useState<Friend | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -87,7 +89,27 @@ export default function ChatScreen() {
 
       const friendInfo = friendsData.find((f) => f.id === parseInt(friendId));
       setFriend(friendInfo || null);
-      setMessages(messagesData.messages.reverse());
+
+      const loadedMessages = messagesData.messages.reverse();
+      setMessages(loadedMessages);
+
+      // Mark unread messages from the friend as read
+      const unreadMessages = loadedMessages.filter(
+        (msg) => msg.sender_id === parseInt(friendId) && !msg.is_read
+      );
+
+      if (unreadMessages.length > 0) {
+        // Mark each unread message as read
+        await Promise.all(
+          unreadMessages.map((msg) =>
+            chatApi.markMessageAsRead(msg.id).catch((err) => {
+              console.error('Error marking message as read:', err);
+            })
+          )
+        );
+        // Refresh the global unread count
+        refreshUnreadCount();
+      }
     } catch (error) {
       console.error('Error loading chat:', error);
     } finally {
@@ -98,6 +120,16 @@ export default function ChatScreen() {
   useEffect(() => {
     loadData();
   }, [friendId]);
+
+  // Refresh unread count when leaving the chat screen
+  useFocusEffect(
+    useCallback(() => {
+      // Return cleanup function that runs when screen loses focus
+      return () => {
+        refreshUnreadCount();
+      };
+    }, [refreshUnreadCount])
+  );
 
   const handleSend = async () => {
     if (!newMessage.trim() || sending || !friendId) return;
@@ -637,14 +669,30 @@ export default function ChatScreen() {
           ]}
         >
           {renderContent()}
-          <Text
-            style={[
-              styles.messageTime,
-              isOwnMessage ? styles.ownMessageTime : styles.otherMessageTime,
-            ]}
-          >
-            {formatTime(item.created_at)}
-          </Text>
+          <View style={styles.messageFooter}>
+            <Text
+              style={[
+                styles.messageTime,
+                isOwnMessage ? styles.ownMessageTime : styles.otherMessageTime,
+              ]}
+            >
+              {formatTime(item.created_at)}
+            </Text>
+            {isOwnMessage && (
+              <View style={styles.messageStatus}>
+                {item.is_read ? (
+                  // Double checkmark for seen/read
+                  <View style={styles.doubleCheck}>
+                    <Ionicons name="checkmark" size={14} color={Colors.info} />
+                    <Ionicons name="checkmark" size={14} color={Colors.info} style={styles.secondCheck} />
+                  </View>
+                ) : (
+                  // Single checkmark for delivered
+                  <Ionicons name="checkmark" size={14} color={Colors.background + 'aa'} />
+                )}
+              </View>
+            )}
+          </View>
         </View>
       </View>
     );
@@ -1139,16 +1187,31 @@ const styles = StyleSheet.create({
   otherMessageText: {
     color: Colors.text,
   },
+  messageFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: Spacing.xs,
+    gap: 4,
+  },
   messageTime: {
     fontSize: FontSize.xs,
-    marginTop: Spacing.xs,
-    alignSelf: 'flex-end',
   },
   ownMessageTime: {
     color: Colors.background + 'aa',
   },
   otherMessageTime: {
     color: Colors.textMuted,
+  },
+  messageStatus: {
+    marginLeft: 2,
+  },
+  doubleCheck: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  secondCheck: {
+    marginLeft: -8,
   },
   emptyContainer: {
     flex: 1,
