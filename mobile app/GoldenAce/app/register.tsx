@@ -8,6 +8,7 @@ import {
   Platform,
   TouchableOpacity,
   Alert,
+  Image,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -163,7 +164,11 @@ export default function RegisterScreen() {
         </TouchableOpacity>
 
         <View style={styles.header}>
-          <Ionicons name="git-network" size={48} color={Colors.primary} />
+          <Image
+            source={require('../assets/images/icon.png')}
+            style={styles.logo}
+            accessibilityLabel="Green Palace logo"
+          />
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>Join Green Palace today</Text>
         </View>
@@ -356,6 +361,11 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     marginBottom: Spacing.xl,
+  },
+  logo: {
+    width: 80,
+    height: 80,
+    resizeMode: 'contain',
   },
   title: {
     fontSize: FontSize.xxl,

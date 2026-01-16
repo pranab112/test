@@ -8,9 +8,9 @@ import {
   Platform,
   TouchableOpacity,
   Alert,
+  Image,
 } from 'react-native';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../src/contexts/AuthContext';
 import { Button, Input } from '../src/components/ui';
 import { Colors, FontSize, FontWeight, Spacing } from '../src/constants/theme';
@@ -60,7 +60,11 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header} accessible={true} accessibilityRole="header">
-          <Ionicons name="git-network" size={64} color={Colors.primary} accessibilityLabel="Green Palace logo" />
+          <Image
+            source={require('../assets/images/icon.png')}
+            style={styles.logo}
+            accessibilityLabel="Green Palace logo"
+          />
           <Text style={styles.title} accessibilityRole="header">Green Palace</Text>
           <Text style={styles.subtitle}>Sign in to continue</Text>
         </View>
@@ -123,6 +127,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.xl,
     width: '100%',
+  },
+  logo: {
+    width: 100,
+    height: 100,
+    resizeMode: 'contain',
   },
   title: {
     fontSize: FontSize.xxxl,
