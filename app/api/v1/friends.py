@@ -101,6 +101,36 @@ async def search_users_for_friends(
     return users
 
 
+@router.get("/search/unique", response_model=schemas.UserResponse)
+async def search_user_by_unique_id(
+    user_id: str = Query(..., min_length=1),
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Search for a user by their unique user_id field"""
+    # Determine which user types current user can send friend requests to
+    if current_user.user_type == UserType.ADMIN:
+        raise HTTPException(status_code=404, detail="User not found")
+    elif current_user.user_type == UserType.PLAYER:
+        allowed_types = [UserType.CLIENT]
+    elif current_user.user_type == UserType.CLIENT:
+        allowed_types = [UserType.PLAYER]
+    else:
+        allowed_types = []
+
+    # Search by exact unique user_id
+    user = db.query(models.User).filter(
+        models.User.user_id == user_id,
+        models.User.id != current_user.id,
+        models.User.user_type.in_(allowed_types)
+    ).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return user
+
+
 @router.post("/send/{user_id}")
 @conditional_rate_limit(RateLimits.FRIEND_REQUEST)
 async def send_friend_request_by_id(

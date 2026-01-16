@@ -11,6 +11,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { chatApi } from '../../src/api/chat.api';
 import { useChat } from '../../src/contexts/ChatContext';
+import { useWebSocket } from '../../src/contexts/WebSocketContext';
 import { Card, Avatar, Badge, Loading, EmptyState } from '../../src/components/ui';
 import { Colors, FontSize, FontWeight, Spacing } from '../../src/constants/theme';
 import type { Conversation } from '../../src/types';
@@ -20,6 +21,7 @@ export default function ClientMessagesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { refreshUnreadCount } = useChat();
+  const { newMessage, clearNewMessage } = useWebSocket();
 
   const loadConversations = async () => {
     try {
@@ -43,7 +45,17 @@ export default function ClientMessagesScreen() {
     loadConversations();
   }, []);
 
-  // Refresh unread count when screen is focused
+  // Listen for new messages via WebSocket and refresh the list
+  useEffect(() => {
+    if (newMessage) {
+      // Reload conversations to get updated last message and unread counts
+      loadConversations();
+      refreshUnreadCount();
+      clearNewMessage();
+    }
+  }, [newMessage, clearNewMessage, refreshUnreadCount]);
+
+  // Refresh when screen is focused
   useFocusEffect(
     useCallback(() => {
       loadConversations();

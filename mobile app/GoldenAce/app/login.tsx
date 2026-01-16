@@ -122,6 +122,7 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     marginBottom: Spacing.xl,
+    width: '100%',
   },
   title: {
     fontSize: FontSize.xxxl,
@@ -133,6 +134,7 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     color: Colors.textSecondary,
     marginTop: Spacing.xs,
+    textAlign: 'center',
   },
   form: {
     gap: Spacing.md,
@@ -146,10 +148,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: Spacing.lg,
     gap: Spacing.xs,
+    flexWrap: 'wrap',
   },
   registerText: {
     color: Colors.textSecondary,
     fontSize: FontSize.md,
+    flexShrink: 0,
   },
   registerLink: {
     color: Colors.primary,

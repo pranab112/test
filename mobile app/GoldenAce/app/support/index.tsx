@@ -98,8 +98,10 @@ export default function SupportScreen() {
     setShowTicketModal(true);
     setLoadingMessages(true);
     try {
-      const data = await ticketsApi.getMessages(ticket.id);
-      setMessages(data);
+      // Get full ticket details which includes messages
+      const ticketDetails = await ticketsApi.getTicket(ticket.id);
+      // The ticket response includes messages array
+      setMessages((ticketDetails as any).messages || []);
     } catch (error) {
       console.error('Error loading messages:', error);
     } finally {

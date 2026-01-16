@@ -627,12 +627,12 @@ export default function PlayerSettingsScreen() {
           <SettingsItem
             icon="document-text"
             title="Terms of Service"
-            onPress={() => Alert.alert('Terms', 'Terms of Service')}
+            onPress={() => router.push('/terms')}
           />
           <SettingsItem
             icon="shield"
             title="Privacy Policy"
-            onPress={() => Alert.alert('Privacy', 'Privacy Policy')}
+            onPress={() => router.push('/privacy')}
           />
         </Card>
       </View>

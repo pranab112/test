@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router, Stack, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Audio } from 'expo-av';
 import { chatApi } from '../../src/api/chat.api';
@@ -90,26 +90,27 @@ export default function ChatScreen() {
       const friendInfo = friendsData.find((f) => f.id === parseInt(friendId));
       setFriend(friendInfo || null);
 
-      const loadedMessages = messagesData.messages.reverse();
-      setMessages(loadedMessages);
+      // Backend returns messages in DESC order (newest first) for pagination,
+      // then reverses them - but let's verify and ensure chronological order
+      console.log('Messages loaded:', messagesData);
+      console.log('Messages array:', messagesData.messages);
+      console.log('Messages count:', messagesData.messages?.length);
 
-      // Mark unread messages from the friend as read
-      const unreadMessages = loadedMessages.filter(
-        (msg) => msg.sender_id === parseInt(friendId) && !msg.is_read
-      );
-
-      if (unreadMessages.length > 0) {
-        // Mark each unread message as read
-        await Promise.all(
-          unreadMessages.map((msg) =>
-            chatApi.markMessageAsRead(msg.id).catch((err) => {
-              console.error('Error marking message as read:', err);
-            })
-          )
+      if (messagesData.messages && Array.isArray(messagesData.messages)) {
+        // Ensure messages are in chronological order (oldest first, newest last)
+        // This way newest messages appear at the bottom of the chat
+        const sortedMessages = [...messagesData.messages].sort((a, b) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
-        // Refresh the global unread count
-        refreshUnreadCount();
+        setMessages(sortedMessages);
+      } else {
+        console.error('Invalid messages data:', messagesData);
+        setMessages([]);
       }
+
+      // Backend already marks messages as read when fetching
+      // Just refresh the global unread count to sync the badge
+      refreshUnreadCount();
     } catch (error) {
       console.error('Error loading chat:', error);
     } finally {
@@ -703,7 +704,7 @@ export default function ChatScreen() {
   }
 
   return (
-    <>
+    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <Stack.Screen
         options={{
           headerShown: true,
@@ -763,7 +764,7 @@ export default function ChatScreen() {
 
         {/* Recording UI */}
         {isRecording ? (
-          <View style={[styles.recordingContainer, { paddingBottom: Math.max(insets.bottom, Spacing.md) }]}>
+          <View style={styles.recordingContainer}>
             <TouchableOpacity style={styles.cancelRecordButton} onPress={cancelRecording}>
               <Ionicons name="close" size={24} color={Colors.error} />
             </TouchableOpacity>
@@ -777,7 +778,7 @@ export default function ChatScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, Spacing.md) }]}>
+          <View style={styles.inputContainer}>
             <TouchableOpacity
               style={styles.attachButton}
               onPress={() => setShowAttachMenu(true)}
@@ -1114,11 +1115,15 @@ export default function ChatScreen() {
           </View>
         </View>
       </Modal>
-    </>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
   container: {
     flex: 1,
     backgroundColor: Colors.background,

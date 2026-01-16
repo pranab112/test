@@ -119,8 +119,10 @@ export const chatApi = {
       const response = await api.get(`${API_ENDPOINTS.CHAT.MESSAGES}/${friendId}`, {
         params: { skip, limit },
       });
+      console.log('[Chat API] getMessages response:', JSON.stringify(response, null, 2));
       return response as unknown as MessageListResponse;
     } catch (error) {
+      console.error('[Chat API] getMessages error:', error);
       throw error;
     }
   },

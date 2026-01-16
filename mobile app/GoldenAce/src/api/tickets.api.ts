@@ -47,6 +47,7 @@ export interface CreateTicketData {
 
 const TICKET_ENDPOINTS = {
   BASE: '/tickets',
+  MY_TICKETS: '/tickets/my-tickets',
   TICKET: (id: number) => `/tickets/${id}`,
   MESSAGES: (id: number) => `/tickets/${id}/messages`,
 };
@@ -55,9 +56,13 @@ export const ticketsApi = {
   // Get all user's tickets
   getTickets: async (status?: TicketStatus): Promise<Ticket[]> => {
     try {
-      const params = status ? { status } : {};
-      const response = await api.get(TICKET_ENDPOINTS.BASE, { params });
-      return response as unknown as Ticket[];
+      const params: Record<string, string | number> = {};
+      if (status) params.status_filter = status;
+
+      const response = await api.get(TICKET_ENDPOINTS.MY_TICKETS, { params });
+      // Backend returns { tickets: [...], total: N }
+      const data = response as unknown as { tickets: Ticket[]; total: number };
+      return data.tickets || [];
     } catch (error) {
       throw error;
     }

@@ -39,13 +39,6 @@ export default function ClientSettingsScreen() {
   const [bio, setBio] = useState(user?.bio || '');
   const [savingProfile, setSavingProfile] = useState(false);
 
-  // Email verification modal
-  const [showEmailModal, setShowEmailModal] = useState(false);
-  const [verificationEmail, setVerificationEmail] = useState('');
-  const [otpCode, setOtpCode] = useState('');
-  const [verifyingEmail, setVerifyingEmail] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
-
   const handleLogout = async () => {
     Alert.alert(
       'Logout',
@@ -115,55 +108,6 @@ export default function ClientSettingsScreen() {
       Alert.alert('Error', error?.detail || 'Failed to update profile');
     } finally {
       setSavingProfile(false);
-    }
-  };
-
-  const handleSendOTP = async () => {
-    if (!verificationEmail.trim() || !verificationEmail.includes('@')) {
-      Alert.alert('Error', 'Please enter a valid email address');
-      return;
-    }
-    setVerifyingEmail(true);
-    try {
-      await settingsApi.sendEmailVerificationOTP(verificationEmail.trim());
-      setOtpSent(true);
-      Alert.alert('Success', 'Verification code sent to your email');
-    } catch (error: any) {
-      Alert.alert('Error', error?.detail || 'Failed to send verification code');
-    } finally {
-      setVerifyingEmail(false);
-    }
-  };
-
-  const handleResendOTP = async () => {
-    setVerifyingEmail(true);
-    try {
-      await settingsApi.resendEmailOTP();
-      Alert.alert('Success', 'New verification code sent');
-    } catch (error: any) {
-      Alert.alert('Error', error?.detail || 'Failed to resend verification code');
-    } finally {
-      setVerifyingEmail(false);
-    }
-  };
-
-  const handleVerifyEmail = async () => {
-    if (otpCode.length !== 6) {
-      Alert.alert('Error', 'Please enter a 6-digit code');
-      return;
-    }
-    setVerifyingEmail(true);
-    try {
-      await settingsApi.verifyEmailOTP(otpCode);
-      await refreshUser();
-      Alert.alert('Success', 'Email verified successfully');
-      setShowEmailModal(false);
-      setOtpCode('');
-      setOtpSent(false);
-    } catch (error: any) {
-      Alert.alert('Error', error?.detail || 'Invalid verification code');
-    } finally {
-      setVerifyingEmail(false);
     }
   };
 
@@ -315,21 +259,6 @@ export default function ClientSettingsScreen() {
             onPress={() => setShowPasswordModal(true)}
           />
           <SettingsItem
-            icon="mail"
-            title="Email Verification"
-            subtitle={user?.is_email_verified ? 'Verified' : 'Not verified - Tap to verify'}
-            onPress={() => {
-              if (!user?.is_email_verified) {
-                setShowEmailModal(true);
-              }
-            }}
-            rightElement={
-              user?.is_email_verified ? (
-                <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
-              ) : undefined
-            }
-          />
-          <SettingsItem
             icon="shield-checkmark"
             title="Two-Factor Authentication"
             subtitle={user?.two_factor_enabled ? 'Enabled' : 'Disabled'}
@@ -466,12 +395,12 @@ export default function ClientSettingsScreen() {
           <SettingsItem
             icon="document-text"
             title="Terms of Service"
-            onPress={() => Alert.alert('Terms', 'Terms of Service')}
+            onPress={() => router.push('/terms')}
           />
           <SettingsItem
             icon="shield"
             title="Privacy Policy"
-            onPress={() => Alert.alert('Privacy', 'Privacy Policy')}
+            onPress={() => router.push('/privacy')}
           />
         </Card>
       </View>
@@ -600,71 +529,6 @@ export default function ClientSettingsScreen() {
         </View>
       </Modal>
 
-      {/* Email Verification Modal */}
-      <Modal
-        visible={showEmailModal}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowEmailModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Verify Email</Text>
-              <TouchableOpacity onPress={() => setShowEmailModal(false)}>
-                <Ionicons name="close" size={24} color={Colors.text} />
-              </TouchableOpacity>
-            </View>
-
-            {!otpSent ? (
-              <>
-                <Text style={styles.modalText}>
-                  Enter your email address to receive a verification code
-                </Text>
-                <Input
-                  placeholder="Enter your email"
-                  value={verificationEmail}
-                  onChangeText={setVerificationEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  leftIcon="mail-outline"
-                />
-                <Button
-                  title="Send Verification Code"
-                  onPress={handleSendOTP}
-                  loading={verifyingEmail}
-                  style={styles.modalButton}
-                />
-              </>
-            ) : (
-              <>
-                <Text style={styles.modalText}>
-                  Enter the 6-digit code sent to {verificationEmail}
-                </Text>
-                <TextInput
-                  style={styles.otpInput}
-                  value={otpCode}
-                  onChangeText={setOtpCode}
-                  placeholder="000000"
-                  placeholderTextColor={Colors.textMuted}
-                  keyboardType="number-pad"
-                  maxLength={6}
-                  textAlign="center"
-                />
-                <Button
-                  title="Verify Email"
-                  onPress={handleVerifyEmail}
-                  loading={verifyingEmail}
-                  style={styles.modalButton}
-                />
-                <TouchableOpacity onPress={handleResendOTP} style={styles.resendButton}>
-                  <Text style={styles.resendText}>Resend Code</Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </View>
-      </Modal>
     </ScrollView>
   );
 }
@@ -844,23 +708,6 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     color: Colors.text,
     height: 100,
-  },
-  otpInput: {
-    backgroundColor: Colors.surfaceLight,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    fontSize: FontSize.xxl,
-    color: Colors.text,
-    letterSpacing: 10,
-    marginBottom: Spacing.md,
-  },
-  resendButton: {
-    alignItems: 'center',
-    marginTop: Spacing.md,
-  },
-  resendText: {
-    color: Colors.primary,
-    fontSize: FontSize.md,
   },
   notificationBadgeContainer: {
     flexDirection: 'row',

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { chatApi } from '../api/chat.api';
 import { useAuth } from './AuthContext';
+import { websocketService } from '../services/websocket';
 
 interface ChatContextType {
   unreadCount: number;
@@ -57,6 +58,23 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
     return () => clearInterval(interval);
   }, [user, refreshUnreadCount]);
+
+  // Listen for new messages via WebSocket and increment unread count
+  useEffect(() => {
+    if (!user) return;
+
+    // Backend sends 'message:new' type with message data directly (not wrapped in data.message)
+    const unsubscribe = websocketService.on('message:new', (data) => {
+      // Only increment if the message is from someone else (not sent by current user)
+      if (data && data.sender_id !== user.id) {
+        incrementUnreadCount(1);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [user, incrementUnreadCount]);
 
   return (
     <ChatContext.Provider

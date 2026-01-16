@@ -65,12 +65,14 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setIsConnected(false);
     });
 
-    // Message handlers
-    const unsubNewMessage = websocketService.on('new_message', (data) => {
-      setNewMessage(data.message);
+    // Message handlers - backend sends 'message:new' type
+    const unsubNewMessage = websocketService.on('message:new', (data) => {
+      // Backend sends message data directly, not wrapped in data.message
+      setNewMessage(data);
     });
 
-    const unsubTyping = websocketService.on('typing', (data) => {
+    // Typing indicators - backend sends 'typing:start' and 'typing:stop'
+    const unsubTyping = websocketService.on('typing:start', (data) => {
       setTypingUsers((prev) => {
         const newMap = new Map(prev);
         newMap.set(data.user_id, true);
@@ -78,7 +80,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       });
     });
 
-    const unsubStopTyping = websocketService.on('stop_typing', (data) => {
+    const unsubStopTyping = websocketService.on('typing:stop', (data) => {
       setTypingUsers((prev) => {
         const newMap = new Map(prev);
         newMap.delete(data.user_id);
