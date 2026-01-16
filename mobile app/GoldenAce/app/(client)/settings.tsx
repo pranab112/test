@@ -381,10 +381,10 @@ export default function ClientSettingsScreen() {
             onPress={() => router.push('/support')}
           />
           <SettingsItem
-            icon="chatbubble-ellipses"
-            title="Contact Support"
-            subtitle="Create support ticket"
-            onPress={() => router.push('/support')}
+            icon="star"
+            title="Reviews"
+            subtitle="View and write reviews"
+            onPress={() => router.push('/reviews')}
           />
           <SettingsItem
             icon="megaphone"

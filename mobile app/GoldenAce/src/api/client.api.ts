@@ -24,6 +24,33 @@ interface ClientAnalytics {
   monthly_revenue: number[];
 }
 
+export interface PlayerCreateRequest {
+  username: string;
+  full_name: string;
+  password?: string;
+  referral_code?: string;
+}
+
+export interface PlayerRegistrationResponse {
+  id: number;
+  username: string;
+  full_name: string;
+  user_id: string;
+  user_type: string;
+  is_active: boolean;
+  created_at: string;
+  player_level: number;
+  credits: number;
+  temp_password?: string;
+}
+
+export interface BulkRegistrationResponse {
+  created: PlayerRegistrationResponse[];
+  failed: { username: string; reason: string }[];
+  total_created: number;
+  total_failed: number;
+}
+
 export const clientApi = {
   // Get dashboard stats
   getDashboardStats: async (): Promise<ClientDashboardStats> => {
@@ -89,6 +116,56 @@ export const clientApi = {
     try {
       const response = await api.get(API_ENDPOINTS.CLIENT.ANALYTICS);
       return response as unknown as ClientAnalytics;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Register a new player
+  registerPlayer: async (player: PlayerCreateRequest): Promise<PlayerRegistrationResponse> => {
+    try {
+      const response = await api.post('/client/register-player', player);
+      return response as unknown as PlayerRegistrationResponse;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Bulk register players
+  bulkRegisterPlayers: async (players: PlayerCreateRequest[]): Promise<BulkRegistrationResponse> => {
+    try {
+      const response = await api.post('/client/bulk-register-players', players);
+      return response as unknown as BulkRegistrationResponse;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Block/Unblock a player
+  togglePlayerBlock: async (playerId: number): Promise<{ message: string; is_active: boolean }> => {
+    try {
+      const response = await api.patch(`/client/block-player/${playerId}`);
+      return response as unknown as { message: string; is_active: boolean };
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Reset player password
+  resetPlayerPassword: async (playerId: number): Promise<{ message: string; temp_password: string }> => {
+    try {
+      const response = await api.post(`/client/reset-player-password/${playerId}`);
+      return response as unknown as { message: string; temp_password: string };
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get my players (players created by this client)
+  getMyPlayers: async (): Promise<PlayerWithDetails[]> => {
+    try {
+      const response = await api.get('/client/my-players');
+      return response as unknown as PlayerWithDetails[];
     } catch (error) {
       throw error;
     }

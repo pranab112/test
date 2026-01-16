@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { chatApi } from '../api/chat.api';
 import { useAuth } from './AuthContext';
 import { websocketService } from '../services/websocket';
@@ -9,6 +9,7 @@ interface ChatContextType {
   decrementUnreadCount: (count?: number) => void;
   incrementUnreadCount: (count?: number) => void;
   resetUnreadCount: () => void;
+  setActiveChatFriendId: (friendId: number | null) => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -16,6 +17,8 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 export function ChatProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
+  // Track which chat is currently being viewed (to avoid incrementing count for messages in active chat)
+  const activeChatFriendIdRef = useRef<number | null>(null);
 
   const refreshUnreadCount = useCallback(async () => {
     if (!user) {
@@ -43,6 +46,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     setUnreadCount(0);
   }, []);
 
+  const setActiveChatFriendId = useCallback((friendId: number | null) => {
+    activeChatFriendIdRef.current = friendId;
+  }, []);
+
   // Fetch unread count on mount and when user changes
   useEffect(() => {
     refreshUnreadCount();
@@ -66,8 +73,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     // Backend sends 'message:new' type with message data directly (not wrapped in data.message)
     const unsubscribe = websocketService.on('message:new', (data) => {
       // Only increment if the message is from someone else (not sent by current user)
+      // AND if the user is not currently viewing that chat
       if (data && data.sender_id !== user.id) {
-        incrementUnreadCount(1);
+        // Don't increment if user is currently in that chat (messages are auto-read)
+        if (activeChatFriendIdRef.current !== data.sender_id) {
+          incrementUnreadCount(1);
+        }
       }
     });
 
@@ -84,6 +95,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         decrementUnreadCount,
         incrementUnreadCount,
         resetUnreadCount,
+        setActiveChatFriendId,
       }}
     >
       {children}

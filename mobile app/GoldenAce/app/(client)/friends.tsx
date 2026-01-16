@@ -9,15 +9,17 @@ import {
   Alert,
   TextInput,
   ScrollView,
+  Switch,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { friendsApi } from '../../src/api/friends.api';
+import { clientApi, PlayerRegistrationResponse } from '../../src/api/client.api';
 import { Card, Avatar, Badge, Loading, EmptyState, Button } from '../../src/components/ui';
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../../src/constants/theme';
 import type { Friend, FriendRequest } from '../../src/types';
 
-type TabType = 'players' | 'requests' | 'add' | 'bulk';
+type TabType = 'players' | 'requests' | 'register' | 'bulk-register';
 
 export default function ClientFriendsScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('players');
@@ -30,12 +32,18 @@ export default function ClientFriendsScreen() {
   const [searching, setSearching] = useState(false);
   const [sendingRequest, setSendingRequest] = useState(false);
 
-  // Bulk add state
-  const [bulkIds, setBulkIds] = useState('');
-  const [bulkSearching, setBulkSearching] = useState(false);
-  const [bulkResults, setBulkResults] = useState<{ found: Friend[]; notFound: string[] } | null>(null);
-  const [selectedForBulk, setSelectedForBulk] = useState<Set<number>>(new Set());
-  const [sendingBulkRequests, setSendingBulkRequests] = useState(false);
+  // Register player state
+  const [registerUsername, setRegisterUsername] = useState('');
+  const [registerFullName, setRegisterFullName] = useState('');
+  const [registerPassword, setRegisterPassword] = useState('');
+  const [useAutoPassword, setUseAutoPassword] = useState(true);
+  const [registeringPlayer, setRegisteringPlayer] = useState(false);
+  const [registeredPlayer, setRegisteredPlayer] = useState<PlayerRegistrationResponse | null>(null);
+
+  // Bulk register state
+  const [bulkRegisterData, setBulkRegisterData] = useState('');
+  const [bulkRegistering, setBulkRegistering] = useState(false);
+  const [bulkRegisterPreview, setBulkRegisterPreview] = useState<{ username: string; full_name: string }[]>([]);
 
   const loadData = async () => {
     try {
@@ -155,86 +163,111 @@ export default function ClientFriendsScreen() {
     );
   };
 
-  // Bulk add functions
-  const handleBulkSearch = async () => {
-    const ids = bulkIds
-      .split(/[\n,;]+/)
-      .map((id) => id.trim())
-      .filter((id) => id.length > 0);
-
-    if (ids.length === 0) {
-      Alert.alert('Error', 'Please enter at least one unique ID');
+  // Register player function
+  const handleRegisterPlayer = async () => {
+    if (!registerUsername.trim() || !registerFullName.trim()) {
+      Alert.alert('Error', 'Please enter username and full name');
       return;
     }
 
-    if (ids.length > 50) {
-      Alert.alert('Error', 'Maximum 50 IDs allowed at once');
+    if (!useAutoPassword && !registerPassword.trim()) {
+      Alert.alert('Error', 'Please enter a password or use auto-generated password');
       return;
     }
 
-    setBulkSearching(true);
-    setBulkResults(null);
-    setSelectedForBulk(new Set());
-
+    setRegisteringPlayer(true);
+    setRegisteredPlayer(null);
     try {
-      const results = await friendsApi.bulkSearchByUniqueIds(ids);
-      setBulkResults(results);
-      // Auto-select all found players
-      setSelectedForBulk(new Set(results.found.map((f) => f.id)));
+      const result = await clientApi.registerPlayer({
+        username: registerUsername.trim(),
+        full_name: registerFullName.trim(),
+        password: useAutoPassword ? undefined : registerPassword.trim(),
+      });
+
+      setRegisteredPlayer(result);
+
+      // Show success with credentials
+      const passwordInfo = result.temp_password
+        ? `Password: ${result.temp_password}`
+        : `Password: ${registerPassword}`;
+
+      Alert.alert(
+        'Player Registered!',
+        `Username: ${result.username}\n${passwordInfo}\n\nPlayer ID: ${result.user_id}\nCredits: ${result.credits} GC`,
+        [{ text: 'OK' }]
+      );
+
+      // Clear form
+      setRegisterUsername('');
+      setRegisterFullName('');
+      setRegisterPassword('');
+      setUseAutoPassword(true);
+
+      // Refresh player list
+      await loadData();
     } catch (error: any) {
-      Alert.alert('Error', error?.detail || 'Failed to search players');
+      Alert.alert('Error', error?.detail || 'Failed to register player');
     } finally {
-      setBulkSearching(false);
+      setRegisteringPlayer(false);
     }
   };
 
-  const toggleBulkSelection = (playerId: number) => {
-    setSelectedForBulk((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(playerId)) {
-        newSet.delete(playerId);
-      } else {
-        newSet.add(playerId);
+  // Parse bulk register data for preview
+  const parseBulkData = (data: string) => {
+    const lines = data.split('\n').filter(line => line.trim());
+    const players: { username: string; full_name: string }[] = [];
+
+    for (const line of lines) {
+      const parts = line.split(',').map(p => p.trim());
+      if (parts.length >= 2 && parts[0] && parts[1]) {
+        players.push({
+          username: parts[0],
+          full_name: parts[1],
+        });
       }
-      return newSet;
-    });
-  };
-
-  const selectAllBulk = () => {
-    if (bulkResults) {
-      setSelectedForBulk(new Set(bulkResults.found.map((f) => f.id)));
     }
+    return players;
   };
 
-  const deselectAllBulk = () => {
-    setSelectedForBulk(new Set());
+  const handlePreviewBulkRegister = () => {
+    const players = parseBulkData(bulkRegisterData);
+    if (players.length === 0) {
+      Alert.alert('Error', 'Please enter valid data. Format: username, full_name (one per line)');
+      return;
+    }
+    setBulkRegisterPreview(players);
   };
 
-  const handleSendBulkRequests = async () => {
-    if (selectedForBulk.size === 0) {
-      Alert.alert('Error', 'Please select at least one player');
+  const handleBulkRegister = async () => {
+    if (bulkRegisterPreview.length === 0) {
+      Alert.alert('Error', 'Please preview the data first');
       return;
     }
 
-    setSendingBulkRequests(true);
+    setBulkRegistering(true);
     try {
-      const userIds = Array.from(selectedForBulk);
-      const results = await friendsApi.sendBulkFriendRequests(userIds);
+      const result = await clientApi.bulkRegisterPlayers(bulkRegisterPreview);
 
-      const message = `Successfully sent ${results.success.length} request(s)${
-        results.failed.length > 0 ? `. ${results.failed.length} failed.` : ''
-      }`;
+      let message = `Successfully created ${result.total_created} player(s)`;
+      if (result.total_failed > 0) {
+        message += `\nFailed: ${result.total_failed}`;
+        if (result.failed.length > 0) {
+          message += `\n\nFailed usernames:\n${result.failed.map(f => `${f.username}: ${f.reason}`).join('\n')}`;
+        }
+      }
 
-      Alert.alert('Done', message);
+      Alert.alert('Bulk Registration Complete', message);
 
-      // Clear the form
-      setBulkIds('');
-      setBulkResults(null);
-      setSelectedForBulk(new Set());
+      // Clear form
+      setBulkRegisterData('');
+      setBulkRegisterPreview([]);
+
+      // Refresh player list
+      await loadData();
     } catch (error: any) {
-      Alert.alert('Error', error?.detail || 'Failed to send requests');
+      Alert.alert('Error', error?.detail || 'Failed to register players');
     } finally {
-      setSendingBulkRequests(false);
+      setBulkRegistering(false);
     }
   };
 
@@ -340,7 +373,7 @@ export default function ClientFriendsScreen() {
           onPress={() => setActiveTab('players')}
         >
           <Text style={[styles.tabText, activeTab === 'players' && styles.tabTextActive]}>
-            My Players ({friends.length})
+            Players ({friends.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -352,29 +385,29 @@ export default function ClientFriendsScreen() {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'add' && styles.tabActive]}
-          onPress={() => setActiveTab('add')}
+          style={[styles.tab, activeTab === 'register' && styles.tabActive]}
+          onPress={() => setActiveTab('register')}
         >
           <Ionicons
             name="person-add"
             size={18}
-            color={activeTab === 'add' ? Colors.primary : Colors.textSecondary}
+            color={activeTab === 'register' ? Colors.primary : Colors.textSecondary}
           />
-          <Text style={[styles.tabText, activeTab === 'add' && styles.tabTextActive]}>
-            Add
+          <Text style={[styles.tabText, activeTab === 'register' && styles.tabTextActive]}>
+            Register
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'bulk' && styles.tabActive]}
-          onPress={() => setActiveTab('bulk')}
+          style={[styles.tab, activeTab === 'bulk-register' && styles.tabActive]}
+          onPress={() => setActiveTab('bulk-register')}
         >
           <Ionicons
             name="people"
             size={18}
-            color={activeTab === 'bulk' ? Colors.primary : Colors.textSecondary}
+            color={activeTab === 'bulk-register' ? Colors.primary : Colors.textSecondary}
           />
-          <Text style={[styles.tabText, activeTab === 'bulk' && styles.tabTextActive]}>
-            Bulk Add
+          <Text style={[styles.tabText, activeTab === 'bulk-register' && styles.tabTextActive]}>
+            Bulk
           </Text>
         </TouchableOpacity>
       </View>
@@ -397,9 +430,9 @@ export default function ClientFriendsScreen() {
             <EmptyState
               icon="people-outline"
               title="No Players Yet"
-              description="Add players using their unique ID to manage them"
-              actionLabel="Add Player"
-              onAction={() => setActiveTab('add')}
+              description="Register new players to manage them"
+              actionLabel="Register Player"
+              onAction={() => setActiveTab('register')}
             />
           }
         />
@@ -421,87 +454,107 @@ export default function ClientFriendsScreen() {
         />
       )}
 
-      {activeTab === 'add' && (
-        <View style={styles.addContainer}>
+      {activeTab === 'register' && (
+        <ScrollView style={styles.addContainer} contentContainerStyle={styles.registerContent}>
           <View style={styles.addHeader}>
             <Ionicons name="person-add" size={48} color={Colors.primary} />
-            <Text style={styles.addTitle}>Add a Player</Text>
+            <Text style={styles.addTitle}>Register New Player</Text>
             <Text style={styles.addDescription}>
-              Enter the player's unique ID to send them a friend request
+              Create a new player account with username and password
             </Text>
           </View>
 
-          <View style={styles.searchBox}>
-            <Text style={styles.searchLabel}>Player's Unique ID</Text>
-            <View style={styles.searchInputRow}>
+          <View style={styles.formBox}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.searchLabel}>Username *</Text>
               <TextInput
                 style={styles.searchInput}
-                value={uniqueIdQuery}
-                onChangeText={setUniqueIdQuery}
-                placeholder="Enter unique ID or username..."
+                value={registerUsername}
+                onChangeText={setRegisterUsername}
+                placeholder="Enter username..."
                 placeholderTextColor={Colors.textMuted}
                 autoCapitalize="none"
                 autoCorrect={false}
-                onSubmitEditing={handleSearchByUniqueId}
               />
-              <TouchableOpacity
-                style={[styles.searchButton, searching && styles.searchButtonDisabled]}
-                onPress={handleSearchByUniqueId}
-                disabled={searching}
-              >
-                <Ionicons
-                  name={searching ? 'hourglass' : 'search'}
-                  size={24}
-                  color={Colors.background}
-                />
-              </TouchableOpacity>
             </View>
-          </View>
 
-          {/* Search Result */}
-          {searchResult && (
-            <Card style={styles.resultCard}>
-              <View style={styles.resultHeader}>
-                <Text style={styles.resultTitle}>Player Found!</Text>
-              </View>
-              <View style={styles.resultContent}>
-                <Avatar
-                  source={searchResult.profile_picture}
-                  name={searchResult.full_name || searchResult.username}
-                  size="lg"
-                />
-                <View style={styles.resultInfo}>
-                  <Text style={styles.resultName}>
-                    {searchResult.full_name || searchResult.username}
-                  </Text>
-                  <Text style={styles.resultUsername}>@{searchResult.username}</Text>
-                  {searchResult.user_id && (
-                    <Text style={styles.resultUniqueId}>ID: {searchResult.user_id}</Text>
-                  )}
-                  <View style={styles.playerMeta}>
-                    <View style={styles.metaItem}>
-                      <Ionicons name="star" size={12} color={Colors.primary} />
-                      <Text style={styles.metaText}>Level {searchResult.player_level || 1}</Text>
-                    </View>
-                  </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.searchLabel}>Full Name *</Text>
+              <TextInput
+                style={styles.searchInput}
+                value={registerFullName}
+                onChangeText={setRegisterFullName}
+                placeholder="Enter full name..."
+                placeholderTextColor={Colors.textMuted}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <View style={styles.passwordHeader}>
+                <Text style={styles.searchLabel}>Password</Text>
+                <View style={styles.autoPasswordToggle}>
+                  <Text style={styles.autoPasswordText}>Auto-generate</Text>
+                  <Switch
+                    value={useAutoPassword}
+                    onValueChange={setUseAutoPassword}
+                    trackColor={{ false: Colors.border, true: Colors.primary + '50' }}
+                    thumbColor={useAutoPassword ? Colors.primary : Colors.textMuted}
+                  />
                 </View>
               </View>
-              <View style={styles.resultActions}>
-                <Button
-                  title="View Profile"
-                  onPress={() => router.push(`/profile/${searchResult.id}`)}
-                  variant="outline"
-                  size="md"
-                  style={styles.resultButton}
+              {!useAutoPassword && (
+                <TextInput
+                  style={styles.searchInput}
+                  value={registerPassword}
+                  onChangeText={setRegisterPassword}
+                  placeholder="Enter password..."
+                  placeholderTextColor={Colors.textMuted}
+                  secureTextEntry
                 />
-                <Button
-                  title={sendingRequest ? 'Sending...' : 'Send Request'}
-                  onPress={() => handleSendRequest(searchResult.id)}
-                  size="md"
-                  loading={sendingRequest}
-                  icon={<Ionicons name="person-add" size={18} color={Colors.background} />}
-                  style={styles.resultButton}
-                />
+              )}
+              {useAutoPassword && (
+                <View style={styles.autoPasswordInfo}>
+                  <Ionicons name="information-circle" size={16} color={Colors.info} />
+                  <Text style={styles.autoPasswordInfoText}>
+                    Password will be: username@135
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            <Button
+              title={registeringPlayer ? 'Registering...' : 'Register Player'}
+              onPress={handleRegisterPlayer}
+              loading={registeringPlayer}
+              icon={<Ionicons name="person-add" size={18} color={Colors.background} />}
+              style={styles.registerButton}
+            />
+          </View>
+
+          {/* Success Result */}
+          {registeredPlayer && (
+            <Card style={styles.successCard}>
+              <View style={styles.successHeader}>
+                <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
+                <Text style={styles.successTitle}>Player Registered!</Text>
+              </View>
+              <View style={styles.credentialRow}>
+                <Text style={styles.credentialLabel}>Username:</Text>
+                <Text style={styles.credentialValue}>{registeredPlayer.username}</Text>
+              </View>
+              {registeredPlayer.temp_password && (
+                <View style={styles.credentialRow}>
+                  <Text style={styles.credentialLabel}>Password:</Text>
+                  <Text style={styles.credentialValue}>{registeredPlayer.temp_password}</Text>
+                </View>
+              )}
+              <View style={styles.credentialRow}>
+                <Text style={styles.credentialLabel}>Player ID:</Text>
+                <Text style={styles.credentialValue}>{registeredPlayer.user_id}</Text>
+              </View>
+              <View style={styles.credentialRow}>
+                <Text style={styles.credentialLabel}>Credits:</Text>
+                <Text style={styles.credentialValue}>{registeredPlayer.credits} GC</Text>
               </View>
             </Card>
           )}
@@ -509,29 +562,32 @@ export default function ClientFriendsScreen() {
           <View style={styles.helpBox}>
             <Ionicons name="information-circle" size={20} color={Colors.info} />
             <Text style={styles.helpText}>
-              Ask your player for their unique ID. They can find it in their profile settings.
+              Share the username and password with your player. They can use these credentials to login to the app.
             </Text>
           </View>
-        </View>
+        </ScrollView>
       )}
 
-      {activeTab === 'bulk' && (
+      {activeTab === 'bulk-register' && (
         <ScrollView style={styles.bulkContainer} contentContainerStyle={styles.bulkContent}>
           <View style={styles.bulkHeader}>
             <Ionicons name="people" size={48} color={Colors.primary} />
-            <Text style={styles.addTitle}>Bulk Add Players</Text>
+            <Text style={styles.addTitle}>Bulk Register Players</Text>
             <Text style={styles.addDescription}>
-              Enter multiple unique IDs (one per line, or separated by commas) to add several players at once
+              Register multiple players at once using CSV format: username, full_name (one per line)
             </Text>
           </View>
 
           <View style={styles.bulkInputBox}>
-            <Text style={styles.searchLabel}>Player Unique IDs</Text>
+            <Text style={styles.searchLabel}>Player Data (CSV Format)</Text>
             <TextInput
               style={styles.bulkInput}
-              value={bulkIds}
-              onChangeText={setBulkIds}
-              placeholder="Enter IDs here...&#10;Example:&#10;ABC123&#10;XYZ789&#10;or: ABC123, XYZ789"
+              value={bulkRegisterData}
+              onChangeText={(text) => {
+                setBulkRegisterData(text);
+                setBulkRegisterPreview([]);
+              }}
+              placeholder="username1, Full Name 1&#10;username2, Full Name 2&#10;username3, Full Name 3"
               placeholderTextColor={Colors.textMuted}
               multiline
               numberOfLines={6}
@@ -540,108 +596,66 @@ export default function ClientFriendsScreen() {
               autoCorrect={false}
             />
             <Text style={styles.bulkHint}>
-              Supports comma (,), semicolon (;), or new line separated IDs. Max 50 at once.
+              Format: username, full_name (one player per line). Password will be auto-generated as username@135
             </Text>
           </View>
 
           <Button
-            title={bulkSearching ? 'Searching...' : 'Search Players'}
-            onPress={handleBulkSearch}
-            loading={bulkSearching}
-            icon={<Ionicons name="search" size={18} color={Colors.background} />}
+            title="Preview Players"
+            onPress={handlePreviewBulkRegister}
+            variant="outline"
+            icon={<Ionicons name="eye" size={18} color={Colors.primary} />}
             style={styles.bulkSearchButton}
           />
 
-          {/* Bulk Results */}
-          {bulkResults && (
+          {/* Preview Results */}
+          {bulkRegisterPreview.length > 0 && (
             <View style={styles.bulkResultsContainer}>
-              {/* Found Players */}
-              {bulkResults.found.length > 0 && (
-                <Card style={styles.bulkResultCard}>
-                  <View style={styles.bulkResultHeader}>
-                    <View style={styles.bulkResultTitleRow}>
-                      <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
-                      <Text style={styles.bulkResultTitle}>
-                        Found {bulkResults.found.length} Player(s)
-                      </Text>
-                    </View>
-                    <View style={styles.bulkSelectActions}>
-                      <TouchableOpacity onPress={selectAllBulk} style={styles.selectAction}>
-                        <Text style={styles.selectActionText}>Select All</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={deselectAllBulk} style={styles.selectAction}>
-                        <Text style={styles.selectActionText}>Deselect</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-
-                  {bulkResults.found.map((player) => (
-                    <TouchableOpacity
-                      key={player.id}
-                      style={styles.bulkPlayerItem}
-                      onPress={() => toggleBulkSelection(player.id)}
-                    >
-                      <TouchableOpacity
-                        style={[
-                          styles.bulkCheckbox,
-                          selectedForBulk.has(player.id) && styles.bulkCheckboxSelected,
-                        ]}
-                        onPress={() => toggleBulkSelection(player.id)}
-                      >
-                        {selectedForBulk.has(player.id) && (
-                          <Ionicons name="checkmark" size={16} color={Colors.background} />
-                        )}
-                      </TouchableOpacity>
-                      <Avatar
-                        source={player.profile_picture}
-                        name={player.full_name || player.username}
-                        size="sm"
-                      />
-                      <View style={styles.bulkPlayerInfo}>
-                        <Text style={styles.bulkPlayerName}>
-                          {player.full_name || player.username}
-                        </Text>
-                        <Text style={styles.bulkPlayerUsername}>
-                          @{player.username} {player.user_id && `• ID: ${player.user_id}`}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </Card>
-              )}
-
-              {/* Not Found IDs */}
-              {bulkResults.notFound.length > 0 && (
-                <Card style={styles.bulkNotFoundCard}>
+              <Card style={styles.bulkResultCard}>
+                <View style={styles.bulkResultHeader}>
                   <View style={styles.bulkResultTitleRow}>
-                    <Ionicons name="alert-circle" size={20} color={Colors.warning} />
-                    <Text style={styles.bulkNotFoundTitle}>
-                      {bulkResults.notFound.length} ID(s) Not Found
+                    <Ionicons name="list" size={20} color={Colors.primary} />
+                    <Text style={styles.bulkResultTitle}>
+                      {bulkRegisterPreview.length} Player(s) to Register
                     </Text>
                   </View>
-                  <Text style={styles.bulkNotFoundIds}>
-                    {bulkResults.notFound.join(', ')}
-                  </Text>
-                </Card>
-              )}
+                </View>
 
-              {/* Send Requests Button */}
-              {bulkResults.found.length > 0 && (
-                <Button
-                  title={
-                    sendingBulkRequests
-                      ? 'Sending...'
-                      : `Send ${selectedForBulk.size} Request(s)`
-                  }
-                  onPress={handleSendBulkRequests}
-                  loading={sendingBulkRequests}
-                  disabled={selectedForBulk.size === 0}
-                  icon={<Ionicons name="paper-plane" size={18} color={Colors.background} />}
-                  style={styles.bulkSendButton}
-                />
-              )}
+                {bulkRegisterPreview.slice(0, 10).map((player, index) => (
+                  <View key={index} style={styles.bulkPlayerItem}>
+                    <View style={styles.previewNumber}>
+                      <Text style={styles.previewNumberText}>{index + 1}</Text>
+                    </View>
+                    <View style={styles.bulkPlayerInfo}>
+                      <Text style={styles.bulkPlayerName}>{player.full_name}</Text>
+                      <Text style={styles.bulkPlayerUsername}>@{player.username}</Text>
+                    </View>
+                  </View>
+                ))}
+
+                {bulkRegisterPreview.length > 10 && (
+                  <Text style={styles.morePlayersText}>
+                    ...and {bulkRegisterPreview.length - 10} more player(s)
+                  </Text>
+                )}
+              </Card>
+
+              <Button
+                title={bulkRegistering ? 'Registering...' : `Register ${bulkRegisterPreview.length} Player(s)`}
+                onPress={handleBulkRegister}
+                loading={bulkRegistering}
+                icon={<Ionicons name="person-add" size={18} color={Colors.background} />}
+                style={styles.bulkSendButton}
+              />
             </View>
           )}
+
+          <View style={styles.helpBox}>
+            <Ionicons name="information-circle" size={20} color={Colors.info} />
+            <Text style={styles.helpText}>
+              All registered players will automatically receive 1000 GC and will be connected to you as friends.
+            </Text>
+          </View>
         </ScrollView>
       )}
     </View>
@@ -981,5 +995,98 @@ const styles = StyleSheet.create({
   },
   bulkSendButton: {
     marginTop: Spacing.md,
+  },
+  // Register player styles
+  registerContent: {
+    paddingBottom: Spacing.xl,
+  },
+  formBox: {
+    marginBottom: Spacing.lg,
+  },
+  inputGroup: {
+    marginBottom: Spacing.md,
+  },
+  passwordHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  autoPasswordToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  autoPasswordText: {
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+  },
+  autoPasswordInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    backgroundColor: Colors.info + '10',
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.md,
+  },
+  autoPasswordInfoText: {
+    fontSize: FontSize.sm,
+    color: Colors.info,
+  },
+  registerButton: {
+    marginTop: Spacing.lg,
+  },
+  successCard: {
+    marginBottom: Spacing.lg,
+    backgroundColor: Colors.success + '10',
+    borderColor: Colors.success,
+    borderWidth: 1,
+  },
+  successHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  successTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
+    color: Colors.success,
+  },
+  credentialRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: Colors.success + '30',
+  },
+  credentialLabel: {
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+  },
+  credentialValue: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
+    color: Colors.text,
+  },
+  previewNumber: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.primary + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewNumberText: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
+    color: Colors.primary,
+  },
+  morePlayersText: {
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginTop: Spacing.sm,
+    fontStyle: 'italic',
   },
 });

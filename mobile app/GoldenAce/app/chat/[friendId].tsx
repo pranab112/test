@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router, Stack, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Audio } from 'expo-av';
 import { chatApi } from '../../src/api/chat.api';
@@ -35,7 +35,7 @@ const { width: screenWidth } = Dimensions.get('window');
 export default function ChatScreen() {
   const { friendId } = useLocalSearchParams<{ friendId: string }>();
   const { user } = useAuth();
-  const { refreshUnreadCount } = useChat();
+  const { refreshUnreadCount, setActiveChatFriendId } = useChat();
   const insets = useSafeAreaInsets();
   const [friend, setFriend] = useState<Friend | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -109,8 +109,11 @@ export default function ChatScreen() {
       }
 
       // Backend already marks messages as read when fetching
-      // Just refresh the global unread count to sync the badge
-      refreshUnreadCount();
+      // Refresh the global unread count to sync the badge
+      // Small delay to ensure the backend has committed the read status
+      setTimeout(() => {
+        refreshUnreadCount();
+      }, 500);
     } catch (error) {
       console.error('Error loading chat:', error);
     } finally {
@@ -122,14 +125,24 @@ export default function ChatScreen() {
     loadData();
   }, [friendId]);
 
-  // Refresh unread count when leaving the chat screen
+  // Track active chat and refresh unread count when entering and leaving the chat screen
   useFocusEffect(
     useCallback(() => {
+      // Set active chat so WebSocket handler knows not to increment count for this conversation
+      if (friendId) {
+        setActiveChatFriendId(parseInt(friendId));
+      }
+
+      // Refresh when screen gains focus (in case messages were read)
+      refreshUnreadCount();
+
       // Return cleanup function that runs when screen loses focus
       return () => {
+        // Clear active chat when leaving
+        setActiveChatFriendId(null);
         refreshUnreadCount();
       };
-    }, [refreshUnreadCount])
+    }, [friendId, refreshUnreadCount, setActiveChatFriendId])
   );
 
   const handleSend = async () => {
@@ -382,9 +395,7 @@ export default function ChatScreen() {
       }
     }
 
-    // Skip credential loading if already loaded
-    if (gameCredentials.length > 0) return;
-
+    // Always refresh credentials when opening the modal
     setLoadingCredentials(true);
     try {
       // If current user is a player, get their own credentials
@@ -634,6 +645,76 @@ export default function ChatScreen() {
         );
       }
 
+      // Check if content is JSON (system message like promotion_claim_request, etc.)
+      if (item.content && item.content.startsWith('{') && item.content.includes('"type"')) {
+        try {
+          const jsonData = JSON.parse(item.content);
+
+          // Promotion claim request
+          if (jsonData.type === 'promotion_claim_request') {
+            return (
+              <View style={styles.systemMessage}>
+                <Ionicons name="gift" size={20} color={Colors.primary} />
+                <View style={styles.systemMessageContent}>
+                  <Text style={[styles.systemMessageTitle, isOwnMessage ? styles.ownMessageText : styles.otherMessageText]}>
+                    Promotion Claimed
+                  </Text>
+                  <Text style={[styles.systemMessageText, isOwnMessage ? { color: Colors.background + 'cc' } : { color: Colors.textSecondary }]}>
+                    {jsonData.promotion_title || 'Promotion'} - {jsonData.value || 0} GC
+                  </Text>
+                </View>
+              </View>
+            );
+          }
+
+          // Promotion claim approved
+          if (jsonData.type === 'promotion_claim_approved') {
+            return (
+              <View style={styles.systemMessage}>
+                <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
+                <View style={styles.systemMessageContent}>
+                  <Text style={[styles.systemMessageTitle, isOwnMessage ? styles.ownMessageText : styles.otherMessageText]}>
+                    Promotion Approved
+                  </Text>
+                  <Text style={[styles.systemMessageText, isOwnMessage ? { color: Colors.background + 'cc' } : { color: Colors.textSecondary }]}>
+                    {jsonData.promotion_title || 'Promotion'} - +{jsonData.value || 0} GC
+                  </Text>
+                  {jsonData.player_new_balance !== undefined && (
+                    <Text style={[styles.systemMessageBalance, { color: Colors.success }]}>
+                      New Balance: {jsonData.player_new_balance} GC
+                    </Text>
+                  )}
+                </View>
+              </View>
+            );
+          }
+
+          // Promotion claim rejected
+          if (jsonData.type === 'promotion_claim_rejected') {
+            return (
+              <View style={styles.systemMessage}>
+                <Ionicons name="close-circle" size={20} color={Colors.error} />
+                <View style={styles.systemMessageContent}>
+                  <Text style={[styles.systemMessageTitle, isOwnMessage ? styles.ownMessageText : styles.otherMessageText]}>
+                    Promotion Rejected
+                  </Text>
+                  <Text style={[styles.systemMessageText, isOwnMessage ? { color: Colors.background + 'cc' } : { color: Colors.textSecondary }]}>
+                    {jsonData.promotion_title || 'Promotion'}
+                  </Text>
+                  {jsonData.reason && (
+                    <Text style={[styles.systemMessageText, { color: Colors.error }]}>
+                      Reason: {jsonData.reason}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            );
+          }
+        } catch (e) {
+          // Not valid JSON, fall through to default text rendering
+        }
+      }
+
       return (
         <Text
           style={[
@@ -743,8 +824,8 @@ export default function ChatScreen() {
       />
       <KeyboardAvoidingView
         style={styles.container}
-        behavior="padding"
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 80}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         <FlatList
           ref={flatListRef}
@@ -764,7 +845,7 @@ export default function ChatScreen() {
 
         {/* Recording UI */}
         {isRecording ? (
-          <View style={styles.recordingContainer}>
+          <View style={[styles.recordingContainer, { paddingBottom: Math.max(insets.bottom, Spacing.md) }]}>
             <TouchableOpacity style={styles.cancelRecordButton} onPress={cancelRecording}>
               <Ionicons name="close" size={24} color={Colors.error} />
             </TouchableOpacity>
@@ -778,7 +859,7 @@ export default function ChatScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={styles.inputContainer}>
+          <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, Spacing.md) }]}>
             <TouchableOpacity
               style={styles.attachButton}
               onPress={() => setShowAttachMenu(true)}
@@ -1742,6 +1823,29 @@ const styles = StyleSheet.create({
   },
   promotionDescription: {
     fontSize: FontSize.sm,
+    marginTop: Spacing.xs,
+  },
+  // System message styles (for promotion claims, etc.)
+  systemMessage: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    minWidth: 200,
+    gap: Spacing.sm,
+  },
+  systemMessageContent: {
+    flex: 1,
+  },
+  systemMessageTitle: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+    marginBottom: 2,
+  },
+  systemMessageText: {
+    fontSize: FontSize.sm,
+  },
+  systemMessageBalance: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.medium,
     marginTop: Spacing.xs,
   },
 });

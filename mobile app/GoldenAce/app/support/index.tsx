@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ticketsApi, Ticket, TicketCategory, TicketMessage } from '../../src/api/tickets.api';
 import { Card, Badge, Button, Loading, EmptyState, Input } from '../../src/components/ui';
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../../src/constants/theme';
@@ -27,6 +28,7 @@ const CATEGORIES: { value: TicketCategory; label: string; icon: string }[] = [
 ];
 
 export default function SupportScreen() {
+  const insets = useSafeAreaInsets();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -175,7 +177,7 @@ export default function SupportScreen() {
   }
 
   return (
-    <>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <Stack.Screen
         options={{
           headerShown: true,
@@ -199,7 +201,7 @@ export default function SupportScreen() {
           data={tickets}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderTicket}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: Math.max(insets.bottom, Spacing.md) }]}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -356,7 +358,7 @@ export default function SupportScreen() {
             )}
 
             {selectedTicket?.status !== 'closed' && selectedTicket?.status !== 'resolved' && (
-              <View style={styles.messageInputContainer}>
+              <View style={[styles.messageInputContainer, { paddingBottom: Math.max(insets.bottom, Spacing.md) }]}>
                 <TextInput
                   style={styles.messageInput}
                   value={newMessage}
@@ -385,11 +387,15 @@ export default function SupportScreen() {
           </View>
         </Modal>
       </View>
-    </>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
   container: {
     flex: 1,
     backgroundColor: Colors.background,

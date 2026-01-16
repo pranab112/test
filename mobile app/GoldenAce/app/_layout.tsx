@@ -30,6 +30,39 @@ export default function RootLayout() {
               <Stack.Screen
                 name="chat/[friendId]"
                 options={{
+                  headerShown: true,
+                  presentation: 'card',
+                  animation: 'slide_from_right',
+                }}
+              />
+              <Stack.Screen
+                name="support/index"
+                options={{
+                  headerShown: true,
+                  presentation: 'card',
+                  animation: 'slide_from_right',
+                }}
+              />
+              <Stack.Screen
+                name="privacy"
+                options={{
+                  headerShown: true,
+                  presentation: 'card',
+                  animation: 'slide_from_right',
+                }}
+              />
+              <Stack.Screen
+                name="terms"
+                options={{
+                  headerShown: true,
+                  presentation: 'card',
+                  animation: 'slide_from_right',
+                }}
+              />
+              <Stack.Screen
+                name="reviews/index"
+                options={{
+                  headerShown: true,
                   presentation: 'card',
                   animation: 'slide_from_right',
                 }}

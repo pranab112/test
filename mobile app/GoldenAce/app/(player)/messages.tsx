@@ -78,6 +78,8 @@ export default function PlayerMessagesScreen() {
         return '🎤 Voice message';
       case 'promotion':
         return '🎁 Promotion';
+      case 'credit_transfer':
+        return '💰 Credit Transfer';
       default:
         return message.content || '';
     }

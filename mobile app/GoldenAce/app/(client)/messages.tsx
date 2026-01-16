@@ -90,6 +90,8 @@ export default function ClientMessagesScreen() {
         return '🎤 Voice message';
       case 'promotion':
         return '🎁 Promotion';
+      case 'credit_transfer':
+        return '💰 Credit Transfer';
       default:
         return message.content || '';
     }
