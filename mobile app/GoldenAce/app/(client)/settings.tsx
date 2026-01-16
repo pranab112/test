@@ -387,6 +387,12 @@ export default function ClientSettingsScreen() {
             onPress={() => router.push('/reviews')}
           />
           <SettingsItem
+            icon="alert-circle"
+            title="Reports & Warnings"
+            subtitle="View reports and resolve warnings"
+            onPress={() => router.push('/reports')}
+          />
+          <SettingsItem
             icon="megaphone"
             title="Announcements"
             subtitle="News and updates"

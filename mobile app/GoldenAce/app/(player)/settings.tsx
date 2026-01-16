@@ -625,6 +625,12 @@ export default function PlayerSettingsScreen() {
             onPress={() => router.push('/support')}
           />
           <SettingsItem
+            icon="alert-circle"
+            title="Reports & Warnings"
+            subtitle="View reports and resolve warnings"
+            onPress={() => router.push('/reports')}
+          />
+          <SettingsItem
             icon="document-text"
             title="Terms of Service"
             onPress={() => router.push('/terms')}

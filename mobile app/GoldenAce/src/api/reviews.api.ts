@@ -90,4 +90,37 @@ export const reviewsApi = {
       throw error;
     }
   },
+
+  // Get my pending reviews (reviews I've given that are pending moderation)
+  getMyPendingReviews: async (): Promise<Review[]> => {
+    try {
+      const response = await api.get('/reviews/my-pending');
+      return response as unknown as Review[];
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get my rejected reviews
+  getMyRejectedReviews: async (): Promise<Review[]> => {
+    try {
+      const response = await api.get('/reviews/my-rejected');
+      return response as unknown as Review[];
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Appeal a review (dispute a review received)
+  appealReview: async (data: {
+    review_id: number;
+    reason: string;
+  }): Promise<{ message: string; ticket_id: number }> => {
+    try {
+      const response = await api.post('/reviews/appeal', data);
+      return response as unknown as { message: string; ticket_id: number };
+    } catch (error) {
+      throw error;
+    }
+  },
 };

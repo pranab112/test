@@ -6,6 +6,10 @@ export type TicketCategory =
   | 'technical'
   | 'game'
   | 'report'
+  | 'appeal_review'
+  | 'appeal_report'
+  | 'promotion'
+  | 'feedback'
   | 'other';
 
 export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';

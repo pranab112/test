@@ -9,6 +9,7 @@ import {
   Modal,
   TextInput,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,6 +38,12 @@ export default function ReviewsScreen() {
   const [reviewTitle, setReviewTitle] = useState('');
   const [reviewComment, setReviewComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Appeal review modal
+  const [showAppealModal, setShowAppealModal] = useState(false);
+  const [selectedReviewForAppeal, setSelectedReviewForAppeal] = useState<Review | null>(null);
+  const [appealReason, setAppealReason] = useState('');
+  const [appealSubmitting, setAppealSubmitting] = useState(false);
 
   const loadData = async () => {
     try {
@@ -101,6 +108,40 @@ export default function ReviewsScreen() {
     setReviewComment('');
   };
 
+  const handleAppealReview = async () => {
+    if (!selectedReviewForAppeal) return;
+    if (!appealReason.trim()) {
+      Alert.alert('Error', 'Please provide a reason for your appeal');
+      return;
+    }
+
+    setAppealSubmitting(true);
+    try {
+      const result = await reviewsApi.appealReview({
+        review_id: selectedReviewForAppeal.id,
+        reason: appealReason.trim(),
+      });
+      Alert.alert(
+        'Appeal Submitted',
+        `Your appeal has been submitted. A support ticket (#${result.ticket_id}) has been created to track your appeal.`
+      );
+      setShowAppealModal(false);
+      setSelectedReviewForAppeal(null);
+      setAppealReason('');
+      await loadData();
+    } catch (error: any) {
+      Alert.alert('Error', error?.detail || 'Failed to submit appeal');
+    } finally {
+      setAppealSubmitting(false);
+    }
+  };
+
+  const openAppealModal = (review: Review) => {
+    setSelectedReviewForAppeal(review);
+    setAppealReason('');
+    setShowAppealModal(true);
+  };
+
   const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleDateString(undefined, {
       year: 'numeric',
@@ -137,6 +178,8 @@ export default function ReviewsScreen() {
         return <Badge text="Pending" variant="warning" size="sm" />;
       case 'rejected':
         return <Badge text="Rejected" variant="error" size="sm" />;
+      case 'disputed':
+        return <Badge text="Disputed" variant="warning" size="sm" />;
       default:
         return <Badge text={status} variant="default" size="sm" />;
     }
@@ -145,6 +188,7 @@ export default function ReviewsScreen() {
   const renderReview = ({ item }: { item: Review }) => {
     const isReceived = activeTab === 'received';
     const person = isReceived ? item.reviewer : item.reviewee;
+    const canAppeal = isReceived && item.status === 'approved';
 
     return (
       <Card style={styles.reviewCard}>
@@ -176,6 +220,37 @@ export default function ReviewsScreen() {
           <Text style={styles.reviewTitle}>{item.title}</Text>
           {item.comment && (
             <Text style={styles.reviewComment}>{item.comment}</Text>
+          )}
+
+          {/* Show admin notes for rejected reviews */}
+          {item.status === 'rejected' && item.admin_notes && (
+            <View style={styles.adminNotesBox}>
+              <Ionicons name="information-circle" size={16} color={Colors.error} />
+              <Text style={styles.adminNotesText}>
+                Rejection reason: {item.admin_notes}
+              </Text>
+            </View>
+          )}
+
+          {/* Show disputed notice */}
+          {item.status === 'disputed' && (
+            <View style={styles.disputedBox}>
+              <Ionicons name="time" size={16} color={Colors.warning} />
+              <Text style={styles.disputedText}>
+                This review is under investigation
+              </Text>
+            </View>
+          )}
+
+          {/* Appeal button for received approved reviews */}
+          {canAppeal && (
+            <TouchableOpacity
+              style={styles.appealButton}
+              onPress={() => openAppealModal(item)}
+            >
+              <Ionicons name="flag-outline" size={16} color={Colors.error} />
+              <Text style={styles.appealButtonText}>Dispute Review</Text>
+            </TouchableOpacity>
           )}
         </View>
       </Card>
@@ -361,6 +436,76 @@ export default function ReviewsScreen() {
                     style={styles.submitButton}
                   />
                 </>
+              )}
+            </View>
+          </View>
+        </Modal>
+
+        {/* Appeal Review Modal */}
+        <Modal
+          visible={showAppealModal}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setShowAppealModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Dispute Review</Text>
+                <TouchableOpacity onPress={() => setShowAppealModal(false)}>
+                  <Ionicons name="close" size={24} color={Colors.text} />
+                </TouchableOpacity>
+              </View>
+
+              {selectedReviewForAppeal && (
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  {/* Review being disputed */}
+                  <View style={styles.appealReviewBox}>
+                    <Text style={styles.appealReviewLabel}>Review being disputed:</Text>
+                    <View style={styles.appealReviewContent}>
+                      <View style={styles.appealReviewHeader}>
+                        <Text style={styles.appealReviewerName}>
+                          By {selectedReviewForAppeal.reviewer.full_name || selectedReviewForAppeal.reviewer.username}
+                        </Text>
+                        {renderStars(selectedReviewForAppeal.rating, 14)}
+                      </View>
+                      <Text style={styles.appealReviewTitle}>{selectedReviewForAppeal.title}</Text>
+                      {selectedReviewForAppeal.comment && (
+                        <Text style={styles.appealReviewComment}>{selectedReviewForAppeal.comment}</Text>
+                      )}
+                    </View>
+                  </View>
+
+                  {/* Appeal reason */}
+                  <Text style={styles.inputLabel}>Why are you disputing this review? *</Text>
+                  <TextInput
+                    style={[styles.input, styles.textArea]}
+                    value={appealReason}
+                    onChangeText={setAppealReason}
+                    placeholder="Explain why you believe this review is unfair, inaccurate, or violates our guidelines..."
+                    placeholderTextColor={Colors.textMuted}
+                    multiline
+                    numberOfLines={5}
+                    textAlignVertical="top"
+                    maxLength={1000}
+                  />
+                  <Text style={styles.charCount}>{appealReason.length}/1000</Text>
+
+                  <View style={styles.appealInfoBox}>
+                    <Ionicons name="information-circle" size={20} color={Colors.info} />
+                    <Text style={styles.appealInfoText}>
+                      A support ticket will be created to investigate your appeal. Our team will review the dispute and take appropriate action.
+                    </Text>
+                  </View>
+
+                  <Button
+                    title={appealSubmitting ? 'Submitting...' : 'Submit Appeal'}
+                    onPress={handleAppealReview}
+                    loading={appealSubmitting}
+                    style={styles.submitButton}
+                    variant="primary"
+                  />
+                </ScrollView>
               )}
             </View>
           </View>
@@ -561,5 +706,108 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     marginTop: Spacing.lg,
+  },
+  // Admin notes and appeal styles
+  adminNotesBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.xs,
+    backgroundColor: Colors.error + '15',
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    marginTop: Spacing.sm,
+  },
+  adminNotesText: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    color: Colors.error,
+  },
+  disputedBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    backgroundColor: Colors.warning + '15',
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    marginTop: Spacing.sm,
+  },
+  disputedText: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    color: Colors.warning,
+  },
+  appealButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.xs,
+    marginTop: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.error,
+    borderRadius: BorderRadius.md,
+  },
+  appealButtonText: {
+    fontSize: FontSize.sm,
+    color: Colors.error,
+    fontWeight: FontWeight.medium,
+  },
+  // Appeal modal styles
+  appealReviewBox: {
+    marginBottom: Spacing.md,
+  },
+  appealReviewLabel: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.medium,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.sm,
+  },
+  appealReviewContent: {
+    backgroundColor: Colors.background,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  appealReviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.xs,
+  },
+  appealReviewerName: {
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+  },
+  appealReviewTitle: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+    color: Colors.text,
+  },
+  appealReviewComment: {
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+    marginTop: Spacing.xs,
+  },
+  charCount: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    textAlign: 'right',
+    marginTop: Spacing.xs,
+  },
+  appealInfoBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+    backgroundColor: Colors.info + '15',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginTop: Spacing.md,
+  },
+  appealInfoText: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    color: Colors.info,
+    lineHeight: 20,
   },
 });
