@@ -25,6 +25,7 @@ import { gameCredentialsApi } from '../../src/api/gameCredentials.api';
 import { gamesApi } from '../../src/api/games.api';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useChat } from '../../src/contexts/ChatContext';
+import { websocketService } from '../../src/services/websocket';
 import { Avatar, Loading, Card } from '../../src/components/ui';
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../../src/constants/theme';
 import { getFileUrl } from '../../src/config/api.config';
@@ -151,6 +152,44 @@ export default function ChatScreen() {
       };
     }, [friendId, refreshUnreadCount, setActiveChatFriendId])
   );
+
+  // Listen for new messages via WebSocket for real-time updates
+  useEffect(() => {
+    if (!friendId || !user) return;
+
+    const unsubscribe = websocketService.on('message:new', (data) => {
+      // Check if the message is for this conversation
+      const parsedFriendId = parseInt(friendId);
+      if (
+        data &&
+        ((data.sender_id === parsedFriendId && data.receiver_id === user.id) ||
+          (data.sender_id === user.id && data.receiver_id === parsedFriendId))
+      ) {
+        // Add the new message to the list if it's not already there
+        setMessages((prev) => {
+          // Check if message already exists (avoid duplicates)
+          if (prev.some((m) => m.id === data.id)) {
+            return prev;
+          }
+          return [...prev, data];
+        });
+
+        // Scroll to bottom when new message arrives
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+
+        // Mark as read since we're viewing this chat
+        if (data.sender_id === parsedFriendId && !data.is_read) {
+          chatApi.markMessageAsRead(data.id).catch(console.error);
+        }
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [friendId, user]);
 
   const handleSend = async () => {
     if (!newMessage.trim() || sending || !friendId) return;
@@ -399,9 +438,10 @@ export default function ChatScreen() {
       try {
         const games = await gamesApi.getClientGames();
         console.log('[Chat] Loaded client games:', JSON.stringify(games, null, 2));
-        setClientGames(games);
+        setClientGames(Array.isArray(games) ? games : []);
       } catch (error) {
         console.error('Error loading client games:', error);
+        setClientGames([]);
       }
     }
 
@@ -412,17 +452,18 @@ export default function ChatScreen() {
       // If current user is a client and friend is a player, get that player's credentials
       if (user?.user_type === 'player') {
         const credentials = await gameCredentialsApi.getMyCredentials();
-        setGameCredentials(credentials);
+        setGameCredentials(Array.isArray(credentials) ? credentials : []);
       } else if (user?.user_type === 'client' && friend?.user_type === 'player' && friendId) {
         const [credentials, games] = await Promise.all([
           gameCredentialsApi.getPlayerCredentials(parseInt(friendId)),
           gamesApi.getClientGames(),
         ]);
-        setGameCredentials(credentials);
-        setClientGames(games);
+        setGameCredentials(Array.isArray(credentials) ? credentials : []);
+        setClientGames(Array.isArray(games) ? games : []);
       }
     } catch (error) {
       console.error('Error loading credentials:', error);
+      setGameCredentials([]);
     } finally {
       setLoadingCredentials(false);
     }
@@ -440,9 +481,10 @@ export default function ChatScreen() {
     if (user?.user_type === 'client' && clientGames.length === 0) {
       try {
         const games = await gamesApi.getClientGames();
-        setClientGames(games);
+        setClientGames(Array.isArray(games) ? games : []);
       } catch (error) {
         console.error('Error loading client games:', error);
+        setClientGames([]);
       }
     }
   };
@@ -836,48 +878,38 @@ export default function ChatScreen() {
   }
 
   return (
-    <View style={styles.safeArea}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          headerStyle: { backgroundColor: Colors.surface },
-          headerTintColor: Colors.text,
-          headerShadowVisible: false,
-          headerTitle: () => (
-            <View style={styles.headerTitle}>
-              <Avatar
-                source={friend?.profile_picture}
-                name={friend?.full_name || friend?.username}
-                size="sm"
-                showOnlineStatus
-                isOnline={friend?.is_online}
-              />
-              <View style={styles.headerInfo}>
-                <Text style={styles.headerName}>
-                  {friend?.full_name || friend?.username}
-                </Text>
-                <Text style={styles.headerStatus}>
-                  {friend?.is_online ? 'Online' : 'Offline'}
-                </Text>
-              </View>
-            </View>
-          ),
-          headerLeft: () => (
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={Colors.text} />
-            </TouchableOpacity>
-          ),
-          headerRight: () => (
-            <TouchableOpacity onPress={handleOpenCredentials} style={styles.credentialsButton}>
-              <Ionicons name="game-controller" size={24} color={Colors.primary} />
-            </TouchableOpacity>
-          ),
-        }}
-      />
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <Stack.Screen options={{ headerShown: false }} />
+      {/* Custom Header */}
+      <View style={styles.customHeader}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={Colors.text} />
+        </TouchableOpacity>
+        <View style={styles.headerTitle}>
+          <Avatar
+            source={friend?.profile_picture}
+            name={friend?.full_name || friend?.username}
+            size="sm"
+            showOnlineStatus
+            isOnline={friend?.is_online}
+          />
+          <View style={styles.headerInfo}>
+            <Text style={styles.headerName}>
+              {friend?.full_name || friend?.username}
+            </Text>
+            <Text style={styles.headerStatus}>
+              {friend?.is_online ? 'Online' : 'Offline'}
+            </Text>
+          </View>
+        </View>
+        <TouchableOpacity onPress={handleOpenCredentials} style={styles.credentialsButton}>
+          <Ionicons name="game-controller" size={24} color={Colors.primary} />
+        </TouchableOpacity>
+      </View>
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
         <FlatList
           ref={flatListRef}
@@ -1099,50 +1131,53 @@ export default function ChatScreen() {
               </View>
             ) : (
               <FlatList
-                data={gameCredentials}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item }) => (
-                  <View style={styles.credentialCard}>
-                    <View style={styles.credentialHeader}>
-                      <View style={styles.credentialHeaderLeft}>
-                        <Ionicons name="game-controller" size={24} color={Colors.primary} />
-                        <Text style={styles.credentialGameName}>{item.game_display_name}</Text>
+                data={Array.isArray(gameCredentials) ? gameCredentials : []}
+                keyExtractor={(item) => item?.id?.toString() || Math.random().toString()}
+                renderItem={({ item }) => {
+                  if (!item) return null;
+                  return (
+                    <View style={styles.credentialCard}>
+                      <View style={styles.credentialHeader}>
+                        <View style={styles.credentialHeaderLeft}>
+                          <Ionicons name="game-controller" size={24} color={Colors.primary} />
+                          <Text style={styles.credentialGameName}>{item.game_display_name || 'Unknown Game'}</Text>
+                        </View>
+                        {user?.user_type === 'client' && (
+                          <View style={styles.credentialActions}>
+                            <TouchableOpacity
+                              onPress={() => handleOpenEditCredential(item)}
+                              style={styles.credentialActionButton}
+                            >
+                              <Ionicons name="pencil" size={18} color={Colors.primary} />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => handleDeleteCredential(item)}
+                              style={styles.credentialActionButton}
+                            >
+                              <Ionicons name="trash" size={18} color={Colors.error} />
+                            </TouchableOpacity>
+                          </View>
+                        )}
                       </View>
-                      {user?.user_type === 'client' && (
-                        <View style={styles.credentialActions}>
-                          <TouchableOpacity
-                            onPress={() => handleOpenEditCredential(item)}
-                            style={styles.credentialActionButton}
-                          >
-                            <Ionicons name="pencil" size={18} color={Colors.primary} />
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            onPress={() => handleDeleteCredential(item)}
-                            style={styles.credentialActionButton}
-                          >
-                            <Ionicons name="trash" size={18} color={Colors.error} />
-                          </TouchableOpacity>
+                      <View style={styles.credentialRow}>
+                        <Text style={styles.credentialLabel}>Username:</Text>
+                        <Text style={styles.credentialValue}>{item.game_username || ''}</Text>
+                      </View>
+                      <View style={styles.credentialRow}>
+                        <Text style={styles.credentialLabel}>Password:</Text>
+                        <Text style={styles.credentialValue}>{item.game_password || ''}</Text>
+                      </View>
+                      {item.login_url && (
+                        <View style={styles.credentialRow}>
+                          <Text style={styles.credentialLabel}>Login URL:</Text>
+                          <Text style={[styles.credentialValue, styles.credentialUrl]} numberOfLines={1}>
+                            {item.login_url}
+                          </Text>
                         </View>
                       )}
                     </View>
-                    <View style={styles.credentialRow}>
-                      <Text style={styles.credentialLabel}>Username:</Text>
-                      <Text style={styles.credentialValue}>{item.game_username}</Text>
-                    </View>
-                    <View style={styles.credentialRow}>
-                      <Text style={styles.credentialLabel}>Password:</Text>
-                      <Text style={styles.credentialValue}>{item.game_password}</Text>
-                    </View>
-                    {item.login_url && (
-                      <View style={styles.credentialRow}>
-                        <Text style={styles.credentialLabel}>Login URL:</Text>
-                        <Text style={[styles.credentialValue, styles.credentialUrl]} numberOfLines={1}>
-                          {item.login_url}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                )}
+                  );
+                }}
                 contentContainerStyle={styles.credentialsList}
               />
             )}
@@ -1174,7 +1209,8 @@ export default function ChatScreen() {
                 <View style={styles.formGroup}>
                   <Text style={styles.formLabel}>Select Game</Text>
                   <View style={styles.gameSelector}>
-                    {clientGames.map((clientGame) => {
+                    {(Array.isArray(clientGames) ? clientGames : []).map((clientGame) => {
+                      if (!clientGame || !clientGame.id) return null;
                       const hasExistingCredential = gameCredentials.some(c => c.game_id === clientGame.game_id);
                       return (
                         <TouchableOpacity
@@ -1206,7 +1242,7 @@ export default function ChatScreen() {
                       );
                     })}
                   </View>
-                  {clientGames.length === 0 && (
+                  {(!Array.isArray(clientGames) || clientGames.length === 0) && (
                     <Text style={styles.noGamesText}>No games configured. Add games in Settings.</Text>
                   )}
                 </View>
@@ -1255,20 +1291,30 @@ export default function ChatScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.surface,
   },
   container: {
     flex: 1,
     backgroundColor: Colors.background,
   },
+  customHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
   headerTitle: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -1285,6 +1331,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   backButton: {
+    padding: Spacing.xs,
     marginRight: Spacing.sm,
   },
   messagesList: {

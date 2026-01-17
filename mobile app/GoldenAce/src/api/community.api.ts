@@ -1,17 +1,23 @@
 import { api } from '../services/api';
 
+export interface PostAuthor {
+  id: number;
+  username: string;
+  full_name?: string;
+  profile_picture?: string;
+  user_type: string;
+}
+
 export interface CommunityPost {
   id: number;
   content: string;
   image_url?: string;
-  author_id: number;
-  author_username: string;
-  author_full_name?: string;
-  author_profile_picture?: string;
-  author_user_type: string;
+  visibility: string;
+  author: PostAuthor;
   likes_count: number;
   comments_count: number;
-  is_liked_by_me: boolean;
+  is_liked: boolean;
+  is_liked_by_me?: boolean; // Alias for is_liked (for backward compatibility)
   created_at: string;
   updated_at: string;
 }
@@ -20,10 +26,7 @@ export interface PostComment {
   id: number;
   content: string;
   post_id: number;
-  author_id: number;
-  author_username: string;
-  author_full_name?: string;
-  author_profile_picture?: string;
+  author: PostAuthor;
   created_at: string;
 }
 

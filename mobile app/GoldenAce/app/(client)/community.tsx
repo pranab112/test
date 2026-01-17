@@ -115,7 +115,7 @@ export default function CommunityScreen() {
 
   const handleLikePost = async (post: CommunityPost) => {
     try {
-      if (post.is_liked_by_me) {
+      if (post.is_liked) {
         await communityApi.unlikePost(post.id);
       } else {
         await communityApi.likePost(post.id);
@@ -126,8 +126,8 @@ export default function CommunityScreen() {
           p.id === post.id
             ? {
                 ...p,
-                is_liked_by_me: !p.is_liked_by_me,
-                likes_count: p.is_liked_by_me ? p.likes_count - 1 : p.likes_count + 1,
+                is_liked: !p.is_liked,
+                likes_count: p.is_liked ? p.likes_count - 1 : p.likes_count + 1,
               }
             : p
         )
@@ -219,24 +219,24 @@ export default function CommunityScreen() {
       {/* Post Header */}
       <View style={styles.postHeader}>
         <Avatar
-          source={item.author_profile_picture}
-          name={item.author_full_name || item.author_username}
+          source={item.author?.profile_picture}
+          name={item.author?.full_name || item.author?.username}
           size="md"
         />
         <View style={styles.postAuthorInfo}>
           <View style={styles.authorRow}>
             <Text style={styles.authorName}>
-              {item.author_full_name || item.author_username}
+              {item.author?.full_name || item.author?.username}
             </Text>
             <Badge
-              text={item.author_user_type}
-              variant={item.author_user_type === 'client' ? 'emerald' : 'default'}
+              text={item.author?.user_type}
+              variant={item.author?.user_type === 'client' ? 'emerald' : 'default'}
               size="sm"
             />
           </View>
           <Text style={styles.postTime}>{formatDate(item.created_at)}</Text>
         </View>
-        {item.author_id === user?.id && (
+        {item.author?.id === user?.id && (
           <TouchableOpacity
             style={styles.moreButton}
             onPress={() => handleDeletePost(item.id)}
@@ -265,14 +265,14 @@ export default function CommunityScreen() {
           onPress={() => handleLikePost(item)}
         >
           <Ionicons
-            name={item.is_liked_by_me ? 'heart' : 'heart-outline'}
+            name={item.is_liked ? 'heart' : 'heart-outline'}
             size={22}
-            color={item.is_liked_by_me ? Colors.error : Colors.textSecondary}
+            color={item.is_liked ? Colors.error : Colors.textSecondary}
           />
           <Text
             style={[
               styles.actionText,
-              item.is_liked_by_me && { color: Colors.error },
+              item.is_liked && { color: Colors.error },
             ]}
           >
             {item.likes_count}
@@ -301,14 +301,14 @@ export default function CommunityScreen() {
   const renderComment = ({ item }: { item: PostComment }) => (
     <View style={styles.commentItem}>
       <Avatar
-        source={item.author_profile_picture}
-        name={item.author_full_name || item.author_username}
+        source={item.author?.profile_picture}
+        name={item.author?.full_name || item.author?.username}
         size="sm"
       />
       <View style={styles.commentContent}>
         <View style={styles.commentBubble}>
           <Text style={styles.commentAuthor}>
-            {item.author_full_name || item.author_username}
+            {item.author?.full_name || item.author?.username}
           </Text>
           <Text style={styles.commentText}>{item.content}</Text>
         </View>
