@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,8 +10,10 @@ import {
   TextInput,
   Alert,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
-import { Stack, router } from 'expo-router';
+import { Stack, router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { reportsApi } from '../../src/api/reports.api';
@@ -67,6 +69,13 @@ export default function ReportsScreen() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Refresh when screen gains focus
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [])
+  );
 
   const handleAppeal = async () => {
     if (!selectedReport) return;
@@ -409,7 +418,10 @@ export default function ReportsScreen() {
           transparent
           onRequestClose={() => setShowAppealModal(false)}
         >
-          <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView
+            style={styles.modalOverlay}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Appeal Report</Text>
@@ -458,7 +470,7 @@ export default function ReportsScreen() {
                 </ScrollView>
               )}
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
 
         {/* Resolution Modal */}
@@ -468,7 +480,10 @@ export default function ReportsScreen() {
           transparent
           onRequestClose={() => setShowResolutionModal(false)}
         >
-          <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView
+            style={styles.modalOverlay}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Submit Resolution</Text>
@@ -534,7 +549,7 @@ export default function ReportsScreen() {
                 </ScrollView>
               )}
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
       </View>
     </SafeAreaView>

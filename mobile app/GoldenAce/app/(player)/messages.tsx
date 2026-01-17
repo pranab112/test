@@ -11,6 +11,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { chatApi } from '../../src/api/chat.api';
 import { useChat } from '../../src/contexts/ChatContext';
+import { useWebSocket } from '../../src/contexts/WebSocketContext';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { Card, Avatar, Badge, Loading, EmptyState } from '../../src/components/ui';
 import { Colors, FontSize, FontWeight, Spacing } from '../../src/constants/theme';
@@ -21,6 +22,7 @@ export default function PlayerMessagesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { refreshUnreadCount } = useChat();
+  const { newMessage, clearNewMessage } = useWebSocket();
   const { user } = useAuth();
 
   const loadConversations = async () => {
@@ -47,6 +49,16 @@ export default function PlayerMessagesScreen() {
       loadConversations();
     }
   }, [user]);
+
+  // Listen for new messages via WebSocket and refresh the list
+  useEffect(() => {
+    if (newMessage) {
+      // Reload conversations to get updated last message and unread counts
+      loadConversations();
+      refreshUnreadCount();
+      clearNewMessage();
+    }
+  }, [newMessage, clearNewMessage, refreshUnreadCount]);
 
   // Refresh conversations and unread count when screen is focused
   useFocusEffect(

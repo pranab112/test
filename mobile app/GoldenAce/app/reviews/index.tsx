@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,8 +10,10 @@ import {
   TextInput,
   Alert,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
-import { Stack, router } from 'expo-router';
+import { Stack, router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { reviewsApi } from '../../src/api/reviews.api';
@@ -71,6 +73,13 @@ export default function ReviewsScreen() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Refresh when screen gains focus
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [])
+  );
 
   const handleSubmitReview = async () => {
     if (!selectedFriend) {
@@ -374,7 +383,10 @@ export default function ReviewsScreen() {
           transparent
           onRequestClose={() => setShowWriteReviewModal(false)}
         >
-          <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView
+            style={styles.modalOverlay}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Write a Review</Text>
@@ -438,7 +450,7 @@ export default function ReviewsScreen() {
                 </>
               )}
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
 
         {/* Appeal Review Modal */}
@@ -448,7 +460,10 @@ export default function ReviewsScreen() {
           transparent
           onRequestClose={() => setShowAppealModal(false)}
         >
-          <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView
+            style={styles.modalOverlay}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Dispute Review</Text>
@@ -508,7 +523,7 @@ export default function ReviewsScreen() {
                 </ScrollView>
               )}
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
       </View>
     </SafeAreaView>

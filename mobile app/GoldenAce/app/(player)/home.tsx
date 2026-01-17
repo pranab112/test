@@ -61,11 +61,16 @@ export default function PlayerHomeScreen() {
       loadData();
       // Refresh immediately
       refreshUnreadCount();
-      // Also refresh after a short delay to catch any pending updates from chat screen
-      const timer = setTimeout(() => {
-        refreshUnreadCount();
-      }, 600);
-      return () => clearTimeout(timer);
+      // Also refresh after delays to catch any pending updates from chat screen
+      // The backend may take time to mark messages as read
+      const timer1 = setTimeout(() => refreshUnreadCount(), 300);
+      const timer2 = setTimeout(() => refreshUnreadCount(), 800);
+      const timer3 = setTimeout(() => refreshUnreadCount(), 1500);
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+        clearTimeout(timer3);
+      };
     }, [refreshUnreadCount])
   );
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,8 +10,10 @@ import {
   TextInput,
   Alert,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
-import { Stack, router } from 'expo-router';
+import { Stack, router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ticketsApi, Ticket, TicketCategory, TicketMessage } from '../../src/api/tickets.api';
@@ -52,8 +54,11 @@ export default function SupportScreen() {
     try {
       const data = await ticketsApi.getTickets();
       setTickets(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading tickets:', error);
+      // Show user-friendly error message
+      const errorMsg = error?.detail || error?.message || 'Unable to load support tickets. Please check your connection.';
+      Alert.alert('Error', errorMsg);
     } finally {
       setLoading(false);
     }
@@ -68,6 +73,13 @@ export default function SupportScreen() {
   useEffect(() => {
     loadTickets();
   }, []);
+
+  // Refresh when screen gains focus
+  useFocusEffect(
+    useCallback(() => {
+      loadTickets();
+    }, [])
+  );
 
   const handleCreateTicket = async () => {
     if (!newTicketSubject.trim() || !newTicketDescription.trim()) {
@@ -229,7 +241,10 @@ export default function SupportScreen() {
           presentationStyle="pageSheet"
           onRequestClose={() => setShowNewTicketModal(false)}
         >
-          <View style={styles.modalContainer}>
+          <KeyboardAvoidingView
+            style={styles.modalContainer}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
             <View style={styles.modalHeader}>
               <TouchableOpacity onPress={() => setShowNewTicketModal(false)}>
                 <Text style={styles.cancelText}>Cancel</Text>
@@ -295,7 +310,7 @@ export default function SupportScreen() {
               />
               <Text style={styles.charCount}>{newTicketDescription.length}/1000</Text>
             </ScrollView>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
 
         {/* Ticket Detail Modal */}
@@ -305,7 +320,10 @@ export default function SupportScreen() {
           presentationStyle="pageSheet"
           onRequestClose={() => setShowTicketModal(false)}
         >
-          <View style={styles.modalContainer}>
+          <KeyboardAvoidingView
+            style={styles.modalContainer}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
             <View style={styles.modalHeader}>
               <TouchableOpacity onPress={() => setShowTicketModal(false)}>
                 <Ionicons name="close" size={24} color={Colors.text} />
@@ -386,7 +404,7 @@ export default function SupportScreen() {
                 </TouchableOpacity>
               </View>
             )}
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
       </View>
     </SafeAreaView>

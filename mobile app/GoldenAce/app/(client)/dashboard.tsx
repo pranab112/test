@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,9 +7,10 @@ import {
   RefreshControl,
   TouchableOpacity,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
+import { useChat } from '../../src/contexts/ChatContext';
 import { friendsApi } from '../../src/api/friends.api';
 import { gamesApi } from '../../src/api/games.api';
 import { promotionsApi, PromotionClaim } from '../../src/api/promotions.api';
@@ -27,6 +28,7 @@ interface DashboardStats {
 
 export default function ClientDashboardScreen() {
   const { user } = useAuth();
+  const { unreadCount, refreshUnreadCount } = useChat();
   const [stats, setStats] = useState<DashboardStats>({
     totalPlayers: 0,
     onlinePlayers: 0,
@@ -74,6 +76,23 @@ export default function ClientDashboardScreen() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+      // Refresh unread count immediately and with delays
+      refreshUnreadCount();
+      const timer1 = setTimeout(() => refreshUnreadCount(), 300);
+      const timer2 = setTimeout(() => refreshUnreadCount(), 800);
+      const timer3 = setTimeout(() => refreshUnreadCount(), 1500);
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+        clearTimeout(timer3);
+      };
+    }, [refreshUnreadCount])
+  );
 
   if (loading) {
     return <Loading fullScreen text="Loading dashboard..." />;

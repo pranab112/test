@@ -130,6 +130,8 @@ export default function ChatScreen() {
       // Set active chat so WebSocket handler knows not to increment count for this conversation
       if (friendId) {
         setActiveChatFriendId(parseInt(friendId));
+        // Reload chat data when screen gains focus
+        loadData();
       }
 
       // Refresh when screen gains focus (in case messages were read)
@@ -453,6 +455,23 @@ export default function ChatScreen() {
     setShowAddCredentialModal(true);
   };
 
+  // Handle game selection - auto-fill if credentials exist for this game
+  const handleSelectGame = (gameId: number) => {
+    setSelectedGameId(gameId);
+    // Check if credentials already exist for this game and pre-fill
+    const existingCredential = gameCredentials.find(c => c.game_id === gameId);
+    if (existingCredential) {
+      setCredentialUsername(existingCredential.game_username);
+      setCredentialPassword(existingCredential.game_password);
+    } else {
+      // Clear fields if no existing credential
+      if (!editingCredential) {
+        setCredentialUsername('');
+        setCredentialPassword('');
+      }
+    }
+  };
+
   // Save credential (add or update)
   const handleSaveCredential = async () => {
     if (!selectedGameId || !credentialUsername.trim() || !credentialPassword.trim() || !friendId) {
@@ -470,14 +489,25 @@ export default function ChatScreen() {
         });
         Alert.alert('Success', 'Credential updated successfully');
       } else {
-        // Create new credential
-        await gameCredentialsApi.createCredentials({
-          player_id: parseInt(friendId),
-          game_id: selectedGameId,
-          game_username: credentialUsername.trim(),
-          game_password: credentialPassword.trim(),
-        });
-        Alert.alert('Success', 'Credential created successfully');
+        // Check if credential already exists for this game
+        const existingCredential = gameCredentials.find(c => c.game_id === selectedGameId);
+        if (existingCredential) {
+          // Update existing credential instead of creating new one
+          await gameCredentialsApi.updateCredentials(existingCredential.id, {
+            game_username: credentialUsername.trim(),
+            game_password: credentialPassword.trim(),
+          });
+          Alert.alert('Success', 'Credential updated successfully');
+        } else {
+          // Create new credential
+          await gameCredentialsApi.createCredentials({
+            player_id: parseInt(friendId),
+            game_id: selectedGameId,
+            game_username: credentialUsername.trim(),
+            game_password: credentialPassword.trim(),
+          });
+          Alert.alert('Success', 'Credential created successfully');
+        }
       }
 
       // Refresh credentials
@@ -1129,7 +1159,7 @@ export default function ChatScreen() {
           <View style={styles.credentialsContent}>
             <View style={styles.credentialsHeader}>
               <Text style={styles.credentialsTitle}>
-                {editingCredential ? 'Edit Credential' : 'Add Credential'}
+                {editingCredential ? 'Edit Credential' : (selectedGameId && gameCredentials.some(c => c.game_id === selectedGameId)) ? 'Update Credential' : 'Add Credential'}
               </Text>
               <TouchableOpacity onPress={() => setShowAddCredentialModal(false)}>
                 <Ionicons name="close" size={24} color={Colors.text} />
@@ -1142,30 +1172,37 @@ export default function ChatScreen() {
                 <View style={styles.formGroup}>
                   <Text style={styles.formLabel}>Select Game</Text>
                   <View style={styles.gameSelector}>
-                    {clientGames.map((clientGame) => (
-                      <TouchableOpacity
-                        key={clientGame.id}
-                        style={[
-                          styles.gameOption,
-                          selectedGameId === clientGame.game_id && styles.gameOptionSelected,
-                        ]}
-                        onPress={() => setSelectedGameId(clientGame.game_id)}
-                      >
-                        <Ionicons
-                          name="game-controller"
-                          size={20}
-                          color={selectedGameId === clientGame.game_id ? Colors.primary : Colors.textSecondary}
-                        />
-                        <Text
+                    {clientGames.map((clientGame) => {
+                      const hasExistingCredential = gameCredentials.some(c => c.game_id === clientGame.game_id);
+                      return (
+                        <TouchableOpacity
+                          key={clientGame.id}
                           style={[
-                            styles.gameOptionText,
-                            selectedGameId === clientGame.game_id && styles.gameOptionTextSelected,
+                            styles.gameOption,
+                            selectedGameId === clientGame.game_id && styles.gameOptionSelected,
+                            hasExistingCredential && styles.gameOptionWithCredential,
                           ]}
+                          onPress={() => handleSelectGame(clientGame.game_id)}
                         >
-                          {clientGame.game?.display_name || `Game ${clientGame.game_id}`}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                          <Ionicons
+                            name="game-controller"
+                            size={20}
+                            color={selectedGameId === clientGame.game_id ? Colors.primary : Colors.textSecondary}
+                          />
+                          <Text
+                            style={[
+                              styles.gameOptionText,
+                              selectedGameId === clientGame.game_id && styles.gameOptionTextSelected,
+                            ]}
+                          >
+                            {clientGame.game?.display_name || `Game ${clientGame.game_id}`}
+                          </Text>
+                          {hasExistingCredential && (
+                            <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
                   {clientGames.length === 0 && (
                     <Text style={styles.noGamesText}>No games configured. Add games in Settings.</Text>
@@ -1209,7 +1246,7 @@ export default function ChatScreen() {
                 disabled={savingCredential}
               >
                 <Text style={styles.saveCredentialButtonText}>
-                  {savingCredential ? 'Saving...' : editingCredential ? 'Update Credential' : 'Add Credential'}
+                  {savingCredential ? 'Saving...' : (editingCredential || (selectedGameId && gameCredentials.some(c => c.game_id === selectedGameId))) ? 'Update Credential' : 'Add Credential'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1742,6 +1779,9 @@ const styles = StyleSheet.create({
   gameOptionSelected: {
     borderColor: Colors.primary,
     backgroundColor: Colors.primary + '10',
+  },
+  gameOptionWithCredential: {
+    borderColor: Colors.success + '50',
   },
   gameOptionText: {
     fontSize: FontSize.sm,

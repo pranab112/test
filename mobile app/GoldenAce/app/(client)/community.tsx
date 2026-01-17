@@ -46,8 +46,11 @@ export default function CommunityScreen() {
     try {
       const data = await communityApi.getPosts();
       setPosts(data.posts || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading posts:', error);
+      // Show user-friendly error message
+      const errorMsg = error?.detail || error?.message || 'Unable to load posts. Please check your connection.';
+      Alert.alert('Error', errorMsg);
     } finally {
       setLoading(false);
     }
