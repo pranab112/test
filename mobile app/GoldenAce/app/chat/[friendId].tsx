@@ -448,12 +448,22 @@ export default function ChatScreen() {
     // Always refresh credentials when opening the modal
     setLoadingCredentials(true);
     try {
-      // If current user is a player, get their own credentials
-      // If current user is a client and friend is a player, get that player's credentials
-      if (user?.user_type === 'player') {
+      // If current user is a player chatting with a client, get credentials from that client
+      // If current user is a client chatting with a player, get that player's credentials
+      if (user?.user_type === 'player' && friend?.user_type === 'client' && friendId) {
+        // Player viewing credentials assigned by this client
+        const credentials = await gameCredentialsApi.getMyCredentials();
+        // Filter to only show credentials from this client (friend)
+        const filteredCredentials = Array.isArray(credentials)
+          ? credentials.filter((c: GameCredential) => c.created_by_client_id === parseInt(friendId))
+          : [];
+        setGameCredentials(filteredCredentials);
+      } else if (user?.user_type === 'player') {
+        // Player viewing all their credentials (general case)
         const credentials = await gameCredentialsApi.getMyCredentials();
         setGameCredentials(Array.isArray(credentials) ? credentials : []);
       } else if (user?.user_type === 'client' && friend?.user_type === 'player' && friendId) {
+        // Client viewing/editing credentials for this player
         const [credentials, games] = await Promise.all([
           gameCredentialsApi.getPlayerCredentials(parseInt(friendId)),
           gamesApi.getClientGames(),
@@ -1115,8 +1125,10 @@ export default function ChatScreen() {
                 <Ionicons name="key-outline" size={48} color={Colors.textMuted} />
                 <Text style={styles.credentialsEmptyText}>No game credentials found</Text>
                 <Text style={styles.credentialsEmptySubtext}>
-                  {user?.user_type === 'player'
-                    ? 'Your client has not assigned any game credentials yet.'
+                  {user?.user_type === 'player' && friend?.user_type === 'client'
+                    ? `${friend?.full_name || friend?.username || 'This client'} has not assigned any game credentials to you yet.`
+                    : user?.user_type === 'player'
+                    ? 'No game credentials have been assigned to you yet.'
                     : 'No credentials have been assigned to this player.'}
                 </Text>
                 {user?.user_type === 'client' && friend?.user_type === 'player' && (
