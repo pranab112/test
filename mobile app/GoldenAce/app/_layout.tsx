@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
 import 'react-native-reanimated';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '../src/contexts/AuthContext';
 import { WebSocketProvider } from '../src/contexts/WebSocketContext';
 import { NotificationProvider } from '../src/contexts/NotificationContext';
@@ -11,17 +12,19 @@ import { Colors } from '../src/constants/theme';
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <WebSocketProvider>
-        <NotificationProvider>
-          <ChatProvider>
-            <PromotionProvider>
-              <View style={{ flex: 1, backgroundColor: Colors.background }}>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <WebSocketProvider>
+          <NotificationProvider>
+            <ChatProvider>
+              <PromotionProvider>
+                <View style={{ flex: 1, backgroundColor: Colors.background }}>
             <Stack
               screenOptions={{
                 headerShown: false,
                 contentStyle: { backgroundColor: Colors.background },
-                animation: 'slide_from_right',
+                animation: 'fade_from_bottom',
+                animationDuration: 150,
               }}
             >
               <Stack.Screen name="index" />
@@ -35,6 +38,9 @@ export default function RootLayout() {
                   headerShown: true,
                   presentation: 'card',
                   animation: 'slide_from_right',
+                  headerStyle: { backgroundColor: Colors.surface },
+                  headerTintColor: Colors.text,
+                  headerShadowVisible: false,
                 }}
               />
               <Stack.Screen
@@ -78,12 +84,13 @@ export default function RootLayout() {
                 }}
               />
             </Stack>
-              <StatusBar style="light" />
-              </View>
-            </PromotionProvider>
-          </ChatProvider>
-        </NotificationProvider>
-      </WebSocketProvider>
-    </AuthProvider>
+                <StatusBar style="light" />
+                </View>
+              </PromotionProvider>
+            </ChatProvider>
+          </NotificationProvider>
+        </WebSocketProvider>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }

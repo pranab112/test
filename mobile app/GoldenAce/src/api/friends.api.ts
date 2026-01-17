@@ -88,7 +88,14 @@ export const friendsApi = {
       });
       return response as unknown as Friend;
     } catch (error: any) {
-      if (error?.response?.status === 404) {
+      // Handle 404 or "not found" type errors - return null to allow fallback search
+      if (
+        error?.response?.status === 404 ||
+        error?.error?.code === 'NOT_FOUND' ||
+        error?.error?.status === 404 ||
+        error?.detail?.includes?.('not found') ||
+        error?.message?.includes?.('not found')
+      ) {
         return null;
       }
       throw error;

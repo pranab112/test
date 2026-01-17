@@ -90,11 +90,12 @@ export default function ChatScreen() {
       const friendInfo = friendsData.find((f) => f.id === parseInt(friendId));
       setFriend(friendInfo || null);
 
-      // Backend returns messages in DESC order (newest first) for pagination,
-      // then reverses them - but let's verify and ensure chronological order
-      console.log('Messages loaded:', messagesData);
-      console.log('Messages array:', messagesData.messages);
-      console.log('Messages count:', messagesData.messages?.length);
+      // Backend returns messages and marks them as read
+      // The response includes unread_count which should be 0 after marking
+      console.log('[Chat] Messages loaded:', {
+        messageCount: messagesData.messages?.length,
+        unreadCount: messagesData.unread_count,
+      });
 
       if (messagesData.messages && Array.isArray(messagesData.messages)) {
         // Ensure messages are in chronological order (oldest first, newest last)
@@ -108,11 +109,13 @@ export default function ChatScreen() {
         setMessages([]);
       }
 
-      // Backend marks messages as read when fetching
-      // Refresh the global unread count immediately and after delays to sync the badge
+      // Backend marks messages as read when fetching the messages
+      // The response confirms this with unread_count = 0
+      // Refresh the global unread count to update the badge
+      // Use multiple delays to ensure the backend has committed the changes
       refreshUnreadCount();
-      setTimeout(() => refreshUnreadCount(), 300);
-      setTimeout(() => refreshUnreadCount(), 800);
+      setTimeout(() => refreshUnreadCount(), 500);
+      setTimeout(() => refreshUnreadCount(), 1500);
     } catch (error) {
       console.error('Error loading chat:', error);
     } finally {
@@ -141,12 +144,10 @@ export default function ChatScreen() {
       return () => {
         // Clear active chat when leaving
         setActiveChatFriendId(null);
-        // Refresh immediately to update the count since messages were just marked as read
-        refreshUnreadCount();
-        // Also refresh after a short delay in case the backend needs time to commit
-        setTimeout(() => {
-          refreshUnreadCount();
-        }, 500);
+        // Refresh with multiple delays to ensure the count is updated
+        setTimeout(() => refreshUnreadCount(), 300);
+        setTimeout(() => refreshUnreadCount(), 800);
+        setTimeout(() => refreshUnreadCount(), 1500);
       };
     }, [friendId, refreshUnreadCount, setActiveChatFriendId])
   );
@@ -835,12 +836,13 @@ export default function ChatScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+    <View style={styles.safeArea}>
       <Stack.Screen
         options={{
           headerShown: true,
           headerStyle: { backgroundColor: Colors.surface },
           headerTintColor: Colors.text,
+          headerShadowVisible: false,
           headerTitle: () => (
             <View style={styles.headerTitle}>
               <Avatar
@@ -1253,7 +1255,7 @@ export default function ChatScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 

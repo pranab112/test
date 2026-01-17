@@ -509,10 +509,15 @@ async def get_message_stats(
         models.Message.receiver_id == current_user.id
     ).count()
 
-    # Count unread messages
+    # Count unread messages (excluding broadcasts which have their own count)
+    # Broadcasts have content starting with "[ADMIN BROADCAST]"
     unread_messages = db.query(models.Message).filter(
         models.Message.receiver_id == current_user.id,
-        models.Message.is_read == False
+        models.Message.is_read == False,
+        or_(
+            models.Message.content == None,
+            ~models.Message.content.like("[ADMIN BROADCAST]%")
+        )
     ).count()
 
     # Count unique conversations (unique friends with messages)

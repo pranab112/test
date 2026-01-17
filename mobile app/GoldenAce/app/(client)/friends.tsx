@@ -10,6 +10,7 @@ import {
   TextInput,
   ScrollView,
   Switch,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,10 +20,10 @@ import { Card, Avatar, Badge, Loading, EmptyState, Button } from '../../src/comp
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../../src/constants/theme';
 import type { Friend, FriendRequest } from '../../src/types';
 
-type TabType = 'players' | 'requests' | 'register' | 'bulk-register';
+type TabType = 'send-request' | 'requests' | 'register' | 'bulk-register';
 
 export default function ClientFriendsScreen() {
-  const [activeTab, setActiveTab] = useState<TabType>('players');
+  const [activeTab, setActiveTab] = useState<TabType>('send-request');
   const [friends, setFriends] = useState<Friend[]>([]);
   const [requests, setRequests] = useState<FriendRequest[]>([]);
   const [searchResult, setSearchResult] = useState<Friend | null>(null);
@@ -82,7 +83,15 @@ export default function ClientFriendsScreen() {
     setSearchResult(null);
     try {
       // First try searching by unique ID, then fall back to username search
-      const result = await friendsApi.searchByUniqueId(uniqueIdQuery.trim());
+      let result: Friend | null = null;
+
+      try {
+        result = await friendsApi.searchByUniqueId(uniqueIdQuery.trim());
+      } catch (uniqueIdError) {
+        // Unique ID search failed, will try username search
+        console.log('Unique ID search failed, trying username search...');
+      }
+
       if (result) {
         // Only show players
         if (result.user_type === 'player') {
@@ -92,17 +101,25 @@ export default function ClientFriendsScreen() {
         }
       } else {
         // Try username search as fallback
-        const results = await friendsApi.searchUsers(uniqueIdQuery.trim());
-        const playerResult = results.find(u => u.user_type === 'player');
-        if (playerResult) {
-          setSearchResult(playerResult);
-        } else {
+        try {
+          const results = await friendsApi.searchUsers(uniqueIdQuery.trim());
+          const playerResult = Array.isArray(results)
+            ? results.find(u => u.user_type === 'player')
+            : null;
+          if (playerResult) {
+            setSearchResult(playerResult);
+          } else {
+            Alert.alert('Not Found', 'No player found with this ID or username.');
+          }
+        } catch (usernameError: any) {
+          console.error('Username search failed:', usernameError);
           Alert.alert('Not Found', 'No player found with this ID or username.');
         }
       }
     } catch (error: any) {
       console.error('Error searching:', error);
-      Alert.alert('Error', error?.detail || 'Failed to search. Please try again.');
+      const errorMsg = error?.detail || error?.error?.message || error?.message || 'Failed to search. Please try again.';
+      Alert.alert('Error', errorMsg);
     } finally {
       setSearching(false);
     }
@@ -369,11 +386,16 @@ export default function ClientFriendsScreen() {
       {/* Tabs */}
       <View style={styles.tabs}>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'players' && styles.tabActive]}
-          onPress={() => setActiveTab('players')}
+          style={[styles.tab, activeTab === 'send-request' && styles.tabActive]}
+          onPress={() => setActiveTab('send-request')}
         >
-          <Text style={[styles.tabText, activeTab === 'players' && styles.tabTextActive]}>
-            Players ({friends.length})
+          <Ionicons
+            name="person-add"
+            size={16}
+            color={activeTab === 'send-request' ? Colors.primary : Colors.textSecondary}
+          />
+          <Text style={[styles.tabText, activeTab === 'send-request' && styles.tabTextActive]}>
+            Add
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -413,29 +435,86 @@ export default function ClientFriendsScreen() {
       </View>
 
       {/* Content */}
-      {activeTab === 'players' && (
-        <FlatList
-          data={friends}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderPlayer}
-          contentContainerStyle={styles.list}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={Colors.primary}
-            />
-          }
-          ListEmptyComponent={
-            <EmptyState
-              icon="people-outline"
-              title="No Players Yet"
-              description="Register new players to manage them"
-              actionLabel="Register Player"
-              onAction={() => setActiveTab('register')}
-            />
-          }
-        />
+      {activeTab === 'send-request' && (
+        <ScrollView style={styles.addContainer} contentContainerStyle={styles.sendRequestContent}>
+          <View style={styles.addHeader}>
+            <Ionicons name="person-add" size={48} color={Colors.primary} />
+            <Text style={styles.addTitle}>Send Friend Request</Text>
+            <Text style={styles.addDescription}>
+              Search for a player by their unique ID or username to send a friend request
+            </Text>
+          </View>
+
+          <View style={styles.searchBox}>
+            <Text style={styles.searchLabel}>Player Unique ID or Username</Text>
+            <View style={styles.searchInputRow}>
+              <TextInput
+                style={styles.searchInput}
+                value={uniqueIdQuery}
+                onChangeText={setUniqueIdQuery}
+                placeholder="Enter player ID or username..."
+                placeholderTextColor={Colors.textMuted}
+                autoCapitalize="none"
+                autoCorrect={false}
+                onSubmitEditing={handleSearchByUniqueId}
+              />
+              <TouchableOpacity
+                style={[styles.searchButton, searching && styles.searchButtonDisabled]}
+                onPress={handleSearchByUniqueId}
+                disabled={searching}
+              >
+                {searching ? (
+                  <ActivityIndicator size="small" color={Colors.background} />
+                ) : (
+                  <Ionicons name="search" size={24} color={Colors.background} />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Search Result */}
+          {searchResult && (
+            <Card style={styles.resultCard}>
+              <View style={styles.resultHeader}>
+                <Text style={styles.resultTitle}>Player Found!</Text>
+              </View>
+              <View style={styles.resultContent}>
+                <Avatar
+                  source={searchResult.profile_picture}
+                  name={searchResult.full_name || searchResult.username}
+                  size="lg"
+                />
+                <View style={styles.resultInfo}>
+                  <Text style={styles.resultName}>
+                    {searchResult.full_name || searchResult.username}
+                  </Text>
+                  <Text style={styles.resultUsername}>@{searchResult.username}</Text>
+                  {searchResult.user_id && (
+                    <Text style={styles.resultUniqueId}>ID: {searchResult.user_id}</Text>
+                  )}
+                </View>
+                <Badge text="Player" variant="default" size="sm" />
+              </View>
+              <View style={styles.resultActions}>
+                <Button
+                  title={sendingRequest ? 'Sending...' : 'Send Friend Request'}
+                  onPress={() => handleSendRequest(searchResult.id)}
+                  loading={sendingRequest}
+                  icon={<Ionicons name="paper-plane" size={18} color={Colors.background} />}
+                  style={styles.resultButton}
+                />
+              </View>
+            </Card>
+          )}
+
+          <View style={styles.helpBox}>
+            <Ionicons name="information-circle" size={20} color={Colors.info} />
+            <Text style={styles.helpText}>
+              Each player has a unique ID that they can share with you. You can also search by their username.
+              Once they accept your request, you'll be able to chat and manage their game credentials.
+            </Text>
+          </View>
+        </ScrollView>
       )}
 
       {activeTab === 'requests' && (
@@ -995,6 +1074,10 @@ const styles = StyleSheet.create({
   },
   bulkSendButton: {
     marginTop: Spacing.md,
+  },
+  // Send Request tab styles
+  sendRequestContent: {
+    paddingBottom: Spacing.xl,
   },
   // Register player styles
   registerContent: {
