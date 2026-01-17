@@ -52,7 +52,7 @@ export const chatApi = {
       } as unknown as Blob);
 
       if (caption) {
-        formData.append('caption', caption);
+        formData.append('content', caption);
       }
 
       // Don't set Content-Type header - let axios set it with proper boundary

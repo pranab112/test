@@ -4,6 +4,7 @@ import { Button } from './Button';
 import { Modal } from './Modal';
 import { communityApi, type CommunityPost, type PostComment } from '@/api/endpoints';
 import { useAuth } from '@/contexts/AuthContext';
+import { getFileUrl } from '@/config/api.config';
 import toast from 'react-hot-toast';
 import {
   MdSend,
@@ -353,7 +354,7 @@ export function CommunitySection({ userType }: CommunityProps) {
             {newPostImage && (
               <div className="relative mt-3 inline-block">
                 <img
-                  src={newPostImage}
+                  src={getFileUrl(newPostImage)}
                   alt="Upload preview"
                   className="max-h-48 rounded-lg"
                 />
@@ -468,7 +469,7 @@ export function CommunitySection({ userType }: CommunityProps) {
               <p className="text-white mt-3">{selectedPost.content}</p>
               {selectedPost.image_url && (
                 <img
-                  src={selectedPost.image_url}
+                  src={getFileUrl(selectedPost.image_url)}
                   alt="Post"
                   className="mt-3 rounded-lg max-h-64 object-cover"
                 />
@@ -647,7 +648,7 @@ function PostCard({
       {/* Image */}
       {post.image_url && (
         <img
-          src={post.image_url}
+          src={getFileUrl(post.image_url)}
           alt="Post"
           className="mt-3 rounded-lg max-h-96 w-full object-cover"
         />
