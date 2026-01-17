@@ -140,7 +140,10 @@ export default function ChatScreen() {
       return () => {
         // Clear active chat when leaving
         setActiveChatFriendId(null);
-        refreshUnreadCount();
+        // Add delay to ensure backend has marked messages as read before refreshing count
+        setTimeout(() => {
+          refreshUnreadCount();
+        }, 500);
       };
     }, [friendId, refreshUnreadCount, setActiveChatFriendId])
   );
@@ -325,7 +328,9 @@ export default function ChatScreen() {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
     } catch (error: any) {
-      Alert.alert('Error', error?.detail || 'Failed to send voice message');
+      const errorMsg = error?.detail || error?.error?.message || error?.message || 'Failed to send voice message';
+      console.error('Voice message error:', error);
+      Alert.alert('Error', errorMsg);
     } finally {
       setSending(false);
     }
@@ -824,7 +829,7 @@ export default function ChatScreen() {
       />
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         <FlatList

@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { chatApi } from '../../src/api/chat.api';
 import { useChat } from '../../src/contexts/ChatContext';
 import { useWebSocket } from '../../src/contexts/WebSocketContext';
+import { useAuth } from '../../src/contexts/AuthContext';
 import { Card, Avatar, Badge, Loading, EmptyState } from '../../src/components/ui';
 import { Colors, FontSize, FontWeight, Spacing } from '../../src/constants/theme';
 import type { Conversation } from '../../src/types';
@@ -22,6 +23,7 @@ export default function ClientMessagesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const { refreshUnreadCount } = useChat();
   const { newMessage, clearNewMessage } = useWebSocket();
+  const { user } = useAuth();
 
   const loadConversations = async () => {
     try {
@@ -41,9 +43,12 @@ export default function ClientMessagesScreen() {
     setRefreshing(false);
   };
 
+  // Load conversations when user is available
   useEffect(() => {
-    loadConversations();
-  }, []);
+    if (user) {
+      loadConversations();
+    }
+  }, [user]);
 
   // Listen for new messages via WebSocket and refresh the list
   useEffect(() => {
@@ -58,9 +63,13 @@ export default function ClientMessagesScreen() {
   // Refresh when screen is focused
   useFocusEffect(
     useCallback(() => {
-      loadConversations();
-      refreshUnreadCount();
-    }, [])
+      // Small delay to ensure backend has updated read status
+      const timer = setTimeout(() => {
+        loadConversations();
+        refreshUnreadCount();
+      }, 300);
+      return () => clearTimeout(timer);
+    }, [refreshUnreadCount])
   );
 
   const formatTime = (dateString: string): string => {

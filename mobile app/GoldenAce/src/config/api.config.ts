@@ -9,14 +9,10 @@ const getEnvVar = (key: string, fallback: string): string => {
   return value || fallback;
 };
 
-// Default fallback based on platform
-// For development:
-// - Android Emulator: use 10.0.2.2 (maps to host localhost)
-// - iOS Simulator: use localhost
-// - Physical device: use your computer's local IP (e.g., 192.168.1.x)
-const DEFAULT_API_URL = 'http://localhost:8000/api/v1';
-const DEFAULT_WS_URL = 'ws://localhost:8000/ws';
-const DEFAULT_FILE_URL = 'http://localhost:8000';
+// Production URLs - used as fallback when env vars are not available (e.g., local Gradle builds)
+const DEFAULT_API_URL = 'https://casino-royal-production.up.railway.app/api/v1';
+const DEFAULT_WS_URL = 'wss://casino-royal-production.up.railway.app/ws';
+const DEFAULT_FILE_URL = 'https://casino-royal-production.up.railway.app';
 
 export const API_CONFIG = {
   BASE_URL: getEnvVar('EXPO_PUBLIC_API_URL', DEFAULT_API_URL),

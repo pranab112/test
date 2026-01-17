@@ -89,7 +89,8 @@ export default function SupportScreen() {
       setSelectedCategory('other');
       await loadTickets();
     } catch (error: any) {
-      Alert.alert('Error', error?.detail || 'Failed to create ticket');
+      const errorMsg = error?.detail || error?.error?.message || error?.message || 'Failed to create ticket';
+      Alert.alert('Error', errorMsg);
     } finally {
       setCreating(false);
     }
@@ -120,7 +121,8 @@ export default function SupportScreen() {
       setMessages((prev) => [...prev, message]);
       setNewMessage('');
     } catch (error: any) {
-      Alert.alert('Error', error?.detail || 'Failed to send message');
+      const errorMsg = error?.detail || error?.error?.message || error?.message || 'Failed to send message';
+      Alert.alert('Error', errorMsg);
     } finally {
       setSendingMessage(false);
     }

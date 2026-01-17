@@ -11,6 +11,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { chatApi } from '../../src/api/chat.api';
 import { useChat } from '../../src/contexts/ChatContext';
+import { useAuth } from '../../src/contexts/AuthContext';
 import { Card, Avatar, Badge, Loading, EmptyState } from '../../src/components/ui';
 import { Colors, FontSize, FontWeight, Spacing } from '../../src/constants/theme';
 import type { Conversation } from '../../src/types';
@@ -20,6 +21,7 @@ export default function PlayerMessagesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { refreshUnreadCount } = useChat();
+  const { user } = useAuth();
 
   const loadConversations = async () => {
     try {
@@ -39,16 +41,23 @@ export default function PlayerMessagesScreen() {
     setRefreshing(false);
   };
 
+  // Load conversations when user is available
   useEffect(() => {
-    loadConversations();
-  }, []);
+    if (user) {
+      loadConversations();
+    }
+  }, [user]);
 
-  // Refresh unread count when screen is focused
+  // Refresh conversations and unread count when screen is focused
   useFocusEffect(
     useCallback(() => {
-      loadConversations();
-      refreshUnreadCount();
-    }, [])
+      // Small delay to ensure backend has updated read status
+      const timer = setTimeout(() => {
+        loadConversations();
+        refreshUnreadCount();
+      }, 300);
+      return () => clearTimeout(timer);
+    }, [refreshUnreadCount])
   );
 
   const formatTime = (dateString: string): string => {

@@ -86,6 +86,9 @@ export const chatApi = {
         'webm': 'audio/webm',
         'ogg': 'audio/ogg',
         'wav': 'audio/wav',
+        'caf': 'audio/x-caf', // iOS Core Audio Format
+        'aac': 'audio/aac',
+        '3gp': 'audio/3gpp', // Android format
       };
       const mimeType = mimeTypes[extension] || 'audio/mp4';
 

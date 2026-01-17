@@ -411,6 +411,10 @@ export default function PlayerSettingsScreen() {
             subtitle={user?.is_email_verified ? 'Verified' : 'Not verified - Tap to verify'}
             onPress={() => {
               if (!user?.is_email_verified) {
+                // Pre-fill with user's email if available
+                if (user?.email) {
+                  setVerificationEmail(user.email);
+                }
                 setShowEmailModal(true);
               }
             }}

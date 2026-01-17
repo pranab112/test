@@ -29,7 +29,7 @@ export interface PostComment {
 
 export interface CreatePostData {
   content: string;
-  image_url?: string;
+  imageUri?: string;
 }
 
 export interface CreateCommentData {
@@ -67,11 +67,31 @@ export const communityApi = {
     }
   },
 
-  // Create post
+  // Create post (with optional image)
   createPost: async (data: CreatePostData): Promise<CommunityPost> => {
     try {
-      const response = await api.post(COMMUNITY_ENDPOINTS.POSTS, data);
-      return response as unknown as CommunityPost;
+      if (data.imageUri) {
+        // Use FormData for posts with images
+        const formData = new FormData();
+        formData.append('content', data.content);
+
+        const filename = data.imageUri.split('/').pop() || 'image.jpg';
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+        formData.append('file', {
+          uri: data.imageUri,
+          name: filename,
+          type,
+        } as unknown as Blob);
+
+        const response = await api.post(COMMUNITY_ENDPOINTS.POSTS, formData);
+        return response as unknown as CommunityPost;
+      } else {
+        // Text-only post
+        const response = await api.post(COMMUNITY_ENDPOINTS.POSTS, { content: data.content });
+        return response as unknown as CommunityPost;
+      }
     } catch (error) {
       throw error;
     }

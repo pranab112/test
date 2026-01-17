@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,9 +7,10 @@ import {
   RefreshControl,
   TouchableOpacity,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
+import { useChat } from '../../src/contexts/ChatContext';
 import { friendsApi } from '../../src/api/friends.api';
 import { offersApi } from '../../src/api/offers.api';
 import { Card, Avatar, Badge, Loading } from '../../src/components/ui';
@@ -19,19 +20,23 @@ import type { Friend, PlatformOffer } from '../../src/types';
 
 export default function PlayerHomeScreen() {
   const { user } = useAuth();
+  const { unreadCount, refreshUnreadCount } = useChat();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [offers, setOffers] = useState<PlatformOffer[]>([]);
+  const [pendingRequests, setPendingRequests] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadData = async () => {
     try {
-      const [friendsData, offersData] = await Promise.all([
+      const [friendsData, offersData, pendingData] = await Promise.all([
         friendsApi.getFriends(),
         offersApi.getAvailableOffers(),
+        friendsApi.getPendingRequests(),
       ]);
       setFriends(friendsData.slice(0, 5));
       setOffers(offersData.slice(0, 3));
+      setPendingRequests(pendingData.length);
     } catch (error) {
       console.error('Error loading home data:', error);
     } finally {
@@ -42,12 +47,21 @@ export default function PlayerHomeScreen() {
   const onRefresh = async () => {
     setRefreshing(true);
     await loadData();
+    await refreshUnreadCount();
     setRefreshing(false);
   };
 
   useEffect(() => {
     loadData();
   }, []);
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+      refreshUnreadCount();
+    }, [refreshUnreadCount])
+  );
 
   if (loading) {
     return <Loading fullScreen text="Loading..." />;
@@ -115,6 +129,7 @@ export default function PlayerHomeScreen() {
         >
           <View style={[styles.actionIcon, { backgroundColor: Colors.success + '20' }]}>
             <Ionicons name="gift" size={24} color={Colors.success} />
+            {offers.length > 0 && <View style={styles.notificationDot} />}
           </View>
           <Text style={styles.actionText}>Rewards</Text>
         </TouchableOpacity>
@@ -124,6 +139,7 @@ export default function PlayerHomeScreen() {
         >
           <View style={[styles.actionIcon, { backgroundColor: Colors.info + '20' }]}>
             <Ionicons name="people" size={24} color={Colors.info} />
+            {pendingRequests > 0 && <View style={styles.notificationDot} />}
           </View>
           <Text style={styles.actionText}>Friends</Text>
         </TouchableOpacity>
@@ -133,6 +149,7 @@ export default function PlayerHomeScreen() {
         >
           <View style={[styles.actionIcon, { backgroundColor: Colors.warning + '20' }]}>
             <Ionicons name="chatbubbles" size={24} color={Colors.warning} />
+            {unreadCount > 0 && <View style={styles.notificationDot} />}
           </View>
           <Text style={styles.actionText}>Chat</Text>
         </TouchableOpacity>
@@ -266,6 +283,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.xs,
+    position: 'relative',
+  },
+  notificationDot: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: Colors.error,
+    borderWidth: 2,
+    borderColor: Colors.background,
   },
   actionText: {
     fontSize: FontSize.sm,

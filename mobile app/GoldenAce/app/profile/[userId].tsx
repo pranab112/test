@@ -12,6 +12,7 @@ import {
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { friendsApi } from '../../src/api/friends.api';
+import { usersApi } from '../../src/api/users.api';
 import { reviewsApi } from '../../src/api/reviews.api';
 import { reportsApi } from '../../src/api/reports.api';
 import { gamesApi } from '../../src/api/games.api';
@@ -62,11 +63,14 @@ export default function ProfileScreen() {
         setProfile(friendProfile);
         setIsFriend(true);
       } else {
-        // Try searching for the user
-        const searchResults = await friendsApi.searchUsers(userId);
-        const foundUser = searchResults.find((u) => u.id === parseInt(userId));
-        if (foundUser) {
-          setProfile(foundUser as Friend);
+        // Try to get user profile directly by ID
+        try {
+          const userProfile = await usersApi.getUserProfile(parseInt(userId));
+          if (userProfile) {
+            setProfile(userProfile as unknown as Friend);
+          }
+        } catch (error) {
+          console.error('Error loading user profile:', error);
         }
       }
 
