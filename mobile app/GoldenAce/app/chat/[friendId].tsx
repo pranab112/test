@@ -89,6 +89,7 @@ export default function ChatScreen() {
       ]);
 
       const friendInfo = friendsData.find((f) => f.id === parseInt(friendId));
+      console.log('[Chat] Friend info loaded:', JSON.stringify(friendInfo, null, 2));
       setFriend(friendInfo || null);
 
       // Backend returns messages and marks them as read
@@ -431,6 +432,7 @@ export default function ChatScreen() {
 
   // Load game credentials
   const handleOpenCredentials = async () => {
+    console.log('[Credentials] Opening modal, user:', user?.user_type, 'friend:', friend?.user_type, 'friendId:', friendId);
     setShowCredentialsModal(true);
 
     // For clients, always load client games if not already loaded
@@ -452,24 +454,39 @@ export default function ChatScreen() {
       // If current user is a client chatting with a player, get that player's credentials
       if (user?.user_type === 'player' && friend?.user_type === 'client' && friendId) {
         // Player viewing credentials assigned by this client
-        const credentials = await gameCredentialsApi.getMyCredentials();
+        console.log('[Credentials] Player viewing credentials from client:', friendId);
+        const response = await gameCredentialsApi.getMyCredentials();
+        console.log('[Credentials] All player credentials response:', JSON.stringify(response, null, 2));
+        // Handle both array and {credentials: [...]} response formats
+        const credentials = Array.isArray(response) ? response : (response as any)?.credentials || [];
+        console.log('[Credentials] Parsed credentials array:', credentials.length, 'items');
         // Filter to only show credentials from this client (friend)
-        const filteredCredentials = Array.isArray(credentials)
-          ? credentials.filter((c: GameCredential) => c.created_by_client_id === parseInt(friendId))
-          : [];
+        const filteredCredentials = credentials.filter((c: GameCredential) => c.created_by_client_id === parseInt(friendId));
+        console.log('[Credentials] Filtered credentials for this client:', JSON.stringify(filteredCredentials, null, 2));
         setGameCredentials(filteredCredentials);
       } else if (user?.user_type === 'player') {
-        // Player viewing all their credentials (general case)
-        const credentials = await gameCredentialsApi.getMyCredentials();
-        setGameCredentials(Array.isArray(credentials) ? credentials : []);
+        // Player viewing all their credentials (general case - not chatting with client)
+        console.log('[Credentials] Player viewing all credentials');
+        const response = await gameCredentialsApi.getMyCredentials();
+        console.log('[Credentials] Player credentials response:', JSON.stringify(response, null, 2));
+        // Handle both array and {credentials: [...]} response formats
+        const credentials = Array.isArray(response) ? response : (response as any)?.credentials || [];
+        setGameCredentials(credentials);
       } else if (user?.user_type === 'client' && friend?.user_type === 'player' && friendId) {
         // Client viewing/editing credentials for this player
-        const [credentials, games] = await Promise.all([
+        console.log('[Credentials] Client viewing credentials for player:', friendId);
+        const [credentialsResponse, games] = await Promise.all([
           gameCredentialsApi.getPlayerCredentials(parseInt(friendId)),
           gamesApi.getClientGames(),
         ]);
-        setGameCredentials(Array.isArray(credentials) ? credentials : []);
+        console.log('[Credentials] Player credentials response:', JSON.stringify(credentialsResponse, null, 2));
+        console.log('[Credentials] Client games:', JSON.stringify(games, null, 2));
+        // Handle both array and {credentials: [...]} response formats
+        const credentials = Array.isArray(credentialsResponse) ? credentialsResponse : (credentialsResponse as any)?.credentials || [];
+        setGameCredentials(credentials);
         setClientGames(Array.isArray(games) ? games : []);
+      } else {
+        console.log('[Credentials] No matching condition - user:', user?.user_type, 'friend:', friend?.user_type);
       }
     } catch (error) {
       console.error('Error loading credentials:', error);
