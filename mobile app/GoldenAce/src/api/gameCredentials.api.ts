@@ -30,9 +30,13 @@ export const gameCredentialsApi = {
     game_password: string;
   }): Promise<GameCredential> => {
     try {
+      console.log('[GameCredentials API] Creating credentials:', data);
       const response = await api.post('/game-credentials/', data);
+      console.log('[GameCredentials API] Create response:', response);
       return response as unknown as GameCredential;
-    } catch (error) {
+    } catch (error: any) {
+      console.error('[GameCredentials API] Create error:', error);
+      console.error('[GameCredentials API] Error details:', JSON.stringify(error, null, 2));
       throw error;
     }
   },

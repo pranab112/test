@@ -38,20 +38,29 @@ export interface CreateCommentData {
 
 const COMMUNITY_ENDPOINTS = {
   POSTS: '/community/posts',
+  UPLOAD_IMAGE: '/community/posts/upload-image',
   POST: (id: number) => `/community/posts/${id}`,
   LIKE: (id: number) => `/community/posts/${id}/like`,
   UNLIKE: (id: number) => `/community/posts/${id}/unlike`,
   COMMENTS: (id: number) => `/community/posts/${id}/comments`,
 };
 
+interface PostsResponse {
+  posts: CommunityPost[];
+  total: number;
+  page: number;
+  per_page: number;
+  has_more: boolean;
+}
+
 export const communityApi = {
   // Get all posts
-  getPosts: async (skip = 0, limit = 20): Promise<CommunityPost[]> => {
+  getPosts: async (page = 1, perPage = 20): Promise<PostsResponse> => {
     try {
       const response = await api.get(COMMUNITY_ENDPOINTS.POSTS, {
-        params: { skip, limit },
+        params: { page, per_page: perPage },
       });
-      return response as unknown as CommunityPost[];
+      return response as unknown as PostsResponse;
     } catch (error) {
       throw error;
     }
@@ -67,31 +76,47 @@ export const communityApi = {
     }
   },
 
+  // Upload image for a post
+  uploadImage: async (imageUri: string): Promise<string> => {
+    try {
+      const formData = new FormData();
+
+      const filename = imageUri.split('/').pop() || 'image.jpg';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+      formData.append('file', {
+        uri: imageUri,
+        name: filename,
+        type,
+      } as unknown as Blob);
+
+      // Increase timeout for image uploads
+      const response = await api.post(COMMUNITY_ENDPOINTS.UPLOAD_IMAGE, formData, {
+        timeout: 60000, // 60 seconds for image upload
+      });
+      return (response as unknown as { image_url: string }).image_url;
+    } catch (error) {
+      throw error;
+    }
+  },
+
   // Create post (with optional image)
   createPost: async (data: CreatePostData): Promise<CommunityPost> => {
     try {
+      let image_url: string | undefined;
+
+      // If there's an image, upload it first
       if (data.imageUri) {
-        // Use FormData for posts with images
-        const formData = new FormData();
-        formData.append('content', data.content);
-
-        const filename = data.imageUri.split('/').pop() || 'image.jpg';
-        const match = /\.(\w+)$/.exec(filename);
-        const type = match ? `image/${match[1]}` : 'image/jpeg';
-
-        formData.append('file', {
-          uri: data.imageUri,
-          name: filename,
-          type,
-        } as unknown as Blob);
-
-        const response = await api.post(COMMUNITY_ENDPOINTS.POSTS, formData);
-        return response as unknown as CommunityPost;
-      } else {
-        // Text-only post
-        const response = await api.post(COMMUNITY_ENDPOINTS.POSTS, { content: data.content });
-        return response as unknown as CommunityPost;
+        image_url = await communityApi.uploadImage(data.imageUri);
       }
+
+      // Create the post with content and optional image_url
+      const response = await api.post(COMMUNITY_ENDPOINTS.POSTS, {
+        content: data.content,
+        image_url,
+      });
+      return response as unknown as CommunityPost;
     } catch (error) {
       throw error;
     }

@@ -59,7 +59,13 @@ export default function PlayerHomeScreen() {
   useFocusEffect(
     useCallback(() => {
       loadData();
+      // Refresh immediately
       refreshUnreadCount();
+      // Also refresh after a short delay to catch any pending updates from chat screen
+      const timer = setTimeout(() => {
+        refreshUnreadCount();
+      }, 600);
+      return () => clearTimeout(timer);
     }, [refreshUnreadCount])
   );
 

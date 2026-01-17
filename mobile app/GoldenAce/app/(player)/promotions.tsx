@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,14 +10,17 @@ import {
   Modal,
   ScrollView,
 } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { promotionsApi, Promotion, PromotionClaim } from '../../src/api/promotions.api';
+import { usePromotions } from '../../src/contexts/PromotionContext';
 import { Card, Badge, Loading, EmptyState, Button } from '../../src/components/ui';
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../../src/constants/theme';
 
 type TabType = 'available' | 'claims';
 
 export default function PlayerPromotionsScreen() {
+  const { markPromotionsAsViewed } = usePromotions();
   const [activeTab, setActiveTab] = useState<TabType>('available');
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [claims, setClaims] = useState<PromotionClaim[]>([]);
@@ -51,6 +54,18 @@ export default function PlayerPromotionsScreen() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Mark promotions as viewed when screen gains focus
+  useFocusEffect(
+    useCallback(() => {
+      // Small delay to ensure promotions are loaded first
+      const timer = setTimeout(() => {
+        markPromotionsAsViewed();
+      }, 500);
+
+      return () => clearTimeout(timer);
+    }, [markPromotionsAsViewed])
+  );
 
   const handleClaimPromotion = async (promotion: Promotion) => {
     setClaiming(promotion.id);

@@ -45,7 +45,7 @@ export default function CommunityScreen() {
   const loadPosts = async () => {
     try {
       const data = await communityApi.getPosts();
-      setPosts(data);
+      setPosts(data.posts || []);
     } catch (error) {
       console.error('Error loading posts:', error);
     } finally {

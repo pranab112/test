@@ -6,6 +6,7 @@ import { AuthProvider } from '../src/contexts/AuthContext';
 import { WebSocketProvider } from '../src/contexts/WebSocketContext';
 import { NotificationProvider } from '../src/contexts/NotificationContext';
 import { ChatProvider } from '../src/contexts/ChatContext';
+import { PromotionProvider } from '../src/contexts/PromotionContext';
 import { Colors } from '../src/constants/theme';
 
 export default function RootLayout() {
@@ -14,7 +15,8 @@ export default function RootLayout() {
       <WebSocketProvider>
         <NotificationProvider>
           <ChatProvider>
-            <View style={{ flex: 1, backgroundColor: Colors.background }}>
+            <PromotionProvider>
+              <View style={{ flex: 1, backgroundColor: Colors.background }}>
             <Stack
               screenOptions={{
                 headerShown: false,
@@ -76,8 +78,9 @@ export default function RootLayout() {
                 }}
               />
             </Stack>
-            <StatusBar style="light" />
-            </View>
+              <StatusBar style="light" />
+              </View>
+            </PromotionProvider>
           </ChatProvider>
         </NotificationProvider>
       </WebSocketProvider>

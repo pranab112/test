@@ -28,7 +28,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
     try {
       const stats = await chatApi.getChatStats();
-      setUnreadCount(stats.unread_messages || 0);
+      const newCount = stats.unread_messages || 0;
+      console.log('[ChatContext] Refreshed unread count:', newCount);
+      setUnreadCount(newCount);
     } catch (error) {
       console.error('Error fetching unread count:', error);
     }
@@ -55,13 +57,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     refreshUnreadCount();
   }, [refreshUnreadCount]);
 
-  // Refresh unread count periodically (every 30 seconds)
+  // Refresh unread count periodically (every 15 seconds for more responsive updates)
   useEffect(() => {
     if (!user) return;
 
     const interval = setInterval(() => {
       refreshUnreadCount();
-    }, 30000);
+    }, 15000);
 
     return () => clearInterval(interval);
   }, [user, refreshUnreadCount]);

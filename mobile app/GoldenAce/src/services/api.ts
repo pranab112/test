@@ -29,8 +29,14 @@ api.interceptors.request.use(
     }
 
     // If sending FormData, remove Content-Type header so axios can set it with proper boundary
-    if (config.data instanceof FormData) {
-      delete config.headers['Content-Type'];
+    // In React Native, FormData may not pass instanceof check, so also check for _parts property
+    const isFormData = config.data instanceof FormData ||
+      (config.data && typeof config.data === 'object' && config.data._parts !== undefined);
+    if (isFormData) {
+      // Don't delete Content-Type if it's explicitly set to multipart/form-data
+      if (config.headers['Content-Type'] !== 'multipart/form-data') {
+        delete config.headers['Content-Type'];
+      }
     }
 
     return config;

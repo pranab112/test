@@ -108,12 +108,11 @@ export default function ChatScreen() {
         setMessages([]);
       }
 
-      // Backend already marks messages as read when fetching
-      // Refresh the global unread count to sync the badge
-      // Small delay to ensure the backend has committed the read status
-      setTimeout(() => {
-        refreshUnreadCount();
-      }, 500);
+      // Backend marks messages as read when fetching
+      // Refresh the global unread count immediately and after delays to sync the badge
+      refreshUnreadCount();
+      setTimeout(() => refreshUnreadCount(), 300);
+      setTimeout(() => refreshUnreadCount(), 800);
     } catch (error) {
       console.error('Error loading chat:', error);
     } finally {
@@ -140,7 +139,9 @@ export default function ChatScreen() {
       return () => {
         // Clear active chat when leaving
         setActiveChatFriendId(null);
-        // Add delay to ensure backend has marked messages as read before refreshing count
+        // Refresh immediately to update the count since messages were just marked as read
+        refreshUnreadCount();
+        // Also refresh after a short delay in case the backend needs time to commit
         setTimeout(() => {
           refreshUnreadCount();
         }, 500);
@@ -394,6 +395,7 @@ export default function ChatScreen() {
     if (user?.user_type === 'client' && friend?.user_type === 'player' && friendId && clientGames.length === 0) {
       try {
         const games = await gamesApi.getClientGames();
+        console.log('[Chat] Loaded client games:', JSON.stringify(games, null, 2));
         setClientGames(games);
       } catch (error) {
         console.error('Error loading client games:', error);
@@ -483,7 +485,9 @@ export default function ChatScreen() {
       setGameCredentials(credentials);
       setShowAddCredentialModal(false);
     } catch (error: any) {
-      Alert.alert('Error', error?.detail || 'Failed to save credential');
+      console.error('Error saving credential:', error);
+      const errorMessage = error?.detail || error?.message || error?.error?.message || 'Failed to save credential';
+      Alert.alert('Error', errorMessage);
     } finally {
       setSavingCredential(false);
     }
@@ -621,52 +625,34 @@ export default function ChatScreen() {
         );
       }
 
-      // Promotion message
-      if (item.message_type === 'promotion') {
-        return (
-          <View style={styles.promotionMessage}>
-            {item.promotion_image_url && (
-              <Image
-                source={{ uri: getFileUrl(item.promotion_image_url) }}
-                style={styles.promotionImage}
-                resizeMode="cover"
-              />
-            )}
-            <View style={styles.promotionContent}>
-              <View style={styles.promotionHeader}>
-                <Ionicons name="megaphone" size={16} color={Colors.primary} />
-                <Text style={styles.promotionTag}>Promotion</Text>
-              </View>
-              <Text style={[styles.promotionTitle, isOwnMessage ? styles.ownMessageText : styles.otherMessageText]}>
-                {item.promotion_title || item.content || 'New Promotion'}
-              </Text>
-              {item.content && item.promotion_title && (
-                <Text style={[styles.promotionDescription, isOwnMessage ? { color: Colors.background + 'cc' } : { color: Colors.textSecondary }]}>
-                  {item.content}
-                </Text>
-              )}
-            </View>
-          </View>
-        );
-      }
-
       // Check if content is JSON (system message like promotion_claim_request, etc.)
+      // This must be checked BEFORE the generic promotion check below
       if (item.content && item.content.startsWith('{') && item.content.includes('"type"')) {
         try {
           const jsonData = JSON.parse(item.content);
 
-          // Promotion claim request
+          // Promotion claim request (player claiming a promotion - shown to client)
           if (jsonData.type === 'promotion_claim_request') {
             return (
               <View style={styles.systemMessage}>
-                <Ionicons name="gift" size={20} color={Colors.primary} />
+                <Ionicons name="gift" size={20} color={Colors.warning} />
                 <View style={styles.systemMessageContent}>
                   <Text style={[styles.systemMessageTitle, isOwnMessage ? styles.ownMessageText : styles.otherMessageText]}>
-                    Promotion Claimed
+                    {isOwnMessage ? 'Promotion Claim Sent' : 'New Promotion Claim'}
                   </Text>
                   <Text style={[styles.systemMessageText, isOwnMessage ? { color: Colors.background + 'cc' } : { color: Colors.textSecondary }]}>
                     {jsonData.promotion_title || 'Promotion'} - {jsonData.value || 0} GC
                   </Text>
+                  {!isOwnMessage && jsonData.player_username && (
+                    <Text style={[styles.systemMessageText, { color: Colors.textSecondary }]}>
+                      From: {jsonData.player_username} (Level {jsonData.player_level || 1})
+                    </Text>
+                  )}
+                  {!isOwnMessage && (
+                    <Text style={[styles.systemMessageHint, { color: Colors.warning }]}>
+                      Pending your approval
+                    </Text>
+                  )}
                 </View>
               </View>
             );
@@ -716,8 +702,37 @@ export default function ChatScreen() {
             );
           }
         } catch (e) {
-          // Not valid JSON, fall through to default text rendering
+          // Not valid JSON, fall through to default rendering
         }
+      }
+
+      // Promotion message (generic, non-JSON promotion content)
+      if (item.message_type === 'promotion' && !(item.content?.startsWith('{') && item.content?.includes('"type"'))) {
+        return (
+          <View style={styles.promotionMessage}>
+            {item.promotion_image_url && (
+              <Image
+                source={{ uri: getFileUrl(item.promotion_image_url) }}
+                style={styles.promotionImage}
+                resizeMode="cover"
+              />
+            )}
+            <View style={styles.promotionContent}>
+              <View style={styles.promotionHeader}>
+                <Ionicons name="megaphone" size={16} color={Colors.primary} />
+                <Text style={styles.promotionTag}>Promotion</Text>
+              </View>
+              <Text style={[styles.promotionTitle, isOwnMessage ? styles.ownMessageText : styles.otherMessageText]}>
+                {item.promotion_title || item.content || 'New Promotion'}
+              </Text>
+              {item.content && item.promotion_title && (
+                <Text style={[styles.promotionDescription, isOwnMessage ? { color: Colors.background + 'cc' } : { color: Colors.textSecondary }]}>
+                  {item.content}
+                </Text>
+              )}
+            </View>
+          </View>
+        );
       }
 
       return (
@@ -1852,5 +1867,11 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     fontWeight: FontWeight.medium,
     marginTop: Spacing.xs,
+  },
+  systemMessageHint: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.medium,
+    marginTop: Spacing.xs,
+    fontStyle: 'italic',
   },
 });

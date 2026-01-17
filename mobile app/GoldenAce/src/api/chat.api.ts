@@ -43,7 +43,17 @@ export const chatApi = {
       // Get filename and type from URI
       const filename = imageUri.split('/').pop() || 'image.jpg';
       const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : 'image/jpeg';
+      const extension = match ? match[1].toLowerCase() : 'jpg';
+
+      // Map extensions to proper MIME types
+      const mimeTypes: Record<string, string> = {
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif',
+        'webp': 'image/webp',
+      };
+      const type = mimeTypes[extension] || 'image/jpeg';
 
       formData.append('file', {
         uri: imageUri,
@@ -55,10 +65,20 @@ export const chatApi = {
         formData.append('content', caption);
       }
 
-      // Don't set Content-Type header - let axios set it with proper boundary
-      const response = await api.post(API_ENDPOINTS.CHAT.SEND_IMAGE, formData);
+      console.log('[Chat API] Sending image:', { receiverId, filename, type, hasCaption: !!caption });
+
+      // Explicitly set Content-Type to multipart/form-data for React Native
+      const response = await api.post(API_ENDPOINTS.CHAT.SEND_IMAGE, formData, {
+        timeout: 60000, // 60 seconds for image upload
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      console.log('[Chat API] Image sent successfully:', response);
       return response as unknown as Message;
-    } catch (error) {
+    } catch (error: any) {
+      console.error('[Chat API] sendImageMessage error:', error);
+      console.error('[Chat API] Error details:', JSON.stringify(error, null, 2));
       throw error;
     }
   },

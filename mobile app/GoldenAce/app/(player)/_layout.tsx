@@ -5,6 +5,7 @@ import { Platform, View, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, FontSize } from '../../src/constants/theme';
 import { useChat } from '../../src/contexts/ChatContext';
+import { usePromotions } from '../../src/contexts/PromotionContext';
 
 // Tab icon with badge component
 function TabIconWithBadge({
@@ -35,6 +36,7 @@ function TabIconWithBadge({
 export default function PlayerTabLayout() {
   const insets = useSafeAreaInsets();
   const { unreadCount } = useChat();
+  const { newPromotionsCount } = usePromotions();
 
   // Calculate proper bottom padding based on device safe area
   const bottomPadding = Math.max(insets.bottom, 10);
@@ -95,7 +97,12 @@ export default function PlayerTabLayout() {
         options={{
           title: 'Promos',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="megaphone" size={size} color={color} />
+            <TabIconWithBadge
+              name="megaphone"
+              size={size}
+              color={color}
+              badgeCount={newPromotionsCount}
+            />
           ),
         }}
       />

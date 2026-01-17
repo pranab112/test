@@ -24,11 +24,16 @@ export const gamesApi = {
   // Client: Get my selected games
   getClientGames: async (): Promise<ClientGame[]> => {
     try {
+      console.log('[Games API] Fetching client games from:', API_ENDPOINTS.GAMES.MY_GAMES);
       const response = await api.get(API_ENDPOINTS.GAMES.MY_GAMES);
+      console.log('[Games API] Raw response:', JSON.stringify(response, null, 2));
       const data = response as unknown as ClientGamesResponse;
-      return data.games || [];
+      const games = data.games || [];
+      console.log('[Games API] Parsed games:', games.length, 'items');
+      return games;
     } catch (error: unknown) {
       const err = error as { response?: { status?: number }; error?: { code?: string } };
+      console.error('[Games API] Error fetching client games:', error);
       if (err?.response?.status === 404 || err?.error?.code === 'NOT_FOUND') {
         return [];
       }
