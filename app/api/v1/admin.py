@@ -415,9 +415,9 @@ def delete_user(
             db.query(models.BetTransaction).filter(models.BetTransaction.user_id == user_id).delete(synchronize_session=False)
 
         # Delete game credentials (both as client and player)
-        if hasattr(models, 'GameCredential'):
-            db.query(models.GameCredential).filter(
-                or_(models.GameCredential.client_id == user_id, models.GameCredential.player_id == user_id)
+        if hasattr(models, 'GameCredentials'):
+            db.query(models.GameCredentials).filter(
+                or_(models.GameCredentials.client_id == user_id, models.GameCredentials.player_id == user_id)
             ).delete(synchronize_session=False)
 
         # Delete client games
@@ -440,10 +440,10 @@ def delete_user(
         if hasattr(models, 'Notification'):
             db.query(models.Notification).filter(models.Notification.user_id == user_id).delete(synchronize_session=False)
 
-        # Delete referrals (as referrer or referee)
+        # Delete referrals (as referrer or referred)
         if hasattr(models, 'Referral'):
             db.query(models.Referral).filter(
-                or_(models.Referral.referrer_id == user_id, models.Referral.referee_id == user_id)
+                or_(models.Referral.referrer_id == user_id, models.Referral.referred_id == user_id)
             ).delete(synchronize_session=False)
 
         # Finally delete the user
