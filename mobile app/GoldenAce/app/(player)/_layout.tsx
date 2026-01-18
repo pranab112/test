@@ -131,13 +131,6 @@ export default function PlayerTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="community"
-        options={{
-          href: null, // Hide from tab bar
-          title: 'Community',
-        }}
-      />
-      <Tabs.Screen
         name="broadcasts"
         options={{
           href: null, // Hide from tab bar

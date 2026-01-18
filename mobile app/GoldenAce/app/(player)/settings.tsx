@@ -444,12 +444,6 @@ export default function PlayerSettingsScreen() {
             onPress={() => router.push('/(player)/friends')}
           />
           <SettingsItem
-            icon="globe"
-            title="Community"
-            subtitle="Posts and discussions"
-            onPress={() => router.push('/(player)/community')}
-          />
-          <SettingsItem
             icon="megaphone"
             title="Announcements"
             subtitle="News and updates"
