@@ -11,9 +11,11 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { communityApi, CommunityPost, PostComment } from '../../src/api/community.api';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { Card, Avatar, Badge, Loading, EmptyState, Button, Input } from '../../src/components/ui';
@@ -29,6 +31,7 @@ export default function CommunityScreen() {
   // New post modal
   const [showNewPostModal, setShowNewPostModal] = useState(false);
   const [newPostContent, setNewPostContent] = useState('');
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [posting, setPosting] = useState(false);
 
   // Comments modal
@@ -61,23 +64,70 @@ export default function CommunityScreen() {
   }, []);
 
   const handleCreatePost = async () => {
-    if (!newPostContent.trim()) {
-      Alert.alert('Error', 'Please enter some content');
+    if (!newPostContent.trim() && !selectedImage) {
+      Alert.alert('Error', 'Please enter some content or select an image');
       return;
     }
 
     setPosting(true);
     try {
-      await communityApi.createPost({ content: newPostContent.trim() });
+      if (selectedImage) {
+        // Post with image
+        await communityApi.createPostWithImage(newPostContent.trim(), selectedImage);
+      } else {
+        // Text only post
+        await communityApi.createPost({ content: newPostContent.trim() });
+      }
       Alert.alert('Success', 'Post created successfully');
       setShowNewPostModal(false);
       setNewPostContent('');
+      setSelectedImage(null);
       await loadPosts();
     } catch (error: any) {
-      Alert.alert('Error', error?.detail || 'Failed to create post');
+      console.error('Post creation error:', error);
+      Alert.alert('Error', error?.detail || error?.message || 'Failed to create post');
     } finally {
       setPosting(false);
     }
+  };
+
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Please allow access to your photo library.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setSelectedImage(result.assets[0].uri);
+    }
+  };
+
+  const takePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Please allow access to your camera.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setSelectedImage(result.assets[0].uri);
+    }
+  };
+
+  const removeSelectedImage = () => {
+    setSelectedImage(null);
   };
 
   const handleLikePost = async (post: CommunityPost) => {
@@ -341,7 +391,11 @@ export default function CommunityScreen() {
         >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setShowNewPostModal(false)}>
+              <TouchableOpacity onPress={() => {
+                setShowNewPostModal(false);
+                setSelectedImage(null);
+                setNewPostContent('');
+              }}>
                 <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
               <Text style={styles.modalTitle}>Create Post</Text>
@@ -350,7 +404,7 @@ export default function CommunityScreen() {
                 onPress={handleCreatePost}
                 loading={posting}
                 size="sm"
-                disabled={!newPostContent.trim()}
+                disabled={!newPostContent.trim() && !selectedImage}
               />
             </View>
 
@@ -370,6 +424,35 @@ export default function CommunityScreen() {
                 autoFocus
                 maxLength={500}
               />
+            </View>
+
+            {/* Selected Image Preview */}
+            {selectedImage && (
+              <View style={styles.selectedImageContainer}>
+                <Image
+                  source={{ uri: selectedImage }}
+                  style={styles.selectedImage}
+                  contentFit="cover"
+                />
+                <TouchableOpacity
+                  style={styles.removeImageButton}
+                  onPress={removeSelectedImage}
+                >
+                  <Ionicons name="close-circle" size={28} color={Colors.error} />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Image Picker Buttons */}
+            <View style={styles.imagePickerRow}>
+              <TouchableOpacity style={styles.imagePickerButton} onPress={pickImage}>
+                <Ionicons name="image" size={24} color={Colors.primary} />
+                <Text style={styles.imagePickerText}>Gallery</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.imagePickerButton} onPress={takePhoto}>
+                <Ionicons name="camera" size={24} color={Colors.primary} />
+                <Text style={styles.imagePickerText}>Camera</Text>
+              </TouchableOpacity>
             </View>
 
             <Text style={styles.charCount}>
@@ -586,6 +669,45 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'right',
     paddingHorizontal: Spacing.md,
+  },
+  selectedImageContainer: {
+    marginHorizontal: Spacing.md,
+    marginBottom: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  selectedImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: BorderRadius.lg,
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: Spacing.sm,
+    right: Spacing.sm,
+    backgroundColor: Colors.background,
+    borderRadius: 14,
+  },
+  imagePickerRow: {
+    flexDirection: 'row',
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.md,
+    gap: Spacing.lg,
+  },
+  imagePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    backgroundColor: Colors.primary + '10',
+    borderRadius: BorderRadius.lg,
+  },
+  imagePickerText: {
+    fontSize: FontSize.sm,
+    color: Colors.primary,
+    fontWeight: FontWeight.medium,
   },
   commentsModalContainer: {
     flex: 1,
