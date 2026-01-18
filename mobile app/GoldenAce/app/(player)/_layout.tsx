@@ -151,6 +151,13 @@ export default function PlayerTabLayout() {
           title: 'Notifications',
         }}
       />
+      <Tabs.Screen
+        name="credentials"
+        options={{
+          href: null, // Hide from tab bar - accessible via chat (game icon)
+          title: 'Credentials',
+        }}
+      />
     </Tabs>
   );
 }
