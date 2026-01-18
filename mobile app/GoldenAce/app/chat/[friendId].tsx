@@ -1096,7 +1096,7 @@ export default function ChatScreen() {
               <Text style={styles.credentialsTitle}>Game Credentials</Text>
               <View style={styles.credentialsHeaderRight}>
                 <TouchableOpacity
-                  onPress={() => handleOpenCredentials(true)}
+                  onPress={() => handleOpenCredentials()}
                   style={styles.refreshCredentialButton}
                 >
                   <Ionicons name="refresh" size={20} color={Colors.primary} />

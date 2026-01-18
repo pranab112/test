@@ -194,4 +194,44 @@ export const communityApi = {
       throw error;
     }
   },
+
+  // Upload image
+  uploadImage: async (imageUri: string): Promise<string> => {
+    try {
+      const token = await AsyncStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const formData = new FormData();
+      const uriParts = imageUri.split('.');
+      const fileType = uriParts[uriParts.length - 1];
+      const fileName = `image_${Date.now()}.${fileType}`;
+
+      formData.append('image', {
+        uri: Platform.OS === 'ios' ? imageUri.replace('file://', '') : imageUri,
+        name: fileName,
+        type: `image/${fileType === 'jpg' ? 'jpeg' : fileType}`,
+      } as any);
+
+      const response = await fetch(`${API_CONFIG.BASE_URL}${COMMUNITY_ENDPOINTS.UPLOAD_IMAGE}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw { detail: errorData.detail || 'Failed to upload image' };
+      }
+
+      const result = await response.json();
+      return result.image_url;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      throw error;
+    }
+  },
 };
