@@ -59,7 +59,8 @@ class GameCredentials(Base):
     game = relationship("Game", backref="player_credentials")
     created_by_client = relationship("User", foreign_keys=[created_by_client_id])
 
-    # Unique constraint - one credential per player per game
+    # Unique constraint - one credential per client per player per game
+    # Each client can have their own credentials for a player-game combination
     __table_args__ = (
-        UniqueConstraint('player_id', 'game_id', name='unique_player_game_credential'),
+        UniqueConstraint('player_id', 'game_id', 'created_by_client_id', name='unique_client_player_game_credential'),
     )

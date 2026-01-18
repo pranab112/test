@@ -40,14 +40,16 @@ async def create_game_credential(
             logger.warning(f"Game {credential.game_id} not found")
             raise HTTPException(status_code=404, detail="Game not found")
 
-        # Check if credentials already exist for this player-game combination
+        # Check if credentials already exist for this client-player-game combination
+        # Each client can have their own credentials for a player
         existing = db.query(models.GameCredentials).filter(
             models.GameCredentials.player_id == credential.player_id,
-            models.GameCredentials.game_id == credential.game_id
+            models.GameCredentials.game_id == credential.game_id,
+            models.GameCredentials.created_by_client_id == current_user.id
         ).first()
         if existing:
-            logger.warning(f"Credentials already exist for player {credential.player_id} and game {credential.game_id}")
-            raise HTTPException(status_code=400, detail="Credentials already exist for this player and game")
+            logger.warning(f"Credentials already exist for client {current_user.id}, player {credential.player_id} and game {credential.game_id}")
+            raise HTTPException(status_code=400, detail="You have already created credentials for this player and game")
 
         # Try to encrypt credentials (returns None if encryption is disabled)
         encrypted_username = None
@@ -168,10 +170,17 @@ async def get_player_credentials(
             logger.warning(f"Player {player_id} not found")
             raise HTTPException(status_code=404, detail="Player not found")
 
-        # Get all credentials for the player with game info
-        credentials = db.query(models.GameCredentials, models.Game).join(
+        # Get credentials for the player with game info
+        # If client is requesting, only show credentials they created (one-to-one per client)
+        query = db.query(models.GameCredentials, models.Game).join(
             models.Game, models.GameCredentials.game_id == models.Game.id
-        ).filter(models.GameCredentials.player_id == player_id).all()
+        ).filter(models.GameCredentials.player_id == player_id)
+
+        # Clients can only see credentials THEY created for this player
+        if current_user.user_type == models.UserType.CLIENT:
+            query = query.filter(models.GameCredentials.created_by_client_id == current_user.id)
+
+        credentials = query.all()
 
         # Format response with DUAL-READ pattern
         formatted_credentials = []
@@ -244,6 +253,11 @@ async def update_game_credential(
         if not credential:
             logger.warning(f"Credential {credential_id} not found")
             raise HTTPException(status_code=404, detail="Game credential not found")
+
+        # Verify client owns this credential
+        if credential.created_by_client_id != current_user.id:
+            logger.warning(f"Client {current_user.id} tried to update credential {credential_id} created by {credential.created_by_client_id}")
+            raise HTTPException(status_code=403, detail="You can only update credentials you created")
 
         # Get game info for notification
         game = db.query(models.Game).filter(models.Game.id == credential.game_id).first()
@@ -349,6 +363,11 @@ async def delete_game_credential(
     ).first()
     if not credential:
         raise HTTPException(status_code=404, detail="Game credential not found")
+
+    # Verify client owns this credential
+    if credential.created_by_client_id != current_user.id:
+        logger.warning(f"Client {current_user.id} tried to delete credential {credential_id} created by {credential.created_by_client_id}")
+        raise HTTPException(status_code=403, detail="You can only delete credentials you created")
 
     # Get game info for notification
     game = db.query(models.Game).filter(models.Game.id == credential.game_id).first()
