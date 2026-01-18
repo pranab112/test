@@ -90,26 +90,19 @@ export default function ChatScreen() {
       const friendInfo = friendsData.find((f) => f.id === parseInt(friendId));
       setFriend(friendInfo || null);
 
+      // Backend automatically marks messages as read when fetching
+      // So we need to update the local state to reflect this
       const loadedMessages = messagesData.messages.reverse();
-      setMessages(loadedMessages);
 
-      // Mark unread messages from the friend as read
-      const unreadMessages = loadedMessages.filter(
-        (msg) => msg.sender_id === parseInt(friendId) && !msg.is_read
+      // Update local state - mark all messages from the friend as read
+      // (the backend has already done this in the database)
+      const updatedMessages = loadedMessages.map((msg) =>
+        msg.sender_id === parseInt(friendId) ? { ...msg, is_read: true } : msg
       );
+      setMessages(updatedMessages);
 
-      if (unreadMessages.length > 0) {
-        // Mark each unread message as read
-        await Promise.all(
-          unreadMessages.map((msg) =>
-            chatApi.markMessageAsRead(msg.id).catch((err) => {
-              console.error('Error marking message as read:', err);
-            })
-          )
-        );
-        // Refresh the global unread count
-        refreshUnreadCount();
-      }
+      // Refresh the global unread count to get the updated value from the server
+      refreshUnreadCount();
     } catch (error) {
       console.error('Error loading chat:', error);
     } finally {
