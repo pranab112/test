@@ -368,11 +368,11 @@ export default function ChatScreen() {
   }, [sound]);
 
   // Load game credentials
-  const handleOpenCredentials = async () => {
+  const handleOpenCredentials = async (forceRefresh = false) => {
     setShowCredentialsModal(true);
 
     // For clients, always load client games if not already loaded
-    if (user?.user_type === 'client' && friend?.user_type === 'player' && friendId && clientGames.length === 0) {
+    if (user?.user_type === 'client' && friendId && clientGames.length === 0) {
       try {
         const games = await gamesApi.getClientGames();
         setClientGames(games);
@@ -381,17 +381,18 @@ export default function ChatScreen() {
       }
     }
 
-    // Skip credential loading if already loaded
-    if (gameCredentials.length > 0) return;
+    // Skip credential loading if already loaded and not forcing refresh
+    if (gameCredentials.length > 0 && !forceRefresh) return;
 
     setLoadingCredentials(true);
     try {
       // If current user is a player, get their own credentials
-      // If current user is a client and friend is a player, get that player's credentials
+      // If current user is a client, get the player's credentials (friend is the player)
       if (user?.user_type === 'player') {
         const credentials = await gameCredentialsApi.getMyCredentials();
         setGameCredentials(credentials);
-      } else if (user?.user_type === 'client' && friend?.user_type === 'player' && friendId) {
+      } else if (user?.user_type === 'client' && friendId) {
+        // Client viewing player's credentials
         const [credentials, games] = await Promise.all([
           gameCredentialsApi.getPlayerCredentials(parseInt(friendId)),
           gamesApi.getClientGames(),
@@ -926,7 +927,13 @@ export default function ChatScreen() {
             <View style={styles.credentialsHeader}>
               <Text style={styles.credentialsTitle}>Game Credentials</Text>
               <View style={styles.credentialsHeaderRight}>
-                {user?.user_type === 'client' && friend?.user_type === 'player' && (
+                <TouchableOpacity
+                  onPress={() => handleOpenCredentials(true)}
+                  style={styles.refreshCredentialButton}
+                >
+                  <Ionicons name="refresh" size={20} color={Colors.primary} />
+                </TouchableOpacity>
+                {user?.user_type === 'client' && (
                   <TouchableOpacity
                     onPress={handleOpenAddCredential}
                     style={styles.addCredentialButton}
@@ -953,7 +960,7 @@ export default function ChatScreen() {
                     ? 'Your client has not assigned any game credentials yet.'
                     : 'No credentials have been assigned to this player.'}
                 </Text>
-                {user?.user_type === 'client' && friend?.user_type === 'player' && (
+                {user?.user_type === 'client' && (
                   <TouchableOpacity
                     style={styles.addCredentialButtonLarge}
                     onPress={handleOpenAddCredential}
@@ -1577,6 +1584,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.md,
+  },
+  refreshCredentialButton: {
+    padding: Spacing.xs,
+    marginRight: Spacing.xs,
   },
   addCredentialButton: {
     padding: Spacing.xs,

@@ -301,6 +301,12 @@ export default function ClientSettingsScreen() {
             subtitle="View and manage your players"
             onPress={() => router.push('/(client)/players')}
           />
+          <SettingsItem
+            icon="key"
+            title="Player Credentials"
+            subtitle="Manage game credentials for players"
+            onPress={() => router.push('/(client)/credentials')}
+          />
         </Card>
       </View>
 
