@@ -92,7 +92,8 @@ export default function ChatScreen() {
       console.log('[Chat] Friend info loaded:', JSON.stringify(friendInfo, null, 2));
       setFriend(friendInfo || null);
 
-      const loadedMessages = messagesData.messages.reverse();
+      // Keep messages in reverse chronological order (newest first) for inverted FlatList
+      const loadedMessages = messagesData.messages;
       setMessages(loadedMessages);
 
       // Mark unread messages from the friend as read
@@ -160,18 +161,18 @@ export default function ChatScreen() {
         ((data.sender_id === parsedFriendId && data.receiver_id === user.id) ||
           (data.sender_id === user.id && data.receiver_id === parsedFriendId))
       ) {
-        // Add the new message to the list if it's not already there
+        // Add the new message to the beginning (inverted list shows index 0 at bottom)
         setMessages((prev) => {
           // Check if message already exists (avoid duplicates)
           if (prev.some((m) => m.id === data.id)) {
             return prev;
           }
-          return [...prev, data];
+          return [data, ...prev];
         });
 
-        // Scroll to bottom when new message arrives
+        // With inverted list, scrollToOffset(0) shows the newest message at bottom
         setTimeout(() => {
-          flatListRef.current?.scrollToEnd({ animated: true });
+          flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
         }, 100);
 
         // Mark as read since we're viewing this chat
@@ -195,12 +196,12 @@ export default function ChatScreen() {
         parseInt(friendId),
         newMessage.trim()
       );
-      setMessages((prev) => [...prev, sentMessage]);
+      setMessages((prev) => [sentMessage, ...prev]);
       setNewMessage('');
 
-      // Scroll to bottom
+      // Scroll to newest message (index 0 in inverted list)
       setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
+        flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
       }, 100);
     } catch (error) {
       console.error('Error sending message:', error);
@@ -259,12 +260,12 @@ export default function ChatScreen() {
         selectedImage,
         imageCaption.trim() || undefined
       );
-      setMessages((prev) => [...prev, sentMessage]);
+      setMessages((prev) => [sentMessage, ...prev]);
       setSelectedImage(null);
       setImageCaption('');
 
       setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
+        flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
       }, 100);
     } catch (error: any) {
       Alert.alert('Error', error?.detail || 'Failed to send image');
@@ -360,10 +361,10 @@ export default function ChatScreen() {
         uri,
         duration
       );
-      setMessages((prev) => [...prev, sentMessage]);
+      setMessages((prev) => [sentMessage, ...prev]);
 
       setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
+        flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
       }, 100);
     } catch (error: any) {
       const errorMsg = error?.detail || error?.error?.message || error?.message || 'Failed to send voice message';
@@ -606,6 +607,8 @@ export default function ChatScreen() {
 
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
     const isOwnMessage = item.sender_id === user?.id;
+    // With inverted list, index 0 is at bottom (newest), so visually "previous" message is index+1
+    // Show avatar at the bottom of a consecutive message group from the same sender
     const showAvatar =
       !isOwnMessage &&
       (index === 0 || messages[index - 1]?.sender_id !== item.sender_id);
@@ -920,7 +923,7 @@ export default function ChatScreen() {
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderMessage}
           contentContainerStyle={styles.messagesList}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+          inverted={true}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Ionicons name="chatbubble-outline" size={48} color={Colors.textMuted} />
