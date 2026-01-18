@@ -6,8 +6,11 @@ export const gameCredentialsApi = {
   getMyCredentials: async (): Promise<GameCredential[]> => {
     try {
       const response = await api.get('/game-credentials/my-credentials');
-      return response as unknown as GameCredential[];
+      // Backend returns { credentials: [...] } format
+      const data = response as unknown as { credentials: GameCredential[] };
+      return data.credentials || [];
     } catch (error) {
+      console.error('[GameCredentials API] getMyCredentials error:', error);
       throw error;
     }
   },
@@ -16,8 +19,11 @@ export const gameCredentialsApi = {
   getPlayerCredentials: async (playerId: number): Promise<GameCredential[]> => {
     try {
       const response = await api.get(`/game-credentials/player/${playerId}`);
-      return response as unknown as GameCredential[];
+      // Backend returns { credentials: [...] } format
+      const data = response as unknown as { credentials: GameCredential[] };
+      return data.credentials || [];
     } catch (error) {
+      console.error('[GameCredentials API] getPlayerCredentials error:', error);
       throw error;
     }
   },
