@@ -92,32 +92,26 @@ export default function ChatScreen() {
       console.log('[Chat] Friend info loaded:', JSON.stringify(friendInfo, null, 2));
       setFriend(friendInfo || null);
 
-      // Backend returns messages and marks them as read
-      // The response includes unread_count which should be 0 after marking
-      console.log('[Chat] Messages loaded:', {
-        messageCount: messagesData.messages?.length,
-        unreadCount: messagesData.unread_count,
-      });
+      const loadedMessages = messagesData.messages.reverse();
+      setMessages(loadedMessages);
 
-      if (messagesData.messages && Array.isArray(messagesData.messages)) {
-        // Ensure messages are in chronological order (oldest first, newest last)
-        // This way newest messages appear at the bottom of the chat
-        const sortedMessages = [...messagesData.messages].sort((a, b) =>
-          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      // Mark unread messages from the friend as read
+      const unreadMessages = loadedMessages.filter(
+        (msg) => msg.sender_id === parseInt(friendId) && !msg.is_read
+      );
+
+      if (unreadMessages.length > 0) {
+        // Mark each unread message as read
+        await Promise.all(
+          unreadMessages.map((msg) =>
+            chatApi.markMessageAsRead(msg.id).catch((err) => {
+              console.error('Error marking message as read:', err);
+            })
+          )
         );
-        setMessages(sortedMessages);
-      } else {
-        console.error('Invalid messages data:', messagesData);
-        setMessages([]);
+        // Refresh the global unread count
+        refreshUnreadCount();
       }
-
-      // Backend marks messages as read when fetching the messages
-      // The response confirms this with unread_count = 0
-      // Refresh the global unread count to update the badge
-      // Use multiple delays to ensure the backend has committed the changes
-      refreshUnreadCount();
-      setTimeout(() => refreshUnreadCount(), 500);
-      setTimeout(() => refreshUnreadCount(), 1500);
     } catch (error) {
       console.error('Error loading chat:', error);
     } finally {
@@ -432,11 +426,10 @@ export default function ChatScreen() {
 
   // Load game credentials
   const handleOpenCredentials = async () => {
-    console.log('[Credentials] Opening modal, user:', user?.user_type, 'friend:', friend?.user_type, 'friendId:', friendId);
     setShowCredentialsModal(true);
 
     // For clients, always load client games if not already loaded
-    if (user?.user_type === 'client' && friend?.user_type === 'player' && friendId && clientGames.length === 0) {
+    if (user?.user_type === 'client' && friendId && clientGames.length === 0) {
       try {
         const games = await gamesApi.getClientGames();
         console.log('[Chat] Loaded client games:', JSON.stringify(games, null, 2));
@@ -447,34 +440,17 @@ export default function ChatScreen() {
       }
     }
 
-    // Always refresh credentials when opening the modal
+    // Skip credential loading if already loaded
+    if (gameCredentials.length > 0) return;
+
     setLoadingCredentials(true);
     try {
-      // If current user is a player chatting with a client, get credentials from that client
-      // If current user is a client chatting with a player, get that player's credentials
-      if (user?.user_type === 'player' && friend?.user_type === 'client' && friendId) {
-        // Player viewing credentials assigned by this client
-        console.log('[Credentials] Player viewing credentials from client:', friendId);
-        const response = await gameCredentialsApi.getMyCredentials();
-        console.log('[Credentials] All player credentials response:', JSON.stringify(response, null, 2));
-        // Handle both array and {credentials: [...]} response formats
-        const credentials = Array.isArray(response) ? response : (response as any)?.credentials || [];
-        console.log('[Credentials] Parsed credentials array:', credentials.length, 'items');
-        // Filter to only show credentials from this client (friend)
-        const filteredCredentials = credentials.filter((c: GameCredential) => c.created_by_client_id === parseInt(friendId));
-        console.log('[Credentials] Filtered credentials for this client:', JSON.stringify(filteredCredentials, null, 2));
-        setGameCredentials(filteredCredentials);
-      } else if (user?.user_type === 'player') {
-        // Player viewing all their credentials (general case - not chatting with client)
-        console.log('[Credentials] Player viewing all credentials');
-        const response = await gameCredentialsApi.getMyCredentials();
-        console.log('[Credentials] Player credentials response:', JSON.stringify(response, null, 2));
-        // Handle both array and {credentials: [...]} response formats
-        const credentials = Array.isArray(response) ? response : (response as any)?.credentials || [];
+      // If current user is a player, get their own credentials
+      // If current user is a client and friend is a player, get that player's credentials
+      if (user?.user_type === 'player') {
+        const credentials = await gameCredentialsApi.getMyCredentials();
         setGameCredentials(credentials);
       } else if (user?.user_type === 'client' && friend?.user_type === 'player' && friendId) {
-        // Client viewing/editing credentials for this player
-        console.log('[Credentials] Client viewing credentials for player:', friendId);
         const [credentialsResponse, games] = await Promise.all([
           gameCredentialsApi.getPlayerCredentials(parseInt(friendId)),
           gamesApi.getClientGames(),
@@ -1119,7 +1095,13 @@ export default function ChatScreen() {
             <View style={styles.credentialsHeader}>
               <Text style={styles.credentialsTitle}>Game Credentials</Text>
               <View style={styles.credentialsHeaderRight}>
-                {user?.user_type === 'client' && friend?.user_type === 'player' && (
+                <TouchableOpacity
+                  onPress={() => handleOpenCredentials(true)}
+                  style={styles.refreshCredentialButton}
+                >
+                  <Ionicons name="refresh" size={20} color={Colors.primary} />
+                </TouchableOpacity>
+                {user?.user_type === 'client' && (
                   <TouchableOpacity
                     onPress={handleOpenAddCredential}
                     style={styles.addCredentialButton}
@@ -1148,7 +1130,7 @@ export default function ChatScreen() {
                     ? 'No game credentials have been assigned to you yet.'
                     : 'No credentials have been assigned to this player.'}
                 </Text>
-                {user?.user_type === 'client' && friend?.user_type === 'player' && (
+                {user?.user_type === 'client' && (
                   <TouchableOpacity
                     style={styles.addCredentialButtonLarge}
                     onPress={handleOpenAddCredential}
@@ -1798,6 +1780,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.md,
+  },
+  refreshCredentialButton: {
+    padding: Spacing.xs,
+    marginRight: Spacing.xs,
   },
   addCredentialButton: {
     padding: Spacing.xs,

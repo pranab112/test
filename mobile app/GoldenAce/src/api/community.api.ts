@@ -1,4 +1,7 @@
+import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../services/api';
+import { API_CONFIG } from '../config/api.config';
 
 export interface PostAuthor {
   id: number;
@@ -79,32 +82,7 @@ export const communityApi = {
     }
   },
 
-  // Upload image for a post
-  uploadImage: async (imageUri: string): Promise<string> => {
-    try {
-      const formData = new FormData();
-
-      const filename = imageUri.split('/').pop() || 'image.jpg';
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : 'image/jpeg';
-
-      formData.append('file', {
-        uri: imageUri,
-        name: filename,
-        type,
-      } as unknown as Blob);
-
-      // Increase timeout for image uploads
-      const response = await api.post(COMMUNITY_ENDPOINTS.UPLOAD_IMAGE, formData, {
-        timeout: 60000, // 60 seconds for image upload
-      });
-      return (response as unknown as { image_url: string }).image_url;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  // Create post (with optional image)
+  // Create post
   createPost: async (data: CreatePostData): Promise<CommunityPost> => {
     try {
       let image_url: string | undefined;
@@ -121,6 +99,49 @@ export const communityApi = {
       });
       return response as unknown as CommunityPost;
     } catch (error) {
+      throw error;
+    }
+  },
+
+  // Create post with image
+  createPostWithImage: async (content: string, imageUri: string): Promise<CommunityPost> => {
+    try {
+      const token = await AsyncStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const formData = new FormData();
+      formData.append('content', content);
+
+      // Get file extension and create file object
+      const uriParts = imageUri.split('.');
+      const fileType = uriParts[uriParts.length - 1];
+      const fileName = `post_image_${Date.now()}.${fileType}`;
+
+      formData.append('image', {
+        uri: Platform.OS === 'ios' ? imageUri.replace('file://', '') : imageUri,
+        name: fileName,
+        type: `image/${fileType === 'jpg' ? 'jpeg' : fileType}`,
+      } as any);
+
+      const response = await fetch(`${API_CONFIG.BASE_URL}${COMMUNITY_ENDPOINTS.POSTS}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          // Don't set Content-Type for FormData - let fetch set it with boundary
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw { detail: errorData.detail || 'Failed to create post' };
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating post with image:', error);
       throw error;
     }
   },

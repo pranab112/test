@@ -159,6 +159,17 @@ export const chatApi = {
     }
   },
 
+  // Mark all messages from a friend as read
+  markConversationAsRead: async (friendId: number): Promise<void> => {
+    try {
+      await api.put(`${API_ENDPOINTS.CHAT.MESSAGES}/conversation/${friendId}/read`);
+    } catch (error) {
+      // Silently fail if endpoint doesn't exist, fall back to individual marking
+      console.log('Bulk mark as read not available, using individual marking');
+      throw error;
+    }
+  },
+
   // Delete message
   deleteMessage: async (messageId: number): Promise<void> => {
     try {
