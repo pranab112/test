@@ -221,6 +221,12 @@ export default function ClientSettingsScreen() {
             onPress={() => router.push('/(client)/buy-credits')}
           />
           <SettingsItem
+            icon="game-controller"
+            title="Manage Games"
+            subtitle="Select games to offer players"
+            onPress={() => router.push('/(client)/games')}
+          />
+          <SettingsItem
             icon="analytics"
             title="Analytics"
             subtitle="View detailed reports"

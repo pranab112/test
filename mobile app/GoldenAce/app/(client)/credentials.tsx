@@ -367,7 +367,7 @@ export default function ClientCredentialsScreen() {
                     ))}
                   </View>
                   {clientGames.length === 0 && (
-                    <Text style={styles.noGamesText}>No games configured. Add games in Settings.</Text>
+                    <Text style={styles.noGamesText}>No games configured. Go to Settings → Manage Games to add games.</Text>
                   )}
                 </View>
               )}

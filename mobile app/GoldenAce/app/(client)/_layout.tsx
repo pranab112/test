@@ -168,6 +168,13 @@ export default function ClientTabLayout() {
           title: 'Credentials',
         }}
       />
+      <Tabs.Screen
+        name="games"
+        options={{
+          href: null, // Hide from tab bar - accessible via settings
+          title: 'Manage Games',
+        }}
+      />
     </Tabs>
   );
 }
