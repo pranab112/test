@@ -6,7 +6,7 @@ import { Modal } from '@/components/common/Modal';
 import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import toast from 'react-hot-toast';
-import { MdBlock, MdCheck, MdDelete, MdLock, MdContentCopy, MdAccountBalanceWallet, MdWarning } from 'react-icons/md';
+import { MdBlock, MdCheck, MdDelete, MdLock, MdContentCopy, MdAccountBalanceWallet, MdWarning, MdPersonAdd } from 'react-icons/md';
 import { adminApi, type User } from '@/api/endpoints';
 import { UserType } from '@/types';
 
@@ -32,6 +32,18 @@ export function UsersSection() {
   // Delete user confirmation modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [pendingDeleteUser, setPendingDeleteUser] = useState<{ id: number; username: string } | null>(null);
+
+  // Add client modal state
+  const [addClientModalOpen, setAddClientModalOpen] = useState(false);
+  const [newClientData, setNewClientData] = useState({
+    email: '',
+    username: '',
+    password: '',
+    full_name: '',
+    company_name: '',
+    initial_credits: '',
+  });
+  const [creatingClient, setCreatingClient] = useState(false);
 
   useEffect(() => {
     loadUsers();
@@ -124,6 +136,46 @@ export function UsersSection() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success('Password copied to clipboard');
+  };
+
+  const handleCreateClient = async () => {
+    if (!newClientData.email || !newClientData.username || !newClientData.password) {
+      toast.error('Email, username, and password are required');
+      return;
+    }
+
+    if (newClientData.password.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+
+    setCreatingClient(true);
+    try {
+      const result = await adminApi.createClient({
+        email: newClientData.email,
+        username: newClientData.username,
+        password: newClientData.password,
+        full_name: newClientData.full_name || undefined,
+        company_name: newClientData.company_name || undefined,
+        initial_credits: newClientData.initial_credits ? parseInt(newClientData.initial_credits, 10) : 0,
+      });
+      toast.success(result.message);
+      setAddClientModalOpen(false);
+      setNewClientData({
+        email: '',
+        username: '',
+        password: '',
+        full_name: '',
+        company_name: '',
+        initial_credits: '',
+      });
+      loadUsers();
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.detail || error?.message || 'Failed to create client';
+      toast.error(errorMessage);
+    } finally {
+      setCreatingClient(false);
+    }
   };
 
   const openCreditsModal = (user: User) => {
@@ -314,6 +366,13 @@ export function UsersSection() {
             }`}
           >
             Players
+          </button>
+          <button
+            onClick={() => setAddClientModalOpen(true)}
+            className="px-4 py-2 rounded-lg font-medium transition-all bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+          >
+            <MdPersonAdd size={18} />
+            Add Client
           </button>
         </div>
       </div>
@@ -559,6 +618,108 @@ export function UsersSection() {
               className="!bg-red-600 hover:!bg-red-700"
             >
               Delete User
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Add Client Modal */}
+      <Modal
+        isOpen={addClientModalOpen}
+        onClose={() => {
+          setAddClientModalOpen(false);
+          setNewClientData({
+            email: '',
+            username: '',
+            password: '',
+            full_name: '',
+            company_name: '',
+            initial_credits: '',
+          });
+        }}
+        title="Add New Client"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-400 text-sm">
+            Create a new client account. The client will be auto-approved and can log in immediately.
+          </p>
+
+          <Input
+            label="Email *"
+            type="email"
+            value={newClientData.email}
+            onChange={(e) => setNewClientData({ ...newClientData, email: e.target.value })}
+            placeholder="client@example.com"
+          />
+
+          <Input
+            label="Username *"
+            type="text"
+            value={newClientData.username}
+            onChange={(e) => setNewClientData({ ...newClientData, username: e.target.value })}
+            placeholder="Enter username"
+          />
+
+          <Input
+            label="Password *"
+            type="password"
+            value={newClientData.password}
+            onChange={(e) => setNewClientData({ ...newClientData, password: e.target.value })}
+            placeholder="Min 6 characters"
+          />
+
+          <Input
+            label="Full Name"
+            type="text"
+            value={newClientData.full_name}
+            onChange={(e) => setNewClientData({ ...newClientData, full_name: e.target.value })}
+            placeholder="Enter full name (optional)"
+          />
+
+          <Input
+            label="Company Name"
+            type="text"
+            value={newClientData.company_name}
+            onChange={(e) => setNewClientData({ ...newClientData, company_name: e.target.value })}
+            placeholder="Enter company name (optional)"
+          />
+
+          <div>
+            <Input
+              label="Initial Credits"
+              type="number"
+              value={newClientData.initial_credits}
+              onChange={(e) => setNewClientData({ ...newClientData, initial_credits: e.target.value })}
+              placeholder="0"
+            />
+            <p className="text-xs text-gray-500 mt-1">100 credits = $1.00</p>
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setAddClientModalOpen(false);
+                setNewClientData({
+                  email: '',
+                  username: '',
+                  password: '',
+                  full_name: '',
+                  company_name: '',
+                  initial_credits: '',
+                });
+              }}
+              fullWidth
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateClient}
+              loading={creatingClient}
+              disabled={!newClientData.email || !newClientData.username || !newClientData.password}
+              fullWidth
+            >
+              Create Client
             </Button>
           </div>
         </div>

@@ -215,6 +215,85 @@ def get_all_users(
         "limit": limit
     }
 
+
+# Schema for creating client by admin
+class AdminCreateClientRequest(BaseModel):
+    email: str
+    username: str
+    password: str
+    full_name: Optional[str] = None
+    company_name: Optional[str] = None
+    initial_credits: Optional[int] = 0
+
+
+@router.post("/users/create-client")
+def create_client(
+    client_data: AdminCreateClientRequest,
+    admin: models.User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Create a new client account (admin only). Client is auto-approved."""
+    import random
+    import string
+
+    # Check if email exists
+    existing_user = db.query(models.User).filter(models.User.email == client_data.email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    # Check if username exists
+    existing_user = db.query(models.User).filter(models.User.username == client_data.username).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Username already taken")
+
+    # Generate unique user_id
+    def generate_user_id():
+        return ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+
+    user_id = generate_user_id()
+    while db.query(models.User).filter(models.User.user_id == user_id).first():
+        user_id = generate_user_id()
+
+    # Hash the password
+    hashed_password = auth.get_password_hash(client_data.password)
+
+    # Create new client (auto-approved since created by admin)
+    new_client = models.User(
+        email=client_data.email,
+        username=client_data.username,
+        hashed_password=hashed_password,
+        full_name=client_data.full_name,
+        user_type=UserType.CLIENT,
+        user_id=user_id,
+        is_approved=True,  # Auto-approve when created by admin
+        is_active=True,
+        company_name=client_data.company_name,
+        credits=client_data.initial_credits or 0
+    )
+
+    db.add(new_client)
+    db.commit()
+    db.refresh(new_client)
+
+    logger.info(f"Admin {admin.username} created new client: {new_client.username}")
+
+    return {
+        "message": f"Client '{new_client.username}' created successfully",
+        "user": {
+            "id": new_client.id,
+            "username": new_client.username,
+            "email": new_client.email,
+            "full_name": new_client.full_name,
+            "user_type": new_client.user_type,
+            "company_name": new_client.company_name,
+            "credits": new_client.credits,
+            "is_approved": new_client.is_approved,
+            "is_active": new_client.is_active,
+            "created_at": new_client.created_at
+        }
+    }
+
+
 @router.patch("/users/{user_id}/approve")
 def approve_user(
     user_id: int,

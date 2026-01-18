@@ -258,6 +258,18 @@ export const adminApi = {
     return response as any;
   },
 
+  createClient: async (data: {
+    email: string;
+    username: string;
+    password: string;
+    full_name?: string;
+    company_name?: string;
+    initial_credits?: number;
+  }): Promise<{ message: string; user: User }> => {
+    const response = await apiClient.post('/admin/users/create-client', data);
+    return response as any;
+  },
+
   // Promotions Management
   getPromotions: async (params?: {
     skip?: number;
