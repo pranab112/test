@@ -449,12 +449,6 @@ export default function PlayerSettingsScreen() {
             subtitle="News and updates"
             onPress={() => router.push('/(player)/broadcasts')}
           />
-          <SettingsItem
-            icon="key"
-            title="My Game Credentials"
-            subtitle="View login credentials for games"
-            onPress={() => router.push('/(player)/credentials')}
-          />
         </Card>
       </View>
 
