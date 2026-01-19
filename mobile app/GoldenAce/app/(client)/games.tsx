@@ -10,13 +10,14 @@ import {
   TextInput,
   Modal,
   Switch,
-  Image,
   ScrollView,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { gamesApi } from '../../src/api/games.api';
 import { Loading } from '../../src/components/ui';
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../../src/constants/theme';
+import { getFileUrl } from '../../src/config/api.config';
 import type { Game, ClientGame } from '../../src/types';
 
 type TabType = 'my-games' | 'library';
@@ -181,14 +182,16 @@ export default function ManageGamesScreen() {
   const renderMyGameItem = ({ item }: { item: ClientGame }) => {
     if (!item.game) return null;
 
+    const imageUrl = item.custom_image_url || item.game?.icon_url;
+
     return (
       <View style={styles.myGameCard}>
         <View style={styles.gameImageContainer}>
-          {item.custom_image_url || item.game?.icon_url ? (
+          {imageUrl ? (
             <Image
-              source={{ uri: item.custom_image_url || item.game?.icon_url }}
+              source={{ uri: getFileUrl(imageUrl) }}
               style={styles.gameImage}
-              resizeMode="cover"
+              contentFit="cover"
             />
           ) : (
             <View style={styles.gameImagePlaceholder}>
@@ -232,9 +235,9 @@ export default function ManageGamesScreen() {
         <View style={styles.gameImageContainer}>
           {item.icon_url ? (
             <Image
-              source={{ uri: item.icon_url }}
+              source={{ uri: getFileUrl(item.icon_url) }}
               style={styles.gameImage}
-              resizeMode="cover"
+              contentFit="cover"
             />
           ) : (
             <View style={styles.gameImagePlaceholder}>
@@ -436,9 +439,9 @@ export default function ManageGamesScreen() {
               {editFormData.custom_image_url ? (
                 <View style={styles.imagePreview}>
                   <Image
-                    source={{ uri: editFormData.custom_image_url }}
+                    source={{ uri: getFileUrl(editFormData.custom_image_url) }}
                     style={styles.previewImage}
-                    resizeMode="cover"
+                    contentFit="cover"
                   />
                 </View>
               ) : null}

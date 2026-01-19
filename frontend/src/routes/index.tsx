@@ -14,7 +14,6 @@ const Contact = lazy(() => import('@/pages/Contact'));
 const Login = lazy(() => import('@/pages/auth/Login'));
 const AdminLogin = lazy(() => import('@/pages/auth/AdminLogin'));
 const ClientLogin = lazy(() => import('@/pages/auth/ClientLogin'));
-const Register = lazy(() => import('@/pages/auth/Register'));
 const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard'));
 const ClientDashboard = lazy(() => import('@/pages/client/ClientDashboard'));
 const PlayerDashboard = lazy(() => import('@/pages/player/PlayerDashboard'));
@@ -32,7 +31,6 @@ export default function AppRouter() {
           <Route path={ROUTES.LOGIN} element={<Login />} />
           <Route path={ROUTES.ADMIN_LOGIN} element={<AdminLogin />} />
           <Route path={ROUTES.CLIENT_LOGIN} element={<ClientLogin />} />
-          <Route path={ROUTES.REGISTER} element={<Register />} />
         </Route>
 
         {/* Protected routes */}

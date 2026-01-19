@@ -96,11 +96,10 @@ export default function ChatScreen() {
 
       // For inverted FlatList (WhatsApp style): data[0] appears at BOTTOM
       // We need: newest message at index 0 -> appears at bottom
-      // If API returns oldest first, keep as is. If API returns newest first, messages are already correct.
+      // API returns messages in chronological order (oldest first), so we need to reverse
       const loadedMessages = messagesData.messages || [];
-      // The messages should be ordered so newest is at index 0 for inverted list
-      // API typically returns newest first, so no reversal needed
-      setMessages(loadedMessages);
+      // Reverse so newest is at index 0 for inverted list display
+      setMessages([...loadedMessages].reverse());
 
       // Mark unread messages from the friend as read
       const unreadMessages = loadedMessages.filter(

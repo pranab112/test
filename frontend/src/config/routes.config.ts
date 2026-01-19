@@ -7,7 +7,6 @@ export const ROUTES = {
   LANDING: '/welcome',
   CONTACT: '/contact',
   LOGIN: '/login',
-  REGISTER: '/register',
   ADMIN_LOGIN: `/${ADMIN_TOKEN}/login`,
   CLIENT_LOGIN: `/${CLIENT_TOKEN}/login`,
 

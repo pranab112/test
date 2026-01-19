@@ -745,6 +745,7 @@ async def send_friend_request_notification(to_user_id: int, from_user: models.Us
         data={
             "from_user_id": from_user.id,
             "from_username": from_user.username,
+            "from_full_name": from_user.full_name,
             "from_user_type": from_user.user_type.value,
             "from_profile_picture": from_user.profile_picture
         }
@@ -758,6 +759,7 @@ async def send_friend_accepted_notification(to_user_id: int, friend: models.User
         data={
             "friend_id": friend.id,
             "friend_username": friend.username,
+            "friend_full_name": friend.full_name,
             "friend_user_type": friend.user_type.value,
             "friend_profile_picture": friend.profile_picture
         }

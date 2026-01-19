@@ -112,19 +112,6 @@ export default function Login() {
               Player Login
             </Button>
           </form>
-
-          {/* Footer */}
-          <div className="mt-6 text-center text-gray-400">
-            <p>
-              Don't have an account?{' '}
-              <Link
-                to={ROUTES.REGISTER}
-                className="text-emerald-500 hover:text-emerald-400 font-semibold transition-colors"
-              >
-                Register
-              </Link>
-            </p>
-          </div>
         </div>
       </div>
     </div>

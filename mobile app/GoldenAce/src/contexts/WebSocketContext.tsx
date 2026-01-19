@@ -137,24 +137,28 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     });
 
     // Friend request notification
+    // Backend sends: from_user_id, from_username, from_user_type, from_profile_picture
     const unsubFriendRequest = websocketService.on(WS_EVENTS.FRIEND_REQUEST, async (data) => {
-      const senderName = data.sender?.full_name || data.sender?.username || 'Someone';
+      console.log('[WebSocket] Friend request notification data:', data);
+      const senderName = data.from_full_name || data.from_username || 'Someone';
       await notificationService.showNotification(
         'Friend Request',
         `${senderName} sent you a friend request`,
         'friend_request',
-        { requestId: data.id, senderId: data.sender_id }
+        { senderId: data.from_user_id }
       );
     });
 
     // Friend accepted notification
+    // Backend sends: friend_id, friend_username, friend_user_type, friend_profile_picture
     const unsubFriendAccepted = websocketService.on(WS_EVENTS.FRIEND_ACCEPTED, async (data) => {
-      const accepterName = data.accepter?.full_name || data.accepter?.username || 'Someone';
+      console.log('[WebSocket] Friend accepted notification data:', data);
+      const friendName = data.friend_full_name || data.friend_username || 'Someone';
       await notificationService.showNotification(
         'Friend Request Accepted',
-        `${accepterName} accepted your friend request`,
+        `${friendName} accepted your friend request`,
         'friend_accepted',
-        { accepter_id: data.accepter_id }
+        { friendId: data.friend_id }
       );
     });
 

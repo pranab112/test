@@ -51,7 +51,7 @@ export const Avatar: React.FC<AvatarProps> = ({
         style,
       ]}
     >
-      {source ? (
+      {source && getFileUrl(source) ? (
         <Image
           source={{ uri: getFileUrl(source) }}
           style={[
@@ -63,6 +63,8 @@ export const Avatar: React.FC<AvatarProps> = ({
             },
           ]}
           contentFit="cover"
+          transition={200}
+          onError={() => console.log('[Avatar] Failed to load image:', getFileUrl(source))}
         />
       ) : (
         <View

@@ -118,19 +118,6 @@ export default function ClientLogin() {
               Client Login
             </Button>
           </form>
-
-          {/* Footer */}
-          <div className="mt-6 text-center text-gray-400">
-            <p>
-              Need a client account?{' '}
-              <Link
-                to="/register"
-                className="text-blue-500 hover:text-blue-400 font-semibold transition-colors"
-              >
-                Register
-              </Link>
-            </p>
-          </div>
         </div>
       </div>
     </div>

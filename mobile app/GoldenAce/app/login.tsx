@@ -96,17 +96,6 @@ export default function LoginScreen() {
             loading={isLoading}
             style={styles.loginButton}
           />
-
-          <View style={styles.registerContainer}>
-            <Text style={styles.registerText}>Don't have an account?</Text>
-            <TouchableOpacity
-              onPress={() => router.push('/register')}
-              accessibilityLabel="Sign up for a new account"
-              accessibilityRole="link"
-            >
-              <Text style={styles.registerLink}>Sign Up</Text>
-            </TouchableOpacity>
-          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -150,23 +139,5 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     marginTop: Spacing.md,
-  },
-  registerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: Spacing.lg,
-    gap: Spacing.xs,
-    flexWrap: 'wrap',
-  },
-  registerText: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.md,
-    flexShrink: 0,
-  },
-  registerLink: {
-    color: Colors.primary,
-    fontSize: FontSize.md,
-    fontWeight: FontWeight.semibold,
   },
 });

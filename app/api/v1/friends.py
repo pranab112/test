@@ -10,6 +10,10 @@ from app.services.push_notification_service import (
     send_friend_request_notification,
     send_friend_request_accepted_notification,
 )
+from app.websocket import (
+    send_friend_request_notification as ws_send_friend_request_notification,
+    send_friend_accepted_notification as ws_send_friend_accepted_notification,
+)
 
 router = APIRouter(prefix="/friends", tags=["friends"])
 
@@ -158,22 +162,35 @@ async def send_friend_request_by_id(
     if receiver in current_user.friends:
         raise HTTPException(status_code=400, detail="Already friends with this user")
 
+    # Check for any existing request between these users
     existing_request = db.query(models.FriendRequest).filter(
         ((models.FriendRequest.sender_id == current_user.id) &
          (models.FriendRequest.receiver_id == receiver.id)) |
         ((models.FriendRequest.sender_id == receiver.id) &
          (models.FriendRequest.receiver_id == current_user.id))
-    ).filter(models.FriendRequest.status == models.FriendRequestStatus.PENDING).first()
+    ).first()
 
     if existing_request:
-        raise HTTPException(status_code=400, detail="Friend request already exists")
-
-    friend_request = models.FriendRequest(
-        sender_id=current_user.id,
-        receiver_id=receiver.id
-    )
-    db.add(friend_request)
-    db.commit()
+        if existing_request.status == models.FriendRequestStatus.PENDING:
+            raise HTTPException(status_code=400, detail="Friend request already pending")
+        elif existing_request.status == models.FriendRequestStatus.REJECTED:
+            # Allow resending by resetting the rejected request to pending
+            existing_request.sender_id = current_user.id
+            existing_request.receiver_id = receiver.id
+            existing_request.status = models.FriendRequestStatus.PENDING
+            db.commit()
+            db.refresh(existing_request)
+            friend_request = existing_request
+        else:
+            # ACCEPTED status - shouldn't happen since we checked friends above
+            raise HTTPException(status_code=400, detail="You are already friends with this user")
+    else:
+        friend_request = models.FriendRequest(
+            sender_id=current_user.id,
+            receiver_id=receiver.id
+        )
+        db.add(friend_request)
+        db.commit()
 
     # Send push notification to receiver
     background_tasks.add_task(
@@ -183,6 +200,13 @@ async def send_friend_request_by_id(
         sender_name=current_user.full_name,
         sender_username=current_user.username,
         sender_type=current_user.user_type.value,
+    )
+
+    # Send WebSocket notification for real-time update
+    background_tasks.add_task(
+        ws_send_friend_request_notification,
+        to_user_id=receiver.id,
+        from_user=current_user,
     )
 
     return {"message": "Friend request sent successfully"}
@@ -222,6 +246,13 @@ async def accept_friend_request(
         accepter_name=current_user.full_name,
         accepter_username=current_user.username,
         accepter_type=current_user.user_type.value,
+    )
+
+    # Send WebSocket notification for real-time update
+    background_tasks.add_task(
+        ws_send_friend_accepted_notification,
+        to_user_id=sender.id,
+        friend=current_user,
     )
 
     return {"message": "Friend request accepted"}
@@ -276,25 +307,37 @@ async def send_friend_request(
     if receiver in current_user.friends:
         raise HTTPException(status_code=400, detail="Already friends with this user")
 
-    # Check if request already exists
+    # Check for any existing request between these users
     existing_request = db.query(models.FriendRequest).filter(
         ((models.FriendRequest.sender_id == current_user.id) &
          (models.FriendRequest.receiver_id == receiver.id)) |
         ((models.FriendRequest.sender_id == receiver.id) &
          (models.FriendRequest.receiver_id == current_user.id))
-    ).filter(models.FriendRequest.status == models.FriendRequestStatus.PENDING).first()
+    ).first()
 
     if existing_request:
-        raise HTTPException(status_code=400, detail="Friend request already exists")
-
-    # Create friend request
-    friend_request = models.FriendRequest(
-        sender_id=current_user.id,
-        receiver_id=receiver.id
-    )
-    db.add(friend_request)
-    db.commit()
-    db.refresh(friend_request)
+        if existing_request.status == models.FriendRequestStatus.PENDING:
+            raise HTTPException(status_code=400, detail="Friend request already pending")
+        elif existing_request.status == models.FriendRequestStatus.REJECTED:
+            # Allow resending by resetting the rejected request to pending
+            existing_request.sender_id = current_user.id
+            existing_request.receiver_id = receiver.id
+            existing_request.status = models.FriendRequestStatus.PENDING
+            db.commit()
+            db.refresh(existing_request)
+            friend_request = existing_request
+        else:
+            # ACCEPTED status - shouldn't happen since we checked friends above
+            raise HTTPException(status_code=400, detail="You are already friends with this user")
+    else:
+        # Create new friend request
+        friend_request = models.FriendRequest(
+            sender_id=current_user.id,
+            receiver_id=receiver.id
+        )
+        db.add(friend_request)
+        db.commit()
+        db.refresh(friend_request)
 
     # Send push notification to receiver
     background_tasks.add_task(
@@ -304,6 +347,13 @@ async def send_friend_request(
         sender_name=current_user.full_name,
         sender_username=current_user.username,
         sender_type=current_user.user_type.value,
+    )
+
+    # Send WebSocket notification for real-time update
+    background_tasks.add_task(
+        ws_send_friend_request_notification,
+        to_user_id=receiver.id,
+        from_user=current_user,
     )
 
     return friend_request
@@ -420,6 +470,13 @@ async def update_friend_request(
             accepter_name=current_user.full_name,
             accepter_username=current_user.username,
             accepter_type=current_user.user_type.value,
+        )
+
+        # Send WebSocket notification for real-time update
+        background_tasks.add_task(
+            ws_send_friend_accepted_notification,
+            to_user_id=sender.id,
+            friend=current_user,
         )
 
     db.commit()
