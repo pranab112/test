@@ -92,7 +92,7 @@ export default function ChatScreen() {
       console.log('[Chat] Friend info loaded:', JSON.stringify(friendInfo, null, 2));
       setFriend(friendInfo || null);
 
-      // Messages are in reverse chronological order (newest first at top)
+      // Messages are in reverse chronological order (newest first) for inverted FlatList
       const loadedMessages = messagesData.messages;
       setMessages(loadedMessages);
 
@@ -161,7 +161,7 @@ export default function ChatScreen() {
         ((data.sender_id === parsedFriendId && data.receiver_id === user.id) ||
           (data.sender_id === user.id && data.receiver_id === parsedFriendId))
       ) {
-        // Add the new message to the beginning (newest first at top)
+        // Add the new message to the beginning (inverted list shows index 0 at bottom)
         setMessages((prev) => {
           // Check if message already exists (avoid duplicates)
           if (prev.some((m) => m.id === data.id)) {
@@ -170,7 +170,7 @@ export default function ChatScreen() {
           return [data, ...prev];
         });
 
-        // Scroll to top to show the newest message
+        // With inverted list, scrollToOffset(0) scrolls to bottom where newest message appears
         setTimeout(() => {
           flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
         }, 100);
@@ -199,7 +199,7 @@ export default function ChatScreen() {
       setMessages((prev) => [sentMessage, ...prev]);
       setNewMessage('');
 
-      // Scroll to top to show the newest message
+      // With inverted list, scrollToOffset(0) scrolls to bottom where newest message appears
       setTimeout(() => {
         flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
       }, 100);
@@ -607,11 +607,10 @@ export default function ChatScreen() {
 
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
     const isOwnMessage = item.sender_id === user?.id;
-    // Show avatar at the start of a consecutive message group from the same sender
-    // With newest first (top), show avatar when the next message (index+1) is from a different sender or doesn't exist
+    // With inverted list, index 0 is at bottom (newest), so show avatar at the bottom of a message group
     const showAvatar =
       !isOwnMessage &&
-      (index === messages.length - 1 || messages[index + 1]?.sender_id !== item.sender_id);
+      (index === 0 || messages[index - 1]?.sender_id !== item.sender_id);
 
     const renderContent = () => {
       if (item.message_type === 'image' && item.file_url) {
@@ -923,6 +922,7 @@ export default function ChatScreen() {
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderMessage}
           contentContainerStyle={styles.messagesList}
+          inverted={true}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Ionicons name="chatbubble-outline" size={48} color={Colors.textMuted} />
