@@ -7,10 +7,10 @@ interface ClientGamesResponse {
 }
 
 export const gamesApi = {
-  // Get all games (for browsing)
+  // Get all games (for browsing) - uses public endpoint, not admin
   getAllGames: async (): Promise<Game[]> => {
     try {
-      const response = await api.get<Game[]>(API_ENDPOINTS.GAMES.ADMIN);
+      const response = await api.get<Game[]>(API_ENDPOINTS.GAMES.BASE);
       return response as unknown as Game[];
     } catch (error: unknown) {
       const err = error as { response?: { status?: number }; error?: { code?: string } };
