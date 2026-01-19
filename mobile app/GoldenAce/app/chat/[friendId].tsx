@@ -25,6 +25,7 @@ import { gameCredentialsApi } from '../../src/api/gameCredentials.api';
 import { gamesApi } from '../../src/api/games.api';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useChat } from '../../src/contexts/ChatContext';
+import { useWebSocket } from '../../src/contexts/WebSocketContext';
 import { websocketService } from '../../src/services/websocket';
 import { Avatar, Loading, Card } from '../../src/components/ui';
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../../src/constants/theme';
@@ -37,6 +38,7 @@ export default function ChatScreen() {
   const { friendId } = useLocalSearchParams<{ friendId: string }>();
   const { user } = useAuth();
   const { refreshUnreadCount, setActiveChatFriendId } = useChat();
+  const { setActiveChat } = useWebSocket();
   const insets = useSafeAreaInsets();
   const [friend, setFriend] = useState<Friend | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -92,8 +94,12 @@ export default function ChatScreen() {
       console.log('[Chat] Friend info loaded:', JSON.stringify(friendInfo, null, 2));
       setFriend(friendInfo || null);
 
-      // Messages are in reverse chronological order (newest first) for inverted FlatList
-      const loadedMessages = messagesData.messages;
+      // For inverted FlatList (WhatsApp style): data[0] appears at BOTTOM
+      // We need: newest message at index 0 -> appears at bottom
+      // If API returns oldest first, keep as is. If API returns newest first, messages are already correct.
+      const loadedMessages = messagesData.messages || [];
+      // The messages should be ordered so newest is at index 0 for inverted list
+      // API typically returns newest first, so no reversal needed
       setMessages(loadedMessages);
 
       // Mark unread messages from the friend as read
@@ -128,8 +134,11 @@ export default function ChatScreen() {
   useFocusEffect(
     useCallback(() => {
       // Set active chat so WebSocket handler knows not to increment count for this conversation
+      // and to suppress notifications for this chat
       if (friendId) {
-        setActiveChatFriendId(parseInt(friendId));
+        const parsedFriendId = parseInt(friendId);
+        setActiveChatFriendId(parsedFriendId);
+        setActiveChat(parsedFriendId); // Also notify WebSocket context to suppress notifications
         // Reload chat data when screen gains focus
         loadData();
       }
@@ -141,12 +150,13 @@ export default function ChatScreen() {
       return () => {
         // Clear active chat when leaving
         setActiveChatFriendId(null);
+        setActiveChat(null); // Clear WebSocket context active chat
         // Refresh with multiple delays to ensure the count is updated
         setTimeout(() => refreshUnreadCount(), 300);
         setTimeout(() => refreshUnreadCount(), 800);
         setTimeout(() => refreshUnreadCount(), 1500);
       };
-    }, [friendId, refreshUnreadCount, setActiveChatFriendId])
+    }, [friendId, refreshUnreadCount, setActiveChatFriendId, setActiveChat])
   );
 
   // Listen for new messages via WebSocket for real-time updates

@@ -994,7 +994,16 @@ async def update_game(
     if category is not None:
         db_game.category = category
     if is_active_str is not None:
-        db_game.is_active = is_active_str.lower() == "true"
+        new_is_active = is_active_str.lower() == "true"
+
+        # If game is being deactivated, also deactivate it for all clients
+        if db_game.is_active and not new_is_active:
+            # Deactivate all client game selections for this game
+            db.query(models.ClientGame).filter(
+                models.ClientGame.game_id == game_id
+            ).update({"is_active": False})
+
+        db_game.is_active = new_is_active
 
     db.commit()
     db.refresh(db_game)
@@ -1007,20 +1016,32 @@ def delete_game(
     admin: models.User = Depends(get_admin_user),
     db: Session = Depends(get_db)
 ):
-    """Delete a game"""
+    """Delete a game and all associated client game selections"""
     db_game = db.query(models.Game).filter(models.Game.id == game_id).first()
     if not db_game:
         raise HTTPException(status_code=404, detail="Game not found")
 
-    # Check if game is being used by any clients
-    client_games = db.query(models.ClientGame).filter(models.ClientGame.game_id == game_id).count()
-    if client_games > 0:
+    # Check if game is currently active and being used by clients
+    active_client_games = db.query(models.ClientGame).filter(
+        models.ClientGame.game_id == game_id,
+        models.ClientGame.is_active == True
+    ).count()
+
+    if active_client_games > 0:
         raise HTTPException(
             status_code=400,
-            detail=f"Cannot delete game. It is currently selected by {client_games} client(s). Deactivate it instead."
+            detail=f"Cannot delete game. It is currently active for {active_client_games} client(s). Deactivate it first before deleting."
         )
 
     game_name = db_game.display_name
+
+    # Delete all client game selections for this game (inactive ones)
+    db.query(models.ClientGame).filter(models.ClientGame.game_id == game_id).delete()
+
+    # Delete any game credentials associated with this game
+    db.query(models.GameCredentials).filter(models.GameCredentials.game_id == game_id).delete()
+
+    # Delete the game
     db.delete(db_game)
     db.commit()
 

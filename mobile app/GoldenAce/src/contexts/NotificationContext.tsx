@@ -15,7 +15,7 @@ interface NotificationContextType {
   unreadCount: number;
   settings: NotificationSettings | null;
   isLoading: boolean;
-  pushToken: string | null;
+  permissionGranted: boolean;
 
   // Actions
   markAsRead: (notificationId: string) => Promise<void>;
@@ -23,7 +23,7 @@ interface NotificationContextType {
   clearNotifications: () => Promise<void>;
   refreshNotifications: () => Promise<void>;
   updateSettings: (settings: Partial<NotificationSettings>) => Promise<void>;
-  sendLocalNotification: (
+  showNotification: (
     title: string,
     body: string,
     category: NotificationCategory,
@@ -43,7 +43,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [settings, setSettings] = useState<NotificationSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [pushToken, setPushToken] = useState<string | null>(null);
+  const [permissionGranted, setPermissionGranted] = useState<boolean>(false);
 
   // Initialize notifications when authenticated
   useEffect(() => {
@@ -54,7 +54,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       setNotifications([]);
       setUnreadCount(0);
       setSettings(null);
-      setPushToken(null);
+      setPermissionGranted(false);
     }
   }, [isAuthenticated, user]);
 
@@ -78,9 +78,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       // Configure notification service
       await notificationService.configure();
 
-      // Register for push notifications
-      const token = await notificationService.registerForPushNotifications();
-      setPushToken(token);
+      // Request permission for local notifications
+      const granted = await notificationService.requestPermission();
+      setPermissionGranted(granted);
 
       // Load notification settings from backend
       await loadSettings();
@@ -260,20 +260,26 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     }
   };
 
-  // Send local notification
-  const sendLocalNotification = async (
+  // Show local notification
+  const showNotification = async (
     title: string,
     body: string,
     category: NotificationCategory,
     data?: Record<string, any>
   ) => {
+    // Check if permission is granted
+    if (!permissionGranted) {
+      console.log('[Notification] Permission not granted, skipping notification');
+      return;
+    }
+
     // Check if notifications are enabled for this category
     if (settings) {
       const shouldNotify = checkCategoryEnabled(category, settings);
       if (!shouldNotify) return;
     }
 
-    await notificationService.scheduleLocalNotification(title, body, category, data);
+    await notificationService.showNotification(title, body, category, data);
   };
 
   // Check if category is enabled in settings
@@ -309,13 +315,13 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     unreadCount,
     settings,
     isLoading,
-    pushToken,
+    permissionGranted,
     markAsRead,
     markAllAsRead,
     clearNotifications,
     refreshNotifications,
     updateSettings,
-    sendLocalNotification,
+    showNotification,
   };
 
   return (

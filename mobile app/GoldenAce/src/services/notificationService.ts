@@ -1,12 +1,6 @@
 import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
-import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-import { api } from './api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-// Check if running in Expo Go
-const isExpoGo = Constants.appOwnership === 'expo';
 
 // Notification categories
 export type NotificationCategory =
@@ -31,26 +25,22 @@ export interface NotificationData {
 
 // Storage keys
 const STORAGE_KEYS = {
-  PUSH_TOKEN: '@notification_push_token',
   SOUND_ENABLED: '@notification_sound_enabled',
-  LAST_SOUND_TIME: '@notification_last_sound_time',
   NOTIFICATION_HISTORY: '@notification_history',
 };
 
-// Batch notification settings
-const BATCH_NOTIFICATION_DELAY = 3000; // 3 seconds to batch notifications
+// Notification settings
 const MIN_SOUND_INTERVAL = 2000; // Minimum 2 seconds between sounds
 
 class NotificationService {
   private static instance: NotificationService;
   private notificationListener: Notifications.Subscription | null = null;
   private responseListener: Notifications.Subscription | null = null;
-  private batchQueue: NotificationData[] = [];
-  private batchTimer: NodeJS.Timeout | null = null;
   private lastSoundTime: number = 0;
   private soundEnabled: boolean = true;
   private onNotificationReceived: ((notification: NotificationData) => void) | null = null;
   private onNotificationResponse: ((notification: NotificationData) => void) | null = null;
+  private isConfigured: boolean = false;
 
   private constructor() {
     this.initializeSoundSettings();
@@ -68,18 +58,27 @@ class NotificationService {
       const soundEnabled = await AsyncStorage.getItem(STORAGE_KEYS.SOUND_ENABLED);
       this.soundEnabled = soundEnabled !== 'false';
     } catch (error) {
-      console.error('Error loading sound settings:', error);
+      console.error('[Notification] Error loading sound settings:', error);
     }
   }
 
   // Configure notification handler behavior
   async configure() {
+    if (this.isConfigured) {
+      console.log('[Notification] Already configured');
+      return;
+    }
+
+    console.log('[Notification] Configuring notification service...');
+
     // Set notification handler for foreground notifications
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
         shouldShowAlert: true,
         shouldPlaySound: this.soundEnabled,
         shouldSetBadge: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
       }),
     });
 
@@ -87,10 +86,15 @@ class NotificationService {
     if (Platform.OS === 'android') {
       await this.createNotificationChannels();
     }
+
+    this.isConfigured = true;
+    console.log('[Notification] Configuration complete');
   }
 
   // Create Android notification channels
   private async createNotificationChannels() {
+    console.log('[Notification] Creating Android notification channels...');
+
     // Default channel with sound
     await Notifications.setNotificationChannelAsync('default', {
       name: 'Default',
@@ -126,7 +130,7 @@ class NotificationService {
       sound: 'default',
     });
 
-    // Friends channel (for friend requests and accepts)
+    // Friends channel
     await Notifications.setNotificationChannelAsync('friends', {
       name: 'Friend Requests',
       importance: Notifications.AndroidImportance.HIGH,
@@ -135,79 +139,31 @@ class NotificationService {
       sound: 'default',
     });
 
-    // Silent channel for broadcasts
+    // Broadcasts channel
     await Notifications.setNotificationChannelAsync('broadcasts', {
       name: 'Broadcasts',
       importance: Notifications.AndroidImportance.LOW,
       sound: null,
     });
+
+    console.log('[Notification] Android channels created');
   }
 
-  // Request permission and get push token
-  async registerForPushNotifications(): Promise<string | null> {
-    // Push notifications don't work in Expo Go for SDK 53+
-    if (isExpoGo) {
-      console.log('Push notifications are not supported in Expo Go (SDK 53+). Use a development build.');
-      return null;
-    }
+  // Request notification permission (no push token needed)
+  async requestPermission(): Promise<boolean> {
+    console.log('[Notification] Requesting permission...');
 
-    if (!Device.isDevice) {
-      console.log('Push notifications require a physical device');
-      return null;
-    }
-
-    // Check existing permission
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
 
-    // Request permission if not granted
     if (existingStatus !== 'granted') {
       const { status } = await Notifications.requestPermissionsAsync();
       finalStatus = status;
     }
 
-    if (finalStatus !== 'granted') {
-      console.log('Push notification permission not granted');
-      return null;
-    }
-
-    // Get Expo push token
-    try {
-      // Get project ID from app config
-      const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-      if (!projectId) {
-        console.log('No EAS project ID found in app.json. Push notifications disabled.');
-        return null;
-      }
-
-      const token = await Notifications.getExpoPushTokenAsync({
-        projectId,
-      });
-
-      // Save token locally
-      await AsyncStorage.setItem(STORAGE_KEYS.PUSH_TOKEN, token.data);
-
-      // Register token with backend
-      await this.registerTokenWithBackend(token.data);
-
-      return token.data;
-    } catch (error) {
-      console.error('Error getting push token:', error);
-      return null;
-    }
-  }
-
-  // Register push token with backend
-  private async registerTokenWithBackend(token: string) {
-    try {
-      await api.post('/notifications/register-token', {
-        token,
-        platform: Platform.OS,
-        device_type: Device.modelName || 'Unknown',
-      });
-    } catch (error) {
-      console.error('Error registering token with backend:', error);
-    }
+    const granted = finalStatus === 'granted';
+    console.log('[Notification] Permission:', granted ? 'granted' : 'denied');
+    return granted;
   }
 
   // Set up notification listeners
@@ -215,26 +171,33 @@ class NotificationService {
     onReceived: (notification: NotificationData) => void,
     onResponse: (notification: NotificationData) => void
   ) {
+    console.log('[Notification] Setting up listeners...');
     this.onNotificationReceived = onReceived;
     this.onNotificationResponse = onResponse;
 
     // Listener for received notifications (foreground)
     this.notificationListener = Notifications.addNotificationReceivedListener(
       (notification) => {
+        console.log('[Notification] Received in foreground:', notification.request.content.title);
         const notificationData = this.parseNotification(notification);
-        this.handleNotificationReceived(notificationData);
+        if (this.onNotificationReceived) {
+          this.onNotificationReceived(notificationData);
+        }
       }
     );
 
     // Listener for notification responses (taps)
     this.responseListener = Notifications.addNotificationResponseReceivedListener(
       (response) => {
+        console.log('[Notification] User tapped notification');
         const notificationData = this.parseNotification(response.notification);
         if (this.onNotificationResponse) {
           this.onNotificationResponse(notificationData);
         }
       }
     );
+
+    console.log('[Notification] Listeners set up');
   }
 
   // Remove listeners
@@ -247,6 +210,7 @@ class NotificationService {
       this.responseListener.remove();
       this.responseListener = null;
     }
+    console.log('[Notification] Listeners removed');
   }
 
   // Parse notification to our format
@@ -263,131 +227,47 @@ class NotificationService {
     };
   }
 
-  // Handle received notification with batching
-  private handleNotificationReceived(notification: NotificationData) {
-    // Add to batch queue
-    this.batchQueue.push(notification);
-
-    // Clear existing timer
-    if (this.batchTimer) {
-      clearTimeout(this.batchTimer);
-    }
-
-    // Set timer to process batch
-    this.batchTimer = setTimeout(() => {
-      this.processBatchNotifications();
-    }, BATCH_NOTIFICATION_DELAY);
-  }
-
-  // Process batched notifications
-  private processBatchNotifications() {
-    const notifications = [...this.batchQueue];
-    this.batchQueue = [];
-
-    if (notifications.length === 0) return;
-
-    // Play sound only once for batch (with rate limiting)
-    if (this.soundEnabled) {
-      this.playBatchSound();
-    }
-
-    // Notify callback for each notification
-    notifications.forEach((notification) => {
-      if (this.onNotificationReceived) {
-        this.onNotificationReceived(notification);
-      }
-    });
-
-    // Store in history
-    this.saveToHistory(notifications);
-  }
-
-  // Play sound with rate limiting
-  private async playBatchSound() {
-    const now = Date.now();
-    if (now - this.lastSoundTime < MIN_SOUND_INTERVAL) {
-      return; // Skip sound if too soon
-    }
-
-    this.lastSoundTime = now;
-
-    // The notification system handles the sound through channels
-    // This is a fallback for additional sound if needed
-  }
-
-  // Save notifications to history
-  private async saveToHistory(notifications: NotificationData[]) {
-    try {
-      const existing = await AsyncStorage.getItem(STORAGE_KEYS.NOTIFICATION_HISTORY);
-      const history: NotificationData[] = existing ? JSON.parse(existing) : [];
-
-      // Add new notifications to beginning
-      const updated = [...notifications, ...history].slice(0, 100); // Keep last 100
-
-      await AsyncStorage.setItem(STORAGE_KEYS.NOTIFICATION_HISTORY, JSON.stringify(updated));
-    } catch (error) {
-      console.error('Error saving notification history:', error);
-    }
-  }
-
-  // Get notification history
-  async getHistory(): Promise<NotificationData[]> {
-    try {
-      const history = await AsyncStorage.getItem(STORAGE_KEYS.NOTIFICATION_HISTORY);
-      return history ? JSON.parse(history) : [];
-    } catch (error) {
-      console.error('Error getting notification history:', error);
-      return [];
-    }
-  }
-
-  // Clear notification history
-  async clearHistory() {
-    try {
-      await AsyncStorage.removeItem(STORAGE_KEYS.NOTIFICATION_HISTORY);
-    } catch (error) {
-      console.error('Error clearing notification history:', error);
-    }
-  }
-
-  // Mark notification as read
-  async markAsRead(notificationId: string) {
-    try {
-      const history = await this.getHistory();
-      const updated = history.map((n) =>
-        n.id === notificationId ? { ...n, isRead: true } : n
-      );
-      await AsyncStorage.setItem(STORAGE_KEYS.NOTIFICATION_HISTORY, JSON.stringify(updated));
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
-    }
-  }
-
-  // Get unread count
-  async getUnreadCount(): Promise<number> {
-    const history = await this.getHistory();
-    return history.filter((n) => !n.isRead).length;
-  }
-
-  // Schedule local notification
-  async scheduleLocalNotification(
+  // Schedule local notification - this is the main method to show notifications
+  async showNotification(
     title: string,
     body: string,
     category: NotificationCategory,
-    data?: Record<string, any>,
-    trigger?: Notifications.NotificationTriggerInput
-  ) {
+    data?: Record<string, any>
+  ): Promise<string> {
+    // Check sound rate limiting
+    const now = Date.now();
+    const shouldPlaySound = this.soundEnabled && (now - this.lastSoundTime >= MIN_SOUND_INTERVAL);
+    if (shouldPlaySound) {
+      this.lastSoundTime = now;
+    }
+
     const channelId = this.getChannelForCategory(category);
 
-    await Notifications.scheduleNotificationAsync({
+    console.log('[Notification] Showing notification:', { title, category, channelId });
+
+    const notificationId = await Notifications.scheduleNotificationAsync({
       content: {
         title,
         body,
         data: { ...data, category },
-        sound: this.soundEnabled ? 'default' : undefined,
+        sound: shouldPlaySound ? 'default' : undefined,
       },
-      trigger: trigger || null, // null = immediate
+      trigger: null, // null = immediate
     });
+
+    // Save to history
+    const notificationData: NotificationData = {
+      id: notificationId,
+      category,
+      title,
+      body,
+      data,
+      timestamp: new Date(),
+      isRead: false,
+    };
+    await this.saveToHistory([notificationData]);
+
+    return notificationId;
   }
 
   // Get channel ID for category
@@ -410,10 +290,65 @@ class NotificationService {
     }
   }
 
+  // Save notifications to history
+  private async saveToHistory(notifications: NotificationData[]) {
+    try {
+      const existing = await AsyncStorage.getItem(STORAGE_KEYS.NOTIFICATION_HISTORY);
+      const history: NotificationData[] = existing ? JSON.parse(existing) : [];
+
+      // Add new notifications to beginning
+      const updated = [...notifications, ...history].slice(0, 100); // Keep last 100
+
+      await AsyncStorage.setItem(STORAGE_KEYS.NOTIFICATION_HISTORY, JSON.stringify(updated));
+    } catch (error) {
+      console.error('[Notification] Error saving history:', error);
+    }
+  }
+
+  // Get notification history
+  async getHistory(): Promise<NotificationData[]> {
+    try {
+      const history = await AsyncStorage.getItem(STORAGE_KEYS.NOTIFICATION_HISTORY);
+      return history ? JSON.parse(history) : [];
+    } catch (error) {
+      console.error('[Notification] Error getting history:', error);
+      return [];
+    }
+  }
+
+  // Clear notification history
+  async clearHistory() {
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEYS.NOTIFICATION_HISTORY);
+    } catch (error) {
+      console.error('[Notification] Error clearing history:', error);
+    }
+  }
+
+  // Mark notification as read
+  async markAsRead(notificationId: string) {
+    try {
+      const history = await this.getHistory();
+      const updated = history.map((n) =>
+        n.id === notificationId ? { ...n, isRead: true } : n
+      );
+      await AsyncStorage.setItem(STORAGE_KEYS.NOTIFICATION_HISTORY, JSON.stringify(updated));
+    } catch (error) {
+      console.error('[Notification] Error marking as read:', error);
+    }
+  }
+
+  // Get unread count
+  async getUnreadCount(): Promise<number> {
+    const history = await this.getHistory();
+    return history.filter((n) => !n.isRead).length;
+  }
+
   // Sound settings
   async setSoundEnabled(enabled: boolean) {
     this.soundEnabled = enabled;
     await AsyncStorage.setItem(STORAGE_KEYS.SOUND_ENABLED, enabled.toString());
+    console.log('[Notification] Sound enabled:', enabled);
   }
 
   isSoundEnabled(): boolean {

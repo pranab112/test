@@ -1,6 +1,8 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { websocketService } from '../services/websocket';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import { AppState } from 'react-native';
+import { websocketService, WS_EVENTS } from '../services/websocket';
 import { useAuth } from './AuthContext';
+import { notificationService } from '../services/notificationService';
 import type { Message } from '../types';
 
 interface WebSocketContextType {
@@ -12,15 +14,23 @@ interface WebSocketContextType {
   sendTyping: (receiverId: number) => void;
   sendStopTyping: (receiverId: number) => void;
   clearNewMessage: () => void;
+  setActiveChat: (friendId: number | null) => void;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
 
 export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
   const [newMessage, setNewMessage] = useState<Message | null>(null);
   const [typingUsers, setTypingUsers] = useState<Map<number, boolean>>(new Map());
+  const appStateRef = useRef(AppState.currentState);
+  const activeChatRef = useRef<number | null>(null);
+
+  // Track which chat is currently active to avoid notifications for that chat
+  const setActiveChat = useCallback((friendId: number | null) => {
+    activeChatRef.current = friendId;
+  }, []);
 
   const connect = useCallback(async () => {
     await websocketService.connect();
@@ -55,6 +65,14 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]); // Only depend on isAuthenticated - connect/disconnect are stable
 
+  // Track app state for notification decisions
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      appStateRef.current = nextAppState;
+    });
+    return () => subscription.remove();
+  }, []);
+
   useEffect(() => {
     // Connection status handlers
     const unsubConnect = websocketService.onConnect(() => {
@@ -66,9 +84,90 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     });
 
     // Message handlers - backend sends 'message:new' type
-    const unsubNewMessage = websocketService.on('message:new', (data) => {
+    const unsubNewMessage = websocketService.on('message:new', async (data) => {
       // Backend sends message data directly, not wrapped in data.message
       setNewMessage(data);
+
+      // Show notification if:
+      // 1. App is in background, OR
+      // 2. User is not in the chat with this sender
+      const isFromOtherUser = data.sender_id !== user?.id;
+      const isNotInActiveChat = activeChatRef.current !== data.sender_id;
+      const shouldNotify = isFromOtherUser && isNotInActiveChat;
+
+      if (shouldNotify) {
+        const senderName = data.sender?.full_name || data.sender?.username || 'Someone';
+        let notificationBody = '';
+
+        if (data.message_type === 'credit_transfer') {
+          const transferType = data.transfer_type === 'add' ? 'sent' : 'deducted';
+          notificationBody = `${senderName} ${transferType} ${data.transfer_amount} credits`;
+          await notificationService.showNotification(
+            'Credit Transfer',
+            notificationBody,
+            'credit_transfer',
+            { friendId: data.sender_id }
+          );
+        } else if (data.message_type === 'voice') {
+          notificationBody = '🎤 Voice message';
+          await notificationService.showNotification(
+            senderName,
+            notificationBody,
+            'message',
+            { friendId: data.sender_id }
+          );
+        } else if (data.message_type === 'image') {
+          notificationBody = '📷 Image';
+          await notificationService.showNotification(
+            senderName,
+            notificationBody,
+            'message',
+            { friendId: data.sender_id }
+          );
+        } else {
+          notificationBody = data.content || 'New message';
+          await notificationService.showNotification(
+            senderName,
+            notificationBody,
+            'message',
+            { friendId: data.sender_id }
+          );
+        }
+      }
+    });
+
+    // Friend request notification
+    const unsubFriendRequest = websocketService.on(WS_EVENTS.FRIEND_REQUEST, async (data) => {
+      const senderName = data.sender?.full_name || data.sender?.username || 'Someone';
+      await notificationService.showNotification(
+        'Friend Request',
+        `${senderName} sent you a friend request`,
+        'friend_request',
+        { requestId: data.id, senderId: data.sender_id }
+      );
+    });
+
+    // Friend accepted notification
+    const unsubFriendAccepted = websocketService.on(WS_EVENTS.FRIEND_ACCEPTED, async (data) => {
+      const accepterName = data.accepter?.full_name || data.accepter?.username || 'Someone';
+      await notificationService.showNotification(
+        'Friend Request Accepted',
+        `${accepterName} accepted your friend request`,
+        'friend_accepted',
+        { accepter_id: data.accepter_id }
+      );
+    });
+
+    // Credit update notification
+    const unsubCreditUpdate = websocketService.on(WS_EVENTS.CREDIT_UPDATE, async (data) => {
+      if (data.type === 'add') {
+        await notificationService.showNotification(
+          'Credits Received',
+          `You received ${data.amount} credits`,
+          'credit_transfer',
+          { amount: data.amount }
+        );
+      }
     });
 
     // Typing indicators - backend sends 'typing:start' and 'typing:stop'
@@ -92,10 +191,13 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       unsubConnect();
       unsubDisconnect();
       unsubNewMessage();
+      unsubFriendRequest();
+      unsubFriendAccepted();
+      unsubCreditUpdate();
       unsubTyping();
       unsubStopTyping();
     };
-  }, []);
+  }, [user?.id]);
 
   return (
     <WebSocketContext.Provider
@@ -108,6 +210,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         sendTyping,
         sendStopTyping,
         clearNewMessage,
+        setActiveChat,
       }}
     >
       {children}

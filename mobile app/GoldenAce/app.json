@@ -55,11 +55,7 @@
       "reactCompiler": true
     },
     "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "1ccf7cf4-a790-479b-bfc9-0597bef9a7cc"
-      }
-    },
-    "owner": "lusansapkota"
+      "router": {}
+    }
   }
 }

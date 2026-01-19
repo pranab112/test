@@ -196,15 +196,18 @@ export default function PlayerFriendsScreen() {
     <Card style={styles.requestCard}>
       <View style={styles.requestContent}>
         <Avatar
-          source={item.requester?.profile_picture}
-          name={item.requester?.full_name || item.requester?.username}
+          source={item.sender?.profile_picture}
+          name={item.sender?.full_name || item.sender?.username || 'Unknown'}
           size="md"
         />
         <View style={styles.requestInfo}>
           <Text style={styles.friendName}>
-            {item.requester?.full_name || item.requester?.username}
+            {item.sender?.full_name || item.sender?.username || 'Unknown User'}
           </Text>
-          <Text style={styles.friendUsername}>@{item.requester?.username}</Text>
+          <Text style={styles.friendUsername}>@{item.sender?.username || 'unknown'}</Text>
+          {item.sender?.user_type && (
+            <Text style={styles.friendUniqueId}>{item.sender.user_type}</Text>
+          )}
         </View>
       </View>
       <View style={styles.requestActions}>

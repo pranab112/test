@@ -131,21 +131,23 @@ export interface Friend {
 
 export interface FriendRequest {
   id: number;
-  requester_id: number;
+  sender_id: number;
   receiver_id: number;
   status: 'pending' | 'accepted' | 'rejected';
   created_at: string;
-  requester?: {
+  sender?: {
     id: number;
     username: string;
-    full_name: string;
+    full_name?: string;
     profile_picture?: string;
+    user_type?: string;
   };
   receiver?: {
     id: number;
     username: string;
-    full_name: string;
+    full_name?: string;
     profile_picture?: string;
+    user_type?: string;
   };
 }
 
