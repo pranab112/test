@@ -11,11 +11,9 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  Image as RNImage,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import { communityApi, CommunityPost, PostComment } from '../../src/api/community.api';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { Card, Avatar, Badge, Loading, EmptyState, Button, Input } from '../../src/components/ui';
@@ -31,7 +29,6 @@ export default function CommunityScreen() {
   // New post modal
   const [showNewPostModal, setShowNewPostModal] = useState(false);
   const [newPostContent, setNewPostContent] = useState('');
-  const [newPostImage, setNewPostImage] = useState<string | null>(null);
   const [posting, setPosting] = useState(false);
 
   // Comments modal
@@ -67,8 +64,8 @@ export default function CommunityScreen() {
   }, []);
 
   const handleCreatePost = async () => {
-    if (!newPostContent.trim() && !newPostImage) {
-      Alert.alert('Error', 'Please enter some content or add an image');
+    if (!newPostContent.trim()) {
+      Alert.alert('Error', 'Please enter some content');
       return;
     }
 
@@ -76,12 +73,10 @@ export default function CommunityScreen() {
     try {
       await communityApi.createPost({
         content: newPostContent.trim(),
-        imageUri: newPostImage || undefined,
       });
       Alert.alert('Success', 'Post created successfully');
       setShowNewPostModal(false);
       setNewPostContent('');
-      setNewPostImage(null);
       await loadPosts();
     } catch (error: any) {
       const errorMsg = error?.detail || error?.error?.message || error?.message || 'Failed to create post';
@@ -89,28 +84,6 @@ export default function CommunityScreen() {
     } finally {
       setPosting(false);
     }
-  };
-
-  const pickPostImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Required', 'Please allow access to your photo library.');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      setNewPostImage(result.assets[0].uri);
-    }
-  };
-
-  const removePostImage = () => {
-    setNewPostImage(null);
   };
 
   const handleLikePost = async (post: CommunityPost) => {
@@ -383,7 +356,7 @@ export default function CommunityScreen() {
                 onPress={handleCreatePost}
                 loading={posting}
                 size="sm"
-                disabled={!newPostContent.trim() && !newPostImage}
+                disabled={!newPostContent.trim()}
               />
             </View>
 
@@ -405,22 +378,8 @@ export default function CommunityScreen() {
               />
             </View>
 
-            {/* Image Preview */}
-            {newPostImage && (
-              <View style={styles.imagePreviewContainer}>
-                <RNImage source={{ uri: newPostImage }} style={styles.imagePreview} />
-                <TouchableOpacity style={styles.removeImageButton} onPress={removePostImage}>
-                  <Ionicons name="close-circle" size={28} color={Colors.error} />
-                </TouchableOpacity>
-              </View>
-            )}
-
             {/* Bottom Actions */}
             <View style={styles.postActions}>
-              <TouchableOpacity style={styles.addImageButton} onPress={pickPostImage}>
-                <Ionicons name="image" size={24} color={Colors.primary} />
-                <Text style={styles.addImageText}>Add Photo</Text>
-              </TouchableOpacity>
               <Text style={styles.charCount}>
                 {newPostContent.length}/500
               </Text>
@@ -635,24 +594,6 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     color: Colors.textMuted,
   },
-  imagePreviewContainer: {
-    position: 'relative',
-    marginHorizontal: Spacing.md,
-    marginBottom: Spacing.md,
-  },
-  imagePreview: {
-    width: '100%',
-    height: 200,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.surfaceLight,
-  },
-  removeImageButton: {
-    position: 'absolute',
-    top: Spacing.xs,
-    right: Spacing.xs,
-    backgroundColor: Colors.background,
-    borderRadius: 14,
-  },
   postActions: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -661,16 +602,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
-  },
-  addImageButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-  },
-  addImageText: {
-    fontSize: FontSize.sm,
-    color: Colors.primary,
-    fontWeight: FontWeight.medium,
   },
   commentsModalContainer: {
     flex: 1,

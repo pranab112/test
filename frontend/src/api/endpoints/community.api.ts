@@ -40,7 +40,6 @@ export interface PaginatedPostsResponse {
 
 export interface CreatePostRequest {
   content: string;
-  image_url?: string;
 }
 
 export interface CreateCommentRequest {
@@ -50,10 +49,6 @@ export interface CreateCommentRequest {
 export interface LikeResponse {
   message: string;
   likes_count: number;
-}
-
-export interface ImageUploadResponse {
-  image_url: string;
 }
 
 export const communityApi = {
@@ -86,16 +81,6 @@ export const communityApi = {
   // Delete a post
   deletePost: async (postId: number): Promise<{ message: string }> => {
     const response = await apiClient.delete(`/community/posts/${postId}`);
-    return response as any;
-  },
-
-  // Upload an image for a post
-  uploadImage: async (file: File): Promise<ImageUploadResponse> => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await apiClient.post('/community/posts/upload-image', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
     return response as any;
   },
 

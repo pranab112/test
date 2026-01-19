@@ -132,5 +132,4 @@ export {
   type CreatePostRequest,
   type CreateCommentRequest,
   type LikeResponse,
-  type ImageUploadResponse,
 } from './community.api';

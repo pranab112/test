@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Avatar } from './Avatar';
 import { Button } from './Button';
 import { Modal } from './Modal';
@@ -6,15 +6,7 @@ import { communityApi, type CommunityPost, type PostComment } from '@/api/endpoi
 import { useAuth } from '@/contexts/AuthContext';
 import { getFileUrl } from '@/config/api.config';
 import toast from 'react-hot-toast';
-import {
-  MdSend,
-  MdImage,
-  MdClose,
-  MdMoreVert,
-  MdEdit,
-  MdDelete,
-  MdRefresh,
-} from 'react-icons/md';
+import { MdSend, MdMoreVert, MdEdit, MdDelete, MdRefresh } from 'react-icons/md';
 import { FaHeart, FaRegHeart, FaComment, FaRegComment } from 'react-icons/fa';
 
 interface CommunityProps {
@@ -29,8 +21,6 @@ export function CommunitySection({ userType }: CommunityProps) {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [newPostContent, setNewPostContent] = useState('');
-  const [newPostImage, setNewPostImage] = useState<string | null>(null);
-  const [uploadingImage, setUploadingImage] = useState(false);
   const [submittingPost, setSubmittingPost] = useState(false);
   const [selectedPost, setSelectedPost] = useState<CommunityPost | null>(null);
   const [showComments, setShowComments] = useState(false);
@@ -38,7 +28,6 @@ export function CommunitySection({ userType }: CommunityProps) {
   const [submittingComment, setSubmittingComment] = useState(false);
   const [editingPost, setEditingPost] = useState<CommunityPost | null>(null);
   const [editContent, setEditContent] = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadPosts();
@@ -82,38 +71,9 @@ export function CommunitySection({ userType }: CommunityProps) {
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
-      toast.error('Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed.');
-      return;
-    }
-
-    // Validate file size (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('File too large. Maximum size is 5MB.');
-      return;
-    }
-
-    setUploadingImage(true);
-    try {
-      const response = await communityApi.uploadImage(file);
-      setNewPostImage(response.image_url);
-      toast.success('Image uploaded');
-    } catch (error) {
-      toast.error('Failed to upload image');
-    } finally {
-      setUploadingImage(false);
-    }
-  };
-
   const handleCreatePost = async () => {
-    if (!newPostContent.trim() && !newPostImage) {
-      toast.error('Please add some content or an image');
+    if (!newPostContent.trim()) {
+      toast.error('Please add some content');
       return;
     }
 
@@ -121,12 +81,10 @@ export function CommunitySection({ userType }: CommunityProps) {
     try {
       const post = await communityApi.createPost({
         content: newPostContent.trim(),
-        image_url: newPostImage || undefined,
       });
 
       setPosts(prev => [post, ...prev]);
       setNewPostContent('');
-      setNewPostImage(null);
       toast.success('Post created!');
     } catch (error) {
       toast.error('Failed to create post');
@@ -350,48 +308,11 @@ export function CommunitySection({ userType }: CommunityProps) {
               rows={3}
             />
 
-            {/* Image Preview */}
-            {newPostImage && (
-              <div className="relative mt-3 inline-block">
-                <img
-                  src={getFileUrl(newPostImage)}
-                  alt="Upload preview"
-                  className="max-h-48 rounded-lg"
-                />
-                <button
-                  type="button"
-                  onClick={() => setNewPostImage(null)}
-                  className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full hover:bg-red-700"
-                >
-                  <MdClose size={16} />
-                </button>
-              </div>
-            )}
-
             {/* Actions */}
             <div className="flex items-center justify-between mt-3">
-              <div className="flex gap-2">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadingImage}
-                  className="flex items-center gap-1 text-gray-400 hover:text-emerald-500 transition-colors disabled:opacity-50"
-                >
-                  <MdImage size={20} />
-                  <span className="text-sm">{uploadingImage ? 'Uploading...' : 'Photo'}</span>
-                </button>
-              </div>
-
               <Button
                 onClick={handleCreatePost}
-                disabled={submittingPost || (!newPostContent.trim() && !newPostImage)}
+                disabled={submittingPost || !newPostContent.trim()}
                 loading={submittingPost}
                 variant="primary"
               >
