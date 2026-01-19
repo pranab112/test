@@ -1,6 +1,6 @@
 """Add crypto payment tables
 
-Revision ID: a1b2c3d4e5f6
+Revision ID: c7d8e9f0a1b2
 Revises: 2f0c03e22758
 Create Date: 2025-01-19
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'a1b2c3d4e5f6'
+revision = 'c7d8e9f0a1b2'
 down_revision = '2f0c03e22758'
 branch_labels = None
 depends_on = None
