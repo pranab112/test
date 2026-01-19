@@ -44,20 +44,39 @@ export default function ManageGamesScreen() {
   const loadData = async () => {
     try {
       console.log('[Games Screen] Loading games data...');
-      const [games, clientGames] = await Promise.all([
+
+      // Load both in parallel but handle each one independently
+      const [gamesResult, clientGamesResult] = await Promise.allSettled([
         gamesApi.getAllGames(),
         gamesApi.getClientGames(),
       ]);
-      console.log('[Games Screen] All games received:', games?.length || 0);
-      console.log('[Games Screen] Client games received:', clientGames?.length || 0);
-      setAllGames(games || []);
-      setMyGames(clientGames || []);
+
+      // Handle all games result
+      let games: Game[] = [];
+      if (gamesResult.status === 'fulfilled') {
+        games = gamesResult.value || [];
+        console.log('[Games Screen] All games received:', games.length);
+      } else {
+        console.error('[Games Screen] Failed to load all games:', gamesResult.reason);
+      }
+
+      // Handle client games result
+      let clientGames: ClientGame[] = [];
+      if (clientGamesResult.status === 'fulfilled') {
+        clientGames = clientGamesResult.value || [];
+        console.log('[Games Screen] Client games received:', clientGames.length);
+      } else {
+        console.error('[Games Screen] Failed to load client games:', clientGamesResult.reason);
+      }
+
+      setAllGames(games);
+      setMyGames(clientGames);
 
       // Only include game IDs that exist in the available games list
       const validGameIds = new Set<number>();
-      const availableGameIds = new Set((games || []).map(g => g.id));
+      const availableGameIds = new Set(games.map(g => g.id));
 
-      (clientGames || []).forEach(cg => {
+      clientGames.forEach(cg => {
         if (availableGameIds.has(cg.game_id)) {
           validGameIds.add(cg.game_id);
         }
@@ -65,17 +84,29 @@ export default function ManageGamesScreen() {
 
       setSelectedGameIds(validGameIds);
       console.log('[Games Screen] Data loaded successfully');
-    } catch (error: any) {
-      console.error('[Games Screen] Error loading games:', JSON.stringify(error, null, 2));
-      let errorMsg = 'Failed to load games. Please try again.';
-      if (error?.error?.message) {
-        errorMsg = error.error.message;
-      } else if (error?.detail) {
-        errorMsg = error.detail;
-      } else if (error?.message) {
-        errorMsg = error.message;
+
+      // Show error if both failed
+      if (gamesResult.status === 'rejected' && clientGamesResult.status === 'rejected') {
+        const error = gamesResult.reason;
+        let errorMsg = 'Failed to load games. Please try again.';
+
+        if (error?.error?.message) {
+          errorMsg = error.error.message;
+        } else if (error?.detail) {
+          errorMsg = error.detail;
+        } else if (error?.message) {
+          if (error.message === 'Network Error' || error.message.includes('Network')) {
+            errorMsg = 'Unable to connect to server. Please check your internet connection.';
+          } else {
+            errorMsg = error.message;
+          }
+        }
+
+        Alert.alert('Error', errorMsg);
       }
-      Alert.alert('Error', errorMsg);
+    } catch (error: any) {
+      console.error('[Games Screen] Unexpected error:', JSON.stringify(error, null, 2));
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
       setRefreshing(false);

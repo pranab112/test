@@ -6,7 +6,7 @@ import { Button } from '@/components/common/Button';
 import { Avatar } from '@/components/common/Avatar';
 import toast from 'react-hot-toast';
 import { FaGift, FaMedal } from 'react-icons/fa';
-import { MdCheckCircle, MdRefresh, MdEmail, MdPerson, MdPayment, MdGroup, MdEvent } from 'react-icons/md';
+import { MdCheckCircle, MdRefresh, MdPerson, MdPayment, MdGroup, MdEvent } from 'react-icons/md';
 import { offersApi, type PlatformOffer, type OfferClaim, type OfferType, type BalanceResponse } from '@/api/endpoints/offers.api';
 import { friendsApi, type Friend } from '@/api/endpoints/friends.api';
 import { Input } from '@/components/common/Input';
@@ -151,8 +151,6 @@ export function RewardsSection() {
 
   const getTypeIcon = (type: OfferType) => {
     switch (type) {
-      case 'email_verification':
-        return <MdEmail className="text-blue-500" />;
       case 'profile_completion':
         return <MdPerson className="text-purple-500" />;
       case 'first_deposit':
@@ -170,8 +168,6 @@ export function RewardsSection() {
 
   const getTypeColor = (type: OfferType): 'info' | 'warning' | 'purple' | 'success' | 'error' | 'default' => {
     switch (type) {
-      case 'email_verification':
-        return 'info';
       case 'profile_completion':
         return 'purple';
       case 'first_deposit':

@@ -15,7 +15,6 @@ from app.api.v1 import (
     games,
     game_credentials,
     online_status,
-    email_verification_otp,
     reports,
     admin,
     client,
@@ -46,7 +45,6 @@ api_router.include_router(payment_methods.router, tags=["payments"])
 api_router.include_router(games.router, tags=["games"])
 api_router.include_router(game_credentials.router, tags=["game-credentials"])
 api_router.include_router(online_status.router, tags=["online-status"])
-api_router.include_router(email_verification_otp.router, tags=["email-verification"])
 api_router.include_router(reports.router, tags=["reports"])
 api_router.include_router(admin.router, tags=["admin"])
 api_router.include_router(client.router, tags=["client"])

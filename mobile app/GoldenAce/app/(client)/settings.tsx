@@ -264,12 +264,7 @@ export default function ClientSettingsScreen() {
               <Badge text="Client" variant="emerald" size="sm" />
             </View>
             <Text style={styles.profileUsername}>@{user?.username}</Text>
-            <View style={styles.emailRow}>
-              <Text style={styles.profileEmail}>{user?.email}</Text>
-              {user?.is_email_verified && (
-                <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
-              )}
-            </View>
+            <Text style={styles.profileEmail}>{user?.email}</Text>
           </View>
         </View>
         {user?.user_id && (
@@ -486,12 +481,6 @@ export default function ClientSettingsScreen() {
             onPress={() => router.push('/support')}
           />
           <SettingsItem
-            icon="star"
-            title="Reviews"
-            subtitle="View and write reviews"
-            onPress={() => router.push('/reviews')}
-          />
-          <SettingsItem
             icon="alert-circle"
             title="Reports & Warnings"
             subtitle="View reports and resolve warnings"
@@ -704,12 +693,6 @@ const styles = StyleSheet.create({
   profileUsername: {
     fontSize: FontSize.sm,
     color: Colors.textSecondary,
-    marginTop: Spacing.xs,
-  },
-  emailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
     marginTop: Spacing.xs,
   },
   profileEmail: {

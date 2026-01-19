@@ -81,7 +81,6 @@ export {
   type NotificationSettings,
   type TwoFactorStatus,
   type TwoFactorSetupResponse,
-  type EmailVerificationStatus,
   type ActiveSession,
   type PaymentMethod,
   type PlayerPaymentPreferences,

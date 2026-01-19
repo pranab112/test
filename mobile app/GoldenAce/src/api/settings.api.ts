@@ -11,14 +11,6 @@ const SETTINGS_ENDPOINTS = {
   MY_PAYMENT_PREFERENCES: '/settings/my-payment-preferences',
 };
 
-const EMAIL_ENDPOINTS = {
-  SEND_OTP: '/email/send-otp',
-  VERIFY_OTP: '/email/verify-otp',
-  RESEND_OTP: '/email/resend-otp',
-  STATUS: '/email/status',
-  REMOVE: '/email/remove',
-};
-
 export interface NotificationSettings {
   notification_sounds: boolean;
   email_notifications: boolean;
@@ -130,66 +122,6 @@ export const settingsApi = {
   deleteProfilePicture: async (): Promise<{ message: string }> => {
     try {
       const response = await api.delete(SETTINGS_ENDPOINTS.PROFILE_PICTURE);
-      return response as unknown as { message: string };
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  // Email verification - uses /email/* endpoints
-  sendEmailVerificationOTP: async (email: string): Promise<{ message: string; verification_sent: boolean }> => {
-    try {
-      const response = await api.post(EMAIL_ENDPOINTS.SEND_OTP, { email });
-      return response as unknown as { message: string; verification_sent: boolean };
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  verifyEmailOTP: async (otp: string): Promise<{ message: string; verified: boolean }> => {
-    try {
-      const response = await api.post(EMAIL_ENDPOINTS.VERIFY_OTP, { otp });
-      return response as unknown as { message: string; verified: boolean };
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  resendEmailOTP: async (): Promise<{ message: string; verification_sent: boolean }> => {
-    try {
-      const response = await api.post(EMAIL_ENDPOINTS.RESEND_OTP);
-      return response as unknown as { message: string; verification_sent: boolean };
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  getEmailVerificationStatus: async (): Promise<{
-    secondary_email: string | null;
-    is_email_verified: boolean;
-    verification_pending: boolean;
-    resend_count?: number;
-    next_resend_available_at?: string | null;
-    cooldown_seconds?: number;
-  }> => {
-    try {
-      const response = await api.get(EMAIL_ENDPOINTS.STATUS);
-      return response as unknown as {
-        secondary_email: string | null;
-        is_email_verified: boolean;
-        verification_pending: boolean;
-        resend_count?: number;
-        next_resend_available_at?: string | null;
-        cooldown_seconds?: number;
-      };
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  removeSecondaryEmail: async (): Promise<{ message: string }> => {
-    try {
-      const response = await api.delete(EMAIL_ENDPOINTS.REMOVE);
       return response as unknown as { message: string };
     } catch (error) {
       throw error;

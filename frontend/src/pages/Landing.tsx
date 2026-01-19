@@ -41,7 +41,7 @@ export default function Landing() {
             <Link to={ROUTES.LOGIN}>
               <Button variant="ghost" className="text-sm text-emerald-400 hover:text-emerald-300">Sign In</Button>
             </Link>
-            <Link to={ROUTES.REGISTER}>
+            <Link to={ROUTES.LOGIN}>
               <Button variant="primary" className="text-sm bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 shadow-lg shadow-emerald-500/30 border border-emerald-400/30">
                 Join Now
               </Button>
@@ -259,7 +259,7 @@ export default function Landing() {
                 </div>
               </div>
 
-              <Link to={ROUTES.REGISTER}>
+              <Link to={ROUTES.LOGIN}>
                 <Button variant="primary" className="px-8 py-4 text-lg font-bold bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 shadow-xl shadow-emerald-500/30">
                   Join as Player
                 </Button>
@@ -362,7 +362,7 @@ export default function Landing() {
                 </div>
               </div>
 
-              <Link to={ROUTES.REGISTER}>
+              <Link to={ROUTES.CLIENT_LOGIN}>
                 <Button variant="primary" className="px-8 py-4 text-lg font-bold bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 shadow-xl shadow-purple-500/30">
                   Register as Client
                 </Button>
@@ -474,12 +474,12 @@ export default function Landing() {
                 Join Green Palace today. Whether you're a player seeking rewards or a client building your kingdom.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link to={ROUTES.REGISTER}>
+                <Link to={ROUTES.LOGIN}>
                   <Button variant="primary" className="px-10 py-4 text-lg font-bold bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 shadow-xl shadow-emerald-500/30">
                     Join as Player
                   </Button>
                 </Link>
-                <Link to={ROUTES.REGISTER}>
+                <Link to={ROUTES.CLIENT_LOGIN}>
                   <Button variant="secondary" className="px-10 py-4 text-lg font-bold border-purple-500/50 text-purple-400 hover:border-purple-400 hover:text-purple-300">
                     Register as Client
                   </Button>

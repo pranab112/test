@@ -1,7 +1,6 @@
 import { apiClient } from '../client';
 
 export type OfferType =
-  | 'email_verification'
   | 'profile_completion'
   | 'first_deposit'
   | 'referral'

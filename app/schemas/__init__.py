@@ -92,13 +92,6 @@ from app.schemas.offer import (
     OfferClaimProcess,
     CreditTransfer
 )
-from app.schemas.email import (
-    EmailVerificationRequest,
-    EmailVerificationResponse,
-    VerifyEmailRequest,
-    EmailStatusResponse,
-    OTPVerificationRequest
-)
 from app.schemas.activity import ActivityItem, RecentActivityResponse, TrendData, QuickStats, PromotionStats, AnalyticsResponse
 from app.schemas.password import (
     ChangePasswordRequest,

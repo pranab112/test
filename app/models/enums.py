@@ -50,7 +50,6 @@ class ReviewStatus(str, enum.Enum):
     DISPUTED = "disputed"  # Under appeal
 
 class OfferType(str, enum.Enum):
-    EMAIL_VERIFICATION = "email_verification"
     PROFILE_COMPLETION = "profile_completion"
     FIRST_DEPOSIT = "first_deposit"
     REFERRAL = "referral"

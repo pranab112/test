@@ -1,7 +1,7 @@
 import random
 import json
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_
 from typing import List
 from app import models, schemas, auth
@@ -120,7 +120,9 @@ async def get_my_games(
     if current_user.user_type != models.UserType.CLIENT:
         raise HTTPException(status_code=403, detail="Only clients can provide games")
 
-    client_games = db.query(models.ClientGame).join(
+    client_games = db.query(models.ClientGame).options(
+        joinedload(models.ClientGame.game)
+    ).join(
         models.Game
     ).filter(
         and_(
@@ -144,8 +146,9 @@ async def get_my_games_with_details(
         raise HTTPException(status_code=403, detail="Only clients can access this")
 
     # Only return active client games (games the client has selected)
-    client_games = db.query(models.ClientGame).join(
-        models.Game
+    # Use joinedload to eager load the game relationship
+    client_games = db.query(models.ClientGame).options(
+        joinedload(models.ClientGame.game)
     ).filter(
         and_(
             models.ClientGame.client_id == current_user.id,
@@ -168,7 +171,9 @@ async def update_client_game(
     if current_user.user_type != models.UserType.CLIENT:
         raise HTTPException(status_code=403, detail="Only clients can update games")
 
-    client_game = db.query(models.ClientGame).filter(
+    client_game = db.query(models.ClientGame).options(
+        joinedload(models.ClientGame.game)
+    ).filter(
         and_(
             models.ClientGame.id == client_game_id,
             models.ClientGame.client_id == current_user.id
@@ -241,7 +246,9 @@ async def update_my_games(
     db.commit()
 
     # Return updated list
-    client_games = db.query(models.ClientGame).join(
+    client_games = db.query(models.ClientGame).options(
+        joinedload(models.ClientGame.game)
+    ).join(
         models.Game
     ).filter(
         and_(
@@ -272,7 +279,9 @@ async def get_client_games(
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
 
-    client_games = db.query(models.ClientGame).join(
+    client_games = db.query(models.ClientGame).options(
+        joinedload(models.ClientGame.game)
+    ).join(
         models.Game
     ).filter(
         and_(

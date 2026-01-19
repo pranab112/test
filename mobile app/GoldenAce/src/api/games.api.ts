@@ -18,8 +18,10 @@ export const gamesApi = {
       return games as Game[];
     } catch (error: unknown) {
       console.error('[Games API] Error fetching all games:', error);
-      const err = error as { response?: { status?: number }; error?: { code?: string } };
-      if (err?.response?.status === 404 || err?.error?.code === 'NOT_FOUND') {
+      // Handle transformed error from api interceptor
+      const err = error as { detail?: string; error?: { code?: string; message?: string }; message?: string };
+      // Return empty array for 404 or NOT_FOUND
+      if (err?.error?.code === 'NOT_FOUND' || err?.detail?.includes('not found')) {
         return [];
       }
       throw error;
@@ -37,7 +39,8 @@ export const gamesApi = {
       console.log('[Games API] Parsed games:', games.length, 'items');
       return games;
     } catch (error: unknown) {
-      const err = error as { response?: { status?: number }; error?: { code?: string; message?: string } };
+      // Handle transformed error from api interceptor
+      const err = error as { detail?: string; error?: { code?: string; message?: string }; message?: string };
       console.error('[Games API] Error fetching client games:', JSON.stringify(error, null, 2));
 
       // Return empty array for expected error cases:
@@ -45,12 +48,13 @@ export const gamesApi = {
       // - 403: User not a client (shouldn't happen on client screen, but handle gracefully)
       // - 401: Auth issue (will be handled by interceptor redirect)
       if (
-        err?.response?.status === 404 ||
-        err?.response?.status === 403 ||
         err?.error?.code === 'NOT_FOUND' ||
-        err?.error?.code === 'HTTP_403'
+        err?.error?.code === 'HTTP_403' ||
+        err?.error?.code === 'HTTP_404' ||
+        err?.detail?.includes('not found') ||
+        err?.detail?.includes('Only clients')
       ) {
-        console.log('[Games API] Returning empty array for status:', err?.response?.status || err?.error?.code);
+        console.log('[Games API] Returning empty array for error:', err?.error?.code || err?.detail);
         return [];
       }
       throw error;

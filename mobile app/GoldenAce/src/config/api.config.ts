@@ -78,7 +78,7 @@ export const API_ENDPOINTS = {
     BROADCAST_READ_ALL: '/chat/broadcasts/read-all',
   },
   GAMES: {
-    BASE: '/games',
+    BASE: '/games/',
     ADMIN: '/admin/games',
     MY_GAMES: '/games/my-games-details',
     UPDATE_GAMES: '/games/update-games',
@@ -118,13 +118,6 @@ export const API_ENDPOINTS = {
     PROFILE_PICTURE: '/settings/profile-picture',
     PAYMENT_METHODS: '/settings/payment-methods',
     MY_PAYMENT_PREFERENCES: '/settings/my-payment-preferences',
-  },
-  EMAIL: {
-    SEND_OTP: '/email/send-otp',
-    VERIFY_OTP: '/email/verify-otp',
-    RESEND_OTP: '/email/resend-otp',
-    STATUS: '/email/status',
-    REMOVE: '/email/remove',
   },
   REFERRALS: {
     MY_CODE: '/referrals/my-code',

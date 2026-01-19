@@ -28,7 +28,6 @@ interface OfferFormData {
 }
 
 const offerTypes: { value: OfferType; label: string }[] = [
-  { value: 'email_verification', label: 'Email Verification' },
   { value: 'profile_completion', label: 'Profile Completion' },
   { value: 'first_deposit', label: 'First Deposit' },
   { value: 'referral', label: 'Referral' },
@@ -50,7 +49,7 @@ export function OffersSection() {
   const [formData, setFormData] = useState<OfferFormData>({
     title: '',
     description: '',
-    offer_type: 'email_verification',
+    offer_type: 'profile_completion',
     bonus_amount: '',
     requirement_description: '',
     max_claims: '',
@@ -226,7 +225,7 @@ export function OffersSection() {
     setFormData({
       title: '',
       description: '',
-      offer_type: 'email_verification',
+      offer_type: 'profile_completion',
       bonus_amount: '',
       requirement_description: '',
       max_claims: '',
@@ -592,7 +591,7 @@ export function OffersSection() {
             label="Title *"
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            placeholder="e.g., Email Verification Bonus"
+            placeholder="e.g., Profile Completion Bonus"
           />
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
@@ -704,7 +703,7 @@ export function OffersSection() {
             label="Title *"
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            placeholder="e.g., Email Verification Bonus"
+            placeholder="e.g., Profile Completion Bonus"
           />
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">

@@ -42,13 +42,6 @@ export default function PlayerSettingsScreen() {
   const [fullName, setFullName] = useState(user?.full_name || '');
   const [savingProfile, setSavingProfile] = useState(false);
 
-  // Email verification modal
-  const [showEmailModal, setShowEmailModal] = useState(false);
-  const [verificationEmail, setVerificationEmail] = useState('');
-  const [otpCode, setOtpCode] = useState('');
-  const [verifyingEmail, setVerifyingEmail] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
-
   // Credit transfer modal
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferAmount, setTransferAmount] = useState('');
@@ -265,55 +258,6 @@ export default function PlayerSettingsScreen() {
     }
   };
 
-  const handleSendOTP = async () => {
-    if (!verificationEmail.trim() || !verificationEmail.includes('@')) {
-      Alert.alert('Error', 'Please enter a valid email address');
-      return;
-    }
-    setVerifyingEmail(true);
-    try {
-      await settingsApi.sendEmailVerificationOTP(verificationEmail.trim());
-      setOtpSent(true);
-      Alert.alert('Success', 'Verification code sent to your email');
-    } catch (error: any) {
-      Alert.alert('Error', error?.detail || 'Failed to send verification code');
-    } finally {
-      setVerifyingEmail(false);
-    }
-  };
-
-  const handleResendOTP = async () => {
-    setVerifyingEmail(true);
-    try {
-      await settingsApi.resendEmailOTP();
-      Alert.alert('Success', 'New verification code sent');
-    } catch (error: any) {
-      Alert.alert('Error', error?.detail || 'Failed to resend verification code');
-    } finally {
-      setVerifyingEmail(false);
-    }
-  };
-
-  const handleVerifyEmail = async () => {
-    if (otpCode.length !== 6) {
-      Alert.alert('Error', 'Please enter a 6-digit code');
-      return;
-    }
-    setVerifyingEmail(true);
-    try {
-      await settingsApi.verifyEmailOTP(otpCode);
-      await refreshUser();
-      Alert.alert('Success', 'Email verified successfully');
-      setShowEmailModal(false);
-      setOtpCode('');
-      setOtpSent(false);
-    } catch (error: any) {
-      Alert.alert('Error', error?.detail || 'Invalid verification code');
-    } finally {
-      setVerifyingEmail(false);
-    }
-  };
-
   const SettingsItem = ({
     icon,
     title,
@@ -378,12 +322,7 @@ export default function PlayerSettingsScreen() {
               {user?.full_name || user?.username}
             </Text>
             <Text style={styles.profileUsername}>@{user?.username}</Text>
-            <View style={styles.emailRow}>
-              <Text style={styles.profileEmail}>{user?.email}</Text>
-              {user?.is_email_verified && (
-                <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
-              )}
-            </View>
+            <Text style={styles.profileEmail}>{user?.email}</Text>
           </View>
         </View>
         <View style={styles.profileStats}>
@@ -435,25 +374,6 @@ export default function PlayerSettingsScreen() {
             title="Change Password"
             subtitle="Update your password"
             onPress={() => setShowPasswordModal(true)}
-          />
-          <SettingsItem
-            icon="mail"
-            title="Email Verification"
-            subtitle={user?.is_email_verified ? 'Verified' : 'Not verified - Tap to verify'}
-            onPress={() => {
-              if (!user?.is_email_verified) {
-                // Pre-fill with user's email if available
-                if (user?.email) {
-                  setVerificationEmail(user.email);
-                }
-                setShowEmailModal(true);
-              }
-            }}
-            rightElement={
-              user?.is_email_verified ? (
-                <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
-              ) : undefined
-            }
           />
           <SettingsItem
             icon="shield-checkmark"
@@ -761,72 +681,6 @@ export default function PlayerSettingsScreen() {
         </View>
       </Modal>
 
-      {/* Email Verification Modal */}
-      <Modal
-        visible={showEmailModal}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowEmailModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Verify Email</Text>
-              <TouchableOpacity onPress={() => setShowEmailModal(false)}>
-                <Ionicons name="close" size={24} color={Colors.text} />
-              </TouchableOpacity>
-            </View>
-
-            {!otpSent ? (
-              <>
-                <Text style={styles.modalText}>
-                  Enter your email address to receive a verification code
-                </Text>
-                <Input
-                  placeholder="Enter your email"
-                  value={verificationEmail}
-                  onChangeText={setVerificationEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  leftIcon="mail-outline"
-                />
-                <Button
-                  title="Send Verification Code"
-                  onPress={handleSendOTP}
-                  loading={verifyingEmail}
-                  style={styles.modalButton}
-                />
-              </>
-            ) : (
-              <>
-                <Text style={styles.modalText}>
-                  Enter the 6-digit code sent to {verificationEmail}
-                </Text>
-                <TextInput
-                  style={styles.otpInput}
-                  value={otpCode}
-                  onChangeText={setOtpCode}
-                  placeholder="000000"
-                  placeholderTextColor={Colors.textMuted}
-                  keyboardType="number-pad"
-                  maxLength={6}
-                  textAlign="center"
-                />
-                <Button
-                  title="Verify Email"
-                  onPress={handleVerifyEmail}
-                  loading={verifyingEmail}
-                  style={styles.modalButton}
-                />
-                <TouchableOpacity onPress={handleResendOTP} style={styles.resendButton}>
-                  <Text style={styles.resendText}>Resend Code</Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </View>
-      </Modal>
-
       {/* Transfer Credits Modal */}
       <Modal
         visible={showTransferModal}
@@ -985,12 +839,6 @@ const styles = StyleSheet.create({
   profileUsername: {
     fontSize: FontSize.sm,
     color: Colors.textSecondary,
-    marginTop: Spacing.xs,
-  },
-  emailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
     marginTop: Spacing.xs,
   },
   profileEmail: {

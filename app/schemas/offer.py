@@ -47,7 +47,7 @@ class PlatformOfferResponse(BaseModel):
 class OfferClaimCreate(BaseModel):
     offer_id: int
     client_id: Optional[int] = None  # Optional - player can claim without client
-    verification_data: Optional[str] = None  # e.g., email for email verification offer
+    verification_data: Optional[str] = None  # Optional verification data
     screenshot_url: Optional[str] = None  # Screenshot proof URL if required by offer
 
 

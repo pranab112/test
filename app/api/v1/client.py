@@ -136,9 +136,7 @@ def register_player(
         "profile_picture": new_player.profile_picture,
         "is_online": new_player.is_online,
         "last_seen": new_player.last_seen,
-        "last_activity": new_player.last_activity,
-        "secondary_email": new_player.secondary_email,
-        "is_email_verified": new_player.is_email_verified
+        "last_activity": new_player.last_activity
     }
 
     # Add temp password only if it was generated

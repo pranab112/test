@@ -12,10 +12,8 @@ import {
   MdSecurity,
   MdNotifications,
   MdPalette,
-  MdVerified,
   MdUpload,
   MdDelete,
-  MdRefresh,
   MdWarning,
 } from 'react-icons/md';
 import { useNavigate } from 'react-router-dom';
@@ -54,13 +52,6 @@ export function SettingsSection() {
     confirmPassword: '',
   });
 
-  // Email verification state
-  const [emailVerified, setEmailVerified] = useState(false);
-  const [showEmailVerifyModal, setShowEmailVerifyModal] = useState(false);
-  const [verificationEmail, setVerificationEmail] = useState('');
-  const [emailOTP, setEmailOTP] = useState('');
-  const [emailVerificationPending, setEmailVerificationPending] = useState(false);
-
   // Notifications settings
   const [notificationSettings, setNotificationSettings] = useState({
     emailNotifications: true,
@@ -92,21 +83,6 @@ export function SettingsSection() {
         bio: user.bio || '',
       });
       setProfilePicture(user.profile_picture);
-      setEmailVerified(user.is_email_verified || false);
-
-      // Load email verification status for players
-      if (user.user_type === 'player') {
-        try {
-          const emailStatus = await settingsApi.getEmailVerificationStatus();
-          setEmailVerified(emailStatus.is_email_verified);
-          setEmailVerificationPending(emailStatus.verification_pending);
-          if (emailStatus.secondary_email) {
-            setVerificationEmail(emailStatus.secondary_email);
-          }
-        } catch {
-          // Email status endpoint may not exist
-        }
-      }
     } catch (error) {
       console.error('Failed to load user data:', error);
     } finally {
@@ -195,67 +171,6 @@ export function SettingsSection() {
       console.error(error);
     } finally {
       setDeletingAccount(false);
-    }
-  };
-
-  // Email Verification Functions
-  const handleSendVerificationEmail = async () => {
-    if (!verificationEmail || !verificationEmail.includes('@')) {
-      toast.error('Please enter a valid email address');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await settingsApi.sendEmailVerificationOTP(verificationEmail);
-      setEmailVerificationPending(true);
-      toast.success('Verification code sent! Check your email.');
-    } catch (error: any) {
-      toast.error(error?.detail || 'Failed to send verification email');
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyEmailOTP = async () => {
-    if (!emailOTP || emailOTP.length !== 6) {
-      toast.error('Please enter a valid 6-digit code');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await settingsApi.verifyEmailOTP(emailOTP);
-      setEmailVerified(true);
-      setShowEmailVerifyModal(false);
-      setEmailOTP('');
-      toast.success('Email verified successfully!');
-
-      // Update user state
-      if (user) {
-        const updatedUser = { ...user, is_email_verified: true };
-        setUser(updatedUser);
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-      }
-    } catch (error: any) {
-      toast.error(error?.detail || 'Invalid verification code');
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResendOTP = async () => {
-    setLoading(true);
-    try {
-      await settingsApi.resendEmailOTP();
-      toast.success('New verification code sent!');
-    } catch (error: any) {
-      toast.error(error?.detail || 'Failed to resend code. Please wait before trying again.');
-      console.error(error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -471,30 +386,6 @@ export function SettingsSection() {
                       placeholder="Tell us about yourself..."
                     />
                   </div>
-                </div>
-
-                {/* Email Verification Section */}
-                <div className="bg-dark-300 p-6 rounded-lg">
-                  <h3 className="text-lg font-bold text-white mb-3">Email Verification</h3>
-                  {emailVerified ? (
-                    <div className="flex items-center gap-2 text-green-400">
-                      <MdVerified size={20} />
-                      <span className="font-medium">Your email is verified</span>
-                    </div>
-                  ) : (
-                    <div>
-                      <p className="text-gray-400 mb-3">
-                        Verify your email address to access all features and bonuses.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => setShowEmailVerifyModal(true)}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-dark-700 px-4 py-2 rounded-lg font-medium transition-colors"
-                      >
-                        Verify Email
-                      </button>
-                    </div>
-                  )}
                 </div>
 
                 <Button onClick={handleSaveProfile} loading={loading}>
@@ -747,83 +638,6 @@ export function SettingsSection() {
               )}
             </button>
           </div>
-        </div>
-      </Modal>
-
-      {/* Email Verification Modal */}
-      <Modal
-        isOpen={showEmailVerifyModal}
-        onClose={() => {
-          setShowEmailVerifyModal(false);
-          setEmailOTP('');
-        }}
-        title="Verify Your Email"
-        size="md"
-      >
-        <div className="space-y-4">
-          {!emailVerificationPending ? (
-            <>
-              <p className="text-gray-400">
-                Enter your email address to receive a verification code.
-              </p>
-              <Input
-                label="Email Address"
-                type="email"
-                value={verificationEmail}
-                onChange={(e) => setVerificationEmail(e.target.value)}
-                placeholder="you@example.com"
-              />
-              <div className="flex gap-3">
-                <Button
-                  variant="secondary"
-                  onClick={() => setShowEmailVerifyModal(false)}
-                  fullWidth
-                >
-                  Cancel
-                </Button>
-                <Button onClick={handleSendVerificationEmail} loading={loading} fullWidth>
-                  Send Code
-                </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              <p className="text-gray-400">
-                We sent a 6-digit verification code to <strong className="text-white">{verificationEmail}</strong>
-              </p>
-              <Input
-                label="Verification Code"
-                type="text"
-                value={emailOTP}
-                onChange={(e) => setEmailOTP(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="000000"
-              />
-              <button
-                type="button"
-                onClick={handleResendOTP}
-                disabled={loading}
-                className="text-emerald-500 hover:text-emerald-400 text-sm flex items-center gap-1 disabled:opacity-50"
-              >
-                <MdRefresh size={16} />
-                Resend Code
-              </button>
-              <div className="flex gap-3">
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setEmailVerificationPending(false);
-                    setEmailOTP('');
-                  }}
-                  fullWidth
-                >
-                  Back
-                </Button>
-                <Button onClick={handleVerifyEmailOTP} loading={loading} fullWidth>
-                  Verify
-                </Button>
-              </div>
-            </>
-          )}
         </div>
       </Modal>
 

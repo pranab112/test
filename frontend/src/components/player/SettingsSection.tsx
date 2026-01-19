@@ -16,7 +16,6 @@ import {
   MdShare,
   MdContentCopy,
   MdRefresh,
-  MdVerified,
   MdUpload,
   MdDelete,
   MdCheck,
@@ -60,15 +59,6 @@ export function SettingsSection() {
     confirmPassword: '',
   });
 
-  // Email verification state
-  const [emailVerified, setEmailVerified] = useState(false);
-  const [showEmailVerifyModal, setShowEmailVerifyModal] = useState(false);
-  const [verificationEmail, setVerificationEmail] = useState('');
-  const [emailOTP, setEmailOTP] = useState('');
-  const [emailVerificationPending, setEmailVerificationPending] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(0);
-  const [resendCount, setResendCount] = useState(0);
-
   // Notification settings
   const [notificationSettings, setNotificationSettings] = useState({
     emailNotifications: true,
@@ -104,23 +94,6 @@ export function SettingsSection() {
     loadUserData();
   }, [user]);
 
-  // Countdown timer for resend cooldown
-  useEffect(() => {
-    if (resendCooldown <= 0) return;
-
-    const timer = setInterval(() => {
-      setResendCooldown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [resendCooldown]);
-
   const loadUserData = async () => {
     if (!user) return;
 
@@ -133,28 +106,6 @@ export function SettingsSection() {
         email: user.email || '',
       });
       setProfilePicture(user.profile_picture);
-      setEmailVerified(user.is_email_verified || false);
-
-      // Load email verification status
-      try {
-        const emailStatus = await settingsApi.getEmailVerificationStatus();
-        setEmailVerified(emailStatus.is_email_verified);
-        setEmailVerificationPending(emailStatus.verification_pending);
-        setResendCount(emailStatus.resend_count || 0);
-        setResendCooldown(emailStatus.cooldown_seconds || 0);
-        if (emailStatus.secondary_email) {
-          setVerificationEmail(emailStatus.secondary_email);
-          // If email is verified, use the verified email as the main email
-          if (emailStatus.is_email_verified) {
-            setProfileData(prev => ({
-              ...prev,
-              email: emailStatus.secondary_email || prev.email,
-            }));
-          }
-        }
-      } catch {
-        // Email status endpoint may not exist
-      }
 
       // Load referral data
       loadReferralData();
@@ -335,105 +286,6 @@ export function SettingsSection() {
     }
   };
 
-  // Helper function to format cooldown time
-  const formatCooldownTime = (seconds: number): string => {
-    if (seconds < 60) {
-      return `${seconds}s`;
-    } else if (seconds < 3600) {
-      const minutes = Math.floor(seconds / 60);
-      const secs = seconds % 60;
-      return secs > 0 ? `${minutes}m ${secs}s` : `${minutes}m`;
-    } else {
-      const hours = Math.floor(seconds / 3600);
-      const minutes = Math.floor((seconds % 3600) / 60);
-      return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
-    }
-  };
-
-  // Get cooldown duration based on resend count
-  const getCooldownForCount = (count: number): number => {
-    const cooldowns = [60, 600, 3600, 86400]; // 1min, 10min, 1hr, 24hr
-    const index = Math.min(count, cooldowns.length - 1);
-    return cooldowns[index];
-  };
-
-  // Email Verification Functions
-  const handleSendVerificationEmail = async () => {
-    if (!verificationEmail || !verificationEmail.includes('@')) {
-      toast.error('Please enter a valid email address');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await settingsApi.sendEmailVerificationOTP(verificationEmail);
-      setEmailVerificationPending(true);
-      // Set cooldown based on new resend count
-      const newCount = resendCount + 1;
-      setResendCount(newCount);
-      setResendCooldown(getCooldownForCount(newCount));
-      toast.success('Verification code sent! Check your email.');
-    } catch (error: any) {
-      toast.error(error?.detail || 'Failed to send verification email');
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyEmailOTP = async () => {
-    if (!emailOTP || emailOTP.length !== 6) {
-      toast.error('Please enter a valid 6-digit code');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await settingsApi.verifyEmailOTP(emailOTP);
-      setEmailVerified(true);
-      setShowEmailVerifyModal(false);
-      setEmailOTP('');
-      // Reset cooldown state on successful verification
-      setResendCount(0);
-      setResendCooldown(0);
-      toast.success('Email verified successfully!');
-
-      // Update user state
-      if (user) {
-        const updatedUser = { ...user, is_email_verified: true };
-        setUser(updatedUser);
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-      }
-    } catch (error: any) {
-      toast.error(error?.detail || 'Invalid verification code');
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResendOTP = async () => {
-    if (resendCooldown > 0) {
-      toast.error(`Please wait ${formatCooldownTime(resendCooldown)} before requesting another code`);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await settingsApi.resendEmailOTP();
-      // Set cooldown based on new resend count
-      const newCount = resendCount + 1;
-      setResendCount(newCount);
-      setResendCooldown(getCooldownForCount(newCount));
-      toast.success('New verification code sent!');
-    } catch (error: any) {
-      toast.error(error?.detail || 'Failed to resend code. Please wait before trying again.');
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Profile Picture Functions
   const handleUploadProfilePicture = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -606,15 +458,6 @@ export function SettingsSection() {
                   {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
                 </p>
               </div>
-              {emailVerified && (
-                <div>
-                  <p className="text-sm text-gray-400">Status</p>
-                  <div className="flex items-center gap-1 text-green-400">
-                    <MdVerified size={16} />
-                    <span className="text-sm font-medium">Verified</span>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -751,30 +594,6 @@ export function SettingsSection() {
               onChange={() => {}}
               placeholder="your@email.com"
             />
-
-            {/* Email Verification Section */}
-            <div className="bg-dark-300 p-4 rounded-lg">
-              <h3 className="text-lg font-bold text-white mb-3">Email Verification</h3>
-              {emailVerified ? (
-                <div className="flex items-center gap-2 text-green-400">
-                  <MdVerified size={20} />
-                  <span className="font-medium">Your email is verified</span>
-                </div>
-              ) : (
-                <div>
-                  <p className="text-gray-400 mb-3">
-                    Verify your email address to unlock special rewards and features!
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setShowEmailVerifyModal(true)}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-dark-700 px-4 py-2 rounded-lg font-medium transition-colors"
-                  >
-                    Verify Email
-                  </button>
-                </div>
-              )}
-            </div>
 
             <div className="pt-4">
               <Button
@@ -1359,98 +1178,6 @@ export function SettingsSection() {
         </div>
       </Modal>
 
-      {/* Email Verification Modal */}
-      <Modal
-        isOpen={showEmailVerifyModal}
-        onClose={() => {
-          setShowEmailVerifyModal(false);
-          setEmailOTP('');
-        }}
-        title="Verify Your Email"
-        size="md"
-      >
-        <div className="space-y-4">
-          {!emailVerificationPending ? (
-            <>
-              <p className="text-gray-400">
-                Enter your email address to receive a verification code.
-              </p>
-              <Input
-                label="Email Address"
-                type="email"
-                value={verificationEmail}
-                onChange={(e) => setVerificationEmail(e.target.value)}
-                placeholder="you@example.com"
-              />
-              <div className="flex gap-3">
-                <Button
-                  variant="secondary"
-                  onClick={() => setShowEmailVerifyModal(false)}
-                  fullWidth
-                >
-                  Cancel
-                </Button>
-                <Button onClick={handleSendVerificationEmail} loading={loading} fullWidth>
-                  Send Code
-                </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              <p className="text-gray-400">
-                We sent a 6-digit verification code to <strong className="text-white">{verificationEmail}</strong>
-              </p>
-              <Input
-                label="Verification Code"
-                type="text"
-                value={emailOTP}
-                onChange={(e) => setEmailOTP(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="000000"
-              />
-              <button
-                type="button"
-                onClick={handleResendOTP}
-                disabled={loading || resendCooldown > 0}
-                className={`text-sm flex items-center gap-1 ${
-                  resendCooldown > 0
-                    ? 'text-gray-500 cursor-not-allowed'
-                    : 'text-emerald-500 hover:text-emerald-400'
-                } disabled:opacity-50`}
-              >
-                <MdRefresh size={16} className={resendCooldown > 0 ? '' : ''} />
-                {resendCooldown > 0
-                  ? `Resend in ${formatCooldownTime(resendCooldown)}`
-                  : 'Resend Code'
-                }
-              </button>
-              {resendCount > 0 && (
-                <p className="text-xs text-gray-500">
-                  {resendCount >= 4
-                    ? 'Maximum resend limit reached. Wait 24 hours between attempts.'
-                    : `Attempt ${resendCount} of 4. Cooldown increases with each resend.`
-                  }
-                </p>
-              )}
-              <div className="flex gap-3">
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setEmailVerificationPending(false);
-                    setEmailOTP('');
-                  }}
-                  fullWidth
-                >
-                  Back
-                </Button>
-                <Button onClick={handleVerifyEmailOTP} loading={loading} fullWidth>
-                  Verify
-                </Button>
-              </div>
-            </>
-          )}
-        </div>
-      </Modal>
-
       {/* Delete Profile Picture Confirmation Modal */}
       <Modal
         isOpen={showDeletePictureModal}
@@ -1537,7 +1264,9 @@ function ToggleSetting({
         <p className="text-sm text-gray-400">{description}</p>
       </div>
       <button
+        type="button"
         onClick={() => onChange(!enabled)}
+        title={`Toggle ${label}`}
         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
           enabled ? 'bg-emerald-500' : 'bg-gray-600'
         }`}

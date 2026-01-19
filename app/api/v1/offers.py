@@ -397,14 +397,6 @@ def claim_offer(
     if offer.end_date and offer.end_date < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Offer has expired")
 
-    # VALIDATION: For EMAIL_VERIFICATION offers, check if email is actually verified
-    if offer.offer_type == OfferType.EMAIL_VERIFICATION:
-        if not player.is_email_verified:
-            raise HTTPException(
-                status_code=400,
-                detail="You must verify your email address before claiming this offer."
-            )
-
     # VALIDATION: Check if screenshot is required but not provided
     if offer.requires_screenshot and not claim_data.screenshot_url:
         raise HTTPException(

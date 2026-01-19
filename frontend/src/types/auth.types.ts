@@ -41,8 +41,6 @@ export interface User {
   profile_picture?: string;
   is_online?: boolean;
   last_seen?: string;
-  is_email_verified?: boolean;
-  secondary_email?: string;
   two_factor_enabled?: boolean;
   bio?: string;
   phone?: string;

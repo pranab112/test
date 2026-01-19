@@ -27,15 +27,6 @@ export interface TwoFactorSetupResponse {
   backup_codes: string[];
 }
 
-export interface EmailVerificationStatus {
-  secondary_email: string | null;
-  is_email_verified: boolean;
-  verification_pending: boolean;
-  resend_count: number;
-  next_resend_available_at: string | null;
-  cooldown_seconds: number;
-}
-
 export interface ActiveSession {
   id: string;
   device: string;
@@ -92,27 +83,6 @@ export const settingsApi = {
 
   deleteProfilePicture: async (userId: number): Promise<{ message: string }> => {
     const response = await apiClient.delete(`/profiles/${userId}/profile-picture`);
-    return response as any;
-  },
-
-  // Email Verification
-  getEmailVerificationStatus: async (): Promise<EmailVerificationStatus> => {
-    const response = await apiClient.get('/email/status');
-    return response as any;
-  },
-
-  sendEmailVerificationOTP: async (email: string): Promise<{ message: string; verification_sent: boolean }> => {
-    const response = await apiClient.post('/email/send-otp', { email });
-    return response as any;
-  },
-
-  verifyEmailOTP: async (otp: string): Promise<{ message: string; verified: boolean }> => {
-    const response = await apiClient.post('/email/verify-otp', { otp });
-    return response as any;
-  },
-
-  resendEmailOTP: async (): Promise<{ message: string; verification_sent: boolean }> => {
-    const response = await apiClient.post('/email/resend-otp');
     return response as any;
   },
 
