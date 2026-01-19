@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Request
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Request, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 from typing import List, Optional
@@ -13,6 +13,7 @@ from app.database import get_db
 from app.websocket import manager, WSMessage, WSMessageType
 from app.s3_storage import s3_storage, save_upload_file_locally, is_s3_url
 from app.rate_limit import conditional_rate_limit, RateLimits
+from app.services.push_notification_service import send_message_notification
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +83,7 @@ def check_friendship(user1_id: int, user2_id: int, db: Session) -> bool:
 @conditional_rate_limit(RateLimits.SEND_MESSAGE)
 async def send_text_message(
     request: Request,
+    background_tasks: BackgroundTasks,
     receiver_id: int = Form(...),
     content: str = Form(...),
     current_user: models.User = Depends(auth.get_current_active_user),
@@ -142,12 +144,24 @@ async def send_text_message(
     # Send conversation update for the conversation list
     await send_conversation_update(current_user, receiver_id, message, db)
 
+    # Send push notification for offline/background users
+    sender_name = current_user.full_name or current_user.username
+    background_tasks.add_task(
+        send_message_notification,
+        db,
+        receiver_id,
+        sender_name,
+        content,
+        current_user.id,
+    )
+
     return message
 
 @router.post("/send/image", response_model=schemas.MessageResponse)
 @conditional_rate_limit(RateLimits.SEND_IMAGE)
 async def send_image_message(
     request: Request,
+    background_tasks: BackgroundTasks,
     receiver_id: int = Form(...),
     file: UploadFile = File(...),
     content: str = Form(None),  # Optional caption for the image
@@ -248,12 +262,25 @@ async def send_image_message(
     # Send conversation update for the conversation list
     await send_conversation_update(current_user, receiver_id, message, db)
 
+    # Send push notification for offline/background users
+    sender_name = current_user.full_name or current_user.username
+    preview = f"📷 Image" + (f": {content[:50]}..." if content and len(content) > 50 else f": {content}" if content else "")
+    background_tasks.add_task(
+        send_message_notification,
+        db,
+        receiver_id,
+        sender_name,
+        preview,
+        current_user.id,
+    )
+
     return message
 
 @router.post("/send/voice", response_model=schemas.MessageResponse)
 @conditional_rate_limit(RateLimits.SEND_VOICE)
 async def send_voice_message(
     request: Request,
+    background_tasks: BackgroundTasks,
     receiver_id: int = Form(...),
     duration: int = Form(...),
     file: UploadFile = File(...),
@@ -376,6 +403,18 @@ async def send_voice_message(
 
     # Send conversation update for the conversation list
     await send_conversation_update(current_user, receiver_id, message, db)
+
+    # Send push notification for offline/background users
+    sender_name = current_user.full_name or current_user.username
+    preview = f"🎤 Voice message ({duration}s)"
+    background_tasks.add_task(
+        send_message_notification,
+        db,
+        receiver_id,
+        sender_name,
+        preview,
+        current_user.id,
+    )
 
     return message
 

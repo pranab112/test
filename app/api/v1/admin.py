@@ -14,6 +14,7 @@ from app.models import UserType, ReferralStatus, REFERRAL_BONUS_CREDITS
 from app.services import send_referral_bonus_email
 from app.s3_storage import s3_storage
 from app.websocket import send_credit_update
+from app.services.push_notification_service import send_credit_notification
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_, or_
 import logging
@@ -850,6 +851,16 @@ def add_credits_to_user(
             loop.close()
 
     background_tasks.add_task(send_ws_update)
+
+    # Send push notification for credit change
+    background_tasks.add_task(
+        send_credit_notification,
+        db,
+        user.id,
+        amount,
+        reason or "admin adjustment",
+        "Admin",
+    )
 
     return {
         "message": f"Successfully {'added' if amount > 0 else 'deducted'} {abs_amount} credits {'to' if amount > 0 else 'from'} {user.username}",

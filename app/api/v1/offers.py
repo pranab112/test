@@ -6,6 +6,7 @@ from app import models, schemas, auth
 from app.database import get_db
 from app.models import UserType, OfferStatus, OfferClaimStatus, OfferType, MessageType
 from app.websocket import send_credit_update
+from app.services.push_notification_service import send_credit_notification
 from datetime import datetime, timezone
 from decimal import Decimal, ROUND_DOWN
 import asyncio
@@ -579,6 +580,18 @@ def transfer_credits_to_client(
             loop.close()
 
     background_tasks.add_task(send_updates)
+
+    # Send push notification to client about received credits
+    client_name = client.company_name or client.username
+    player_name = player.full_name or player.username
+    background_tasks.add_task(
+        send_credit_notification,
+        db,
+        client_id,
+        credits_amount,
+        "credit transfer",
+        player_name,
+    )
 
     return {
         "message": "Transfer successful",
