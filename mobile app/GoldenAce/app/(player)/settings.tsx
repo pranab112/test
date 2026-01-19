@@ -9,9 +9,6 @@ import {
   Switch,
   Modal,
   TextInput,
-  Share,
-  FlatList,
-  RefreshControl,
   ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -21,7 +18,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useNotifications } from '../../src/contexts/NotificationContext';
 import { settingsApi } from '../../src/api/settings.api';
-import { referralsApi, ReferralCode, ReferralStats, Referral } from '../../src/api/referrals.api';
 import { offersApi, CreditTransferResponse } from '../../src/api/offers.api';
 import { friendsApi } from '../../src/api/friends.api';
 import { Card, Avatar, Button, Input, Loading, Badge } from '../../src/components/ui';
@@ -52,14 +48,6 @@ export default function PlayerSettingsScreen() {
   const [otpCode, setOtpCode] = useState('');
   const [verifyingEmail, setVerifyingEmail] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
-
-  // Referrals modal
-  const [showReferralsModal, setShowReferralsModal] = useState(false);
-  const [referralCode, setReferralCode] = useState<ReferralCode | null>(null);
-  const [referralStats, setReferralStats] = useState<ReferralStats | null>(null);
-  const [referrals, setReferrals] = useState<Referral[]>([]);
-  const [loadingReferrals, setLoadingReferrals] = useState(false);
-  const [generatingCode, setGeneratingCode] = useState(false);
 
   // Credit transfer modal
   const [showTransferModal, setShowTransferModal] = useState(false);
@@ -152,62 +140,6 @@ export default function PlayerSettingsScreen() {
       setUploadingPicture(false);
     }
   };
-
-  const loadReferralData = async () => {
-    setLoadingReferrals(true);
-    try {
-      const [codeData, statsData, listData] = await Promise.all([
-        referralsApi.getMyCode().catch(() => null),
-        referralsApi.getStats().catch(() => null),
-        referralsApi.getList().catch(() => []),
-      ]);
-      if (codeData) setReferralCode(codeData);
-      if (statsData) setReferralStats(statsData);
-      setReferrals(listData || []);
-    } catch (error) {
-      console.error('Error loading referral data:', error);
-    } finally {
-      setLoadingReferrals(false);
-    }
-  };
-
-  const handleGenerateReferralCode = async () => {
-    setGeneratingCode(true);
-    try {
-      const newCode = await referralsApi.generateCode();
-      setReferralCode(newCode);
-      Alert.alert('Success', 'Referral code generated!');
-    } catch (error: any) {
-      Alert.alert('Error', error?.detail || 'Failed to generate referral code');
-    } finally {
-      setGeneratingCode(false);
-    }
-  };
-
-  const handleCopyReferralCode = async () => {
-    if (referralCode?.code) {
-      await Clipboard.setStringAsync(referralCode.code);
-      Alert.alert('Copied', 'Referral code copied to clipboard!');
-    }
-  };
-
-  const handleShareReferralCode = async () => {
-    if (referralCode?.code) {
-      try {
-        await Share.share({
-          message: `Join Green Palace using my referral code: ${referralCode.code}`,
-        });
-      } catch (error) {
-        console.error('Error sharing:', error);
-      }
-    }
-  };
-
-  useEffect(() => {
-    if (showReferralsModal) {
-      loadReferralData();
-    }
-  }, [showReferralsModal]);
 
   // Load clients for credit transfer
   const loadClients = async () => {
@@ -572,19 +504,6 @@ export default function PlayerSettingsScreen() {
         </Card>
       </View>
 
-      {/* Referrals */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Referrals</Text>
-        <Card style={styles.settingsCard}>
-          <SettingsItem
-            icon="gift"
-            title="My Referrals"
-            subtitle="Invite friends & earn rewards"
-            onPress={() => setShowReferralsModal(true)}
-          />
-        </Card>
-      </View>
-
       {/* Notifications */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Notifications</Text>
@@ -903,170 +822,6 @@ export default function PlayerSettingsScreen() {
                   <Text style={styles.resendText}>Resend Code</Text>
                 </TouchableOpacity>
               </>
-            )}
-          </View>
-        </View>
-      </Modal>
-
-      {/* Referrals Modal */}
-      <Modal
-        visible={showReferralsModal}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowReferralsModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { maxHeight: '85%' }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>My Referrals</Text>
-              <TouchableOpacity onPress={() => setShowReferralsModal(false)}>
-                <Ionicons name="close" size={24} color={Colors.text} />
-              </TouchableOpacity>
-            </View>
-
-            {loadingReferrals ? (
-              <View style={styles.loadingContainer}>
-                <Loading text="Loading referrals..." />
-              </View>
-            ) : (
-              <ScrollView showsVerticalScrollIndicator={false}>
-                {/* Referral Code Section */}
-                <Card style={styles.referralCodeCard}>
-                  <Text style={styles.referralCodeLabel}>Your Referral Code</Text>
-                  {referralCode?.code ? (
-                    <>
-                      <View style={styles.referralCodeBox}>
-                        <Text style={styles.referralCodeText}>{referralCode.code}</Text>
-                      </View>
-                      <View style={styles.referralActions}>
-                        <TouchableOpacity
-                          style={styles.referralActionButton}
-                          onPress={handleCopyReferralCode}
-                        >
-                          <Ionicons name="copy-outline" size={20} color={Colors.primary} />
-                          <Text style={styles.referralActionText}>Copy</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.referralActionButton}
-                          onPress={handleShareReferralCode}
-                        >
-                          <Ionicons name="share-outline" size={20} color={Colors.primary} />
-                          <Text style={styles.referralActionText}>Share</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </>
-                  ) : (
-                    <Button
-                      title="Generate Referral Code"
-                      onPress={handleGenerateReferralCode}
-                      loading={generatingCode}
-                      style={styles.generateButton}
-                    />
-                  )}
-                </Card>
-
-                {/* Stats Section */}
-                {referralStats && (
-                  <Card style={styles.referralStatsCard}>
-                    <Text style={styles.referralStatsTitle}>Referral Stats</Text>
-                    <View style={styles.referralStatsGrid}>
-                      <View style={styles.referralStatItem}>
-                        <Text style={styles.referralStatValue}>
-                          {referralStats.total_referrals}
-                        </Text>
-                        <Text style={styles.referralStatLabel}>Total</Text>
-                      </View>
-                      <View style={styles.referralStatItem}>
-                        <Text style={[styles.referralStatValue, { color: Colors.success }]}>
-                          {referralStats.completed_referrals}
-                        </Text>
-                        <Text style={styles.referralStatLabel}>Completed</Text>
-                      </View>
-                      <View style={styles.referralStatItem}>
-                        <Text style={[styles.referralStatValue, { color: Colors.warning }]}>
-                          {referralStats.pending_referrals}
-                        </Text>
-                        <Text style={styles.referralStatLabel}>Pending</Text>
-                      </View>
-                      <View style={styles.referralStatItem}>
-                        <Text style={[styles.referralStatValue, { color: Colors.primary }]}>
-                          {referralStats.total_credits_earned} GC
-                        </Text>
-                        <Text style={styles.referralStatLabel}>Earned</Text>
-                      </View>
-                    </View>
-                  </Card>
-                )}
-
-                {/* Referrals List */}
-                {referrals.length > 0 && (
-                  <View style={styles.referralsListSection}>
-                    <Text style={styles.referralsListTitle}>Referred Users</Text>
-                    {referrals.map((referral) => (
-                      <Card key={referral.id} style={styles.referralItem}>
-                        <View style={styles.referralItemHeader}>
-                          <Avatar
-                            source={referral.referred_profile_picture}
-                            name={referral.referred_full_name || referral.referred_username}
-                            size="sm"
-                          />
-                          <View style={styles.referralItemInfo}>
-                            <Text style={styles.referralItemName}>
-                              {referral.referred_full_name || referral.referred_username}
-                            </Text>
-                            <Text style={styles.referralItemDate}>
-                              {new Date(referral.created_at).toLocaleDateString()}
-                            </Text>
-                          </View>
-                          <View
-                            style={[
-                              styles.referralStatusBadge,
-                              {
-                                backgroundColor:
-                                  referral.status === 'completed'
-                                    ? Colors.success + '20'
-                                    : referral.status === 'pending'
-                                    ? Colors.warning + '20'
-                                    : Colors.error + '20',
-                              },
-                            ]}
-                          >
-                            <Text
-                              style={[
-                                styles.referralStatusText,
-                                {
-                                  color:
-                                    referral.status === 'completed'
-                                      ? Colors.success
-                                      : referral.status === 'pending'
-                                      ? Colors.warning
-                                      : Colors.error,
-                                },
-                              ]}
-                            >
-                              {referral.status}
-                            </Text>
-                          </View>
-                        </View>
-                        {referral.status === 'completed' && (
-                          <Text style={styles.referralBonus}>
-                            +{referral.bonus_amount} GC earned
-                          </Text>
-                        )}
-                      </Card>
-                    ))}
-                  </View>
-                )}
-
-                {referrals.length === 0 && referralCode?.code && (
-                  <View style={styles.emptyReferrals}>
-                    <Ionicons name="people-outline" size={48} color={Colors.textMuted} />
-                    <Text style={styles.emptyReferralsText}>
-                      No referrals yet. Share your code to invite friends!
-                    </Text>
-                  </View>
-                )}
-              </ScrollView>
             )}
           </View>
         </View>
@@ -1402,136 +1157,6 @@ const styles = StyleSheet.create({
   resendText: {
     color: Colors.primary,
     fontSize: FontSize.md,
-  },
-  // Referral styles
-  loadingContainer: {
-    padding: Spacing.xl,
-    alignItems: 'center',
-  },
-  referralCodeCard: {
-    marginBottom: Spacing.md,
-    alignItems: 'center',
-  },
-  referralCodeLabel: {
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.sm,
-    textTransform: 'uppercase',
-  },
-  referralCodeBox: {
-    backgroundColor: Colors.surfaceLight,
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.xl,
-    borderRadius: BorderRadius.md,
-    marginBottom: Spacing.md,
-  },
-  referralCodeText: {
-    fontSize: FontSize.xxl,
-    fontWeight: FontWeight.bold,
-    color: Colors.primary,
-    letterSpacing: 4,
-  },
-  referralActions: {
-    flexDirection: 'row',
-    gap: Spacing.lg,
-  },
-  referralActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-    padding: Spacing.sm,
-  },
-  referralActionText: {
-    color: Colors.primary,
-    fontSize: FontSize.md,
-    fontWeight: FontWeight.medium,
-  },
-  generateButton: {
-    marginTop: Spacing.sm,
-  },
-  referralStatsCard: {
-    marginBottom: Spacing.md,
-  },
-  referralStatsTitle: {
-    fontSize: FontSize.md,
-    fontWeight: FontWeight.semibold,
-    color: Colors.text,
-    marginBottom: Spacing.md,
-    textAlign: 'center',
-  },
-  referralStatsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  referralStatItem: {
-    width: '50%',
-    alignItems: 'center',
-    paddingVertical: Spacing.sm,
-  },
-  referralStatValue: {
-    fontSize: FontSize.xl,
-    fontWeight: FontWeight.bold,
-    color: Colors.text,
-  },
-  referralStatLabel: {
-    fontSize: FontSize.xs,
-    color: Colors.textSecondary,
-    marginTop: Spacing.xs,
-  },
-  referralsListSection: {
-    marginTop: Spacing.sm,
-  },
-  referralsListTitle: {
-    fontSize: FontSize.md,
-    fontWeight: FontWeight.semibold,
-    color: Colors.text,
-    marginBottom: Spacing.sm,
-  },
-  referralItem: {
-    marginBottom: Spacing.sm,
-  },
-  referralItemHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  referralItemInfo: {
-    flex: 1,
-    marginLeft: Spacing.sm,
-  },
-  referralItemName: {
-    fontSize: FontSize.md,
-    color: Colors.text,
-    fontWeight: FontWeight.medium,
-  },
-  referralItemDate: {
-    fontSize: FontSize.xs,
-    color: Colors.textSecondary,
-  },
-  referralStatusBadge: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.sm,
-  },
-  referralStatusText: {
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.medium,
-    textTransform: 'capitalize',
-  },
-  referralBonus: {
-    fontSize: FontSize.sm,
-    color: Colors.success,
-    marginTop: Spacing.sm,
-    textAlign: 'right',
-  },
-  emptyReferrals: {
-    alignItems: 'center',
-    padding: Spacing.xl,
-  },
-  emptyReferralsText: {
-    fontSize: FontSize.md,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    marginTop: Spacing.md,
   },
   // Credits section styles
   balanceDisplay: {
