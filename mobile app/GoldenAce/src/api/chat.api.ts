@@ -128,9 +128,12 @@ export const chatApi = {
         type: mimeType,
       } as unknown as Blob);
 
-      // Don't set Content-Type header - let axios set it with proper boundary
+      // Explicitly set Content-Type for React Native multipart uploads
       const response = await api.post(API_ENDPOINTS.CHAT.SEND_VOICE, formData, {
         timeout: 60000, // 60 seconds for voice upload
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       });
       console.log('[Chat API] Voice message sent successfully');
       return response as unknown as Message;

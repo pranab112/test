@@ -96,7 +96,13 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const shouldNotify = isFromOtherUser && isNotInActiveChat;
 
       if (shouldNotify) {
-        const senderName = data.sender?.full_name || data.sender?.username || 'Someone';
+        const senderName =
+          data.sender_full_name ||
+          data.sender_username ||
+          data.sender?.full_name ||
+          data.sender?.username ||
+          data.sender_name ||
+          'Someone';
         let notificationBody = '';
 
         if (data.message_type === 'credit_transfer') {
