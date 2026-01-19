@@ -10,9 +10,14 @@ export const gamesApi = {
   // Get all games (for browsing) - uses public endpoint, not admin
   getAllGames: async (): Promise<Game[]> => {
     try {
+      console.log('[Games API] Fetching all games from:', API_ENDPOINTS.GAMES.BASE);
       const response = await api.get<Game[]>(API_ENDPOINTS.GAMES.BASE);
-      return response as unknown as Game[];
+      console.log('[Games API] All games response:', JSON.stringify(response, null, 2));
+      const games = Array.isArray(response) ? response : [];
+      console.log('[Games API] Parsed all games:', games.length, 'items');
+      return games as Game[];
     } catch (error: unknown) {
+      console.error('[Games API] Error fetching all games:', error);
       const err = error as { response?: { status?: number }; error?: { code?: string } };
       if (err?.response?.status === 404 || err?.error?.code === 'NOT_FOUND') {
         return [];

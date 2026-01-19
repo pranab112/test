@@ -25,17 +25,21 @@ export default function ManageGamesScreen() {
 
   const loadData = async () => {
     try {
+      console.log('[Games Screen] Loading games data...');
       const [games, clientGames] = await Promise.all([
         gamesApi.getAllGames(),
         gamesApi.getClientGames(),
       ]);
-      setAllGames(games);
-      setMyGames(clientGames);
+      console.log('[Games Screen] All games received:', games?.length || 0);
+      console.log('[Games Screen] Client games received:', clientGames?.length || 0);
+      setAllGames(games || []);
+      setMyGames(clientGames || []);
       // Set initially selected game IDs
-      const initialSelected = clientGames.map((cg) => cg.game_id);
+      const initialSelected = (clientGames || []).map((cg) => cg.game_id);
       setSelectedGameIds(initialSelected);
+      console.log('[Games Screen] Data loaded successfully');
     } catch (error) {
-      console.error('Error loading games:', error);
+      console.error('[Games Screen] Error loading games:', error);
       Alert.alert('Error', 'Failed to load games');
     } finally {
       setLoading(false);
