@@ -35,11 +35,18 @@ def format_ticket_response(ticket: models.Ticket, db: Session, include_messages:
         models.TicketMessage.ticket_id == ticket.id
     ).count()
 
+    # Get first message as description (for mobile app compatibility)
+    first_message = db.query(models.TicketMessage).filter(
+        models.TicketMessage.ticket_id == ticket.id
+    ).order_by(models.TicketMessage.created_at.asc()).first()
+    description = first_message.content if first_message else ""
+
     response = {
         "id": ticket.id,
         "ticket_number": ticket.ticket_number,
         "user_id": ticket.user_id,
         "subject": ticket.subject,
+        "description": description,  # First message content for mobile app
         "category": ticket.category,
         "priority": ticket.priority,
         "status": ticket.status,

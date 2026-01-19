@@ -44,7 +44,7 @@ export interface TicketMessage {
 
 export interface CreateTicketData {
   subject: string;
-  description: string;
+  message: string;  // Backend expects 'message' not 'description'
   category: TicketCategory;
   priority?: TicketPriority;
 }
