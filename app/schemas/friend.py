@@ -24,3 +24,6 @@ class FriendRequestUpdate(BaseModel):
 
 class FriendsListResponse(BaseModel):
     friends: List[UserResponse]
+
+    class Config:
+        from_attributes = True

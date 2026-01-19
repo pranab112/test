@@ -123,6 +123,7 @@ async def get_user_profile(
             "user_id": user.user_id,
             "username": user.username,
             "full_name": user.full_name,
+            "profile_picture": user.profile_picture,
             "email": user.email if is_friend else None,  # Only show email to friends
             "user_type": user.user_type,
             "player_level": user.player_level,
@@ -202,6 +203,7 @@ async def get_user_profile(
             "user_id": user.user_id,
             "username": user.username,
             "full_name": user.full_name,
+            "profile_picture": user.profile_picture,
             "email": user.email if is_friend else None,  # Only show email to friends
             "user_type": user.user_type,
             "company_name": user.company_name,
