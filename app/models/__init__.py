@@ -37,6 +37,7 @@ from app.models.ticket import Ticket, TicketMessage
 from app.models.referral import Referral, REFERRAL_BONUS_CREDITS
 from app.models.bet_transaction import BetTransaction
 from app.models.community import CommunityPost, PostComment, PostLike, PostVisibility
+from app.models.crypto import AdminCryptoWallet, CreditPurchaseRequest, DEFAULT_CREDIT_RATES
 
 __all__ = [
     # Base
@@ -86,4 +87,7 @@ __all__ = [
     "PostComment",
     "PostLike",
     "PostVisibility",
+    "AdminCryptoWallet",
+    "CreditPurchaseRequest",
+    "DEFAULT_CREDIT_RATES",
 ]

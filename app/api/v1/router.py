@@ -26,7 +26,8 @@ from app.api.v1 import (
     tickets,
     referrals,
     community,
-    settings
+    settings,
+    crypto
 )
 
 # Create main API v1 router
@@ -56,3 +57,4 @@ api_router.include_router(tickets.router, tags=["support-tickets"])
 api_router.include_router(referrals.router, tags=["referrals"])
 api_router.include_router(community.router, tags=["community"])
 api_router.include_router(settings.router, tags=["settings"])
+api_router.include_router(crypto.router, tags=["crypto"])
