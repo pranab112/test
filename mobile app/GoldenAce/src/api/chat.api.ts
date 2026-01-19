@@ -109,8 +109,18 @@ export const chatApi = {
         'caf': 'audio/x-caf', // iOS Core Audio Format
         'aac': 'audio/aac',
         '3gp': 'audio/3gpp', // Android format
+        '3gpp': 'audio/3gpp', // Android format alternative
       };
       const mimeType = mimeTypes[extension] || 'audio/mp4';
+
+      console.log('[Chat API] Sending voice message:', {
+        receiverId,
+        filename,
+        extension,
+        mimeType,
+        duration,
+        uri: audioUri.substring(0, 50) + '...',
+      });
 
       formData.append('file', {
         uri: audioUri,
@@ -119,9 +129,14 @@ export const chatApi = {
       } as unknown as Blob);
 
       // Don't set Content-Type header - let axios set it with proper boundary
-      const response = await api.post(API_ENDPOINTS.CHAT.SEND_VOICE, formData);
+      const response = await api.post(API_ENDPOINTS.CHAT.SEND_VOICE, formData, {
+        timeout: 60000, // 60 seconds for voice upload
+      });
+      console.log('[Chat API] Voice message sent successfully');
       return response as unknown as Message;
-    } catch (error) {
+    } catch (error: any) {
+      console.error('[Chat API] sendVoiceMessage error:', error);
+      console.error('[Chat API] Error details:', JSON.stringify(error, null, 2));
       throw error;
     }
   },

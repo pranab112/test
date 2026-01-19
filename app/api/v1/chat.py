@@ -281,22 +281,32 @@ async def send_voice_message(
             detail="You can only send messages to friends"
         )
 
-    # Validate file type
-    allowed_types = ["audio/webm", "audio/mp4", "audio/mpeg", "audio/ogg", "audio/wav"]
+    # Validate file type - support various mobile recording formats
+    allowed_types = [
+        "audio/webm", "audio/mp4", "audio/mpeg", "audio/ogg", "audio/wav",
+        "audio/x-caf",   # iOS Core Audio Format
+        "audio/aac",     # AAC audio
+        "audio/3gpp",    # Android 3GP format
+        "audio/3gpp2",   # Android 3GP2 format
+        "audio/m4a",     # M4A audio
+        "audio/x-m4a",   # M4A audio (alternative MIME)
+        "application/octet-stream",  # Fallback for unknown types
+    ]
     if file.content_type not in allowed_types:
+        logger.warning(f"Voice message rejected - unsupported content type: {file.content_type}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid audio format"
+            detail=f"Invalid audio format: {file.content_type}. Supported: webm, mp4, mp3, ogg, wav, caf, aac, 3gp, m4a"
         )
 
     # Validate file size
     await validate_file_size(file, MAX_VOICE_SIZE, "Voice")
 
     # Sanitize filename - only allow safe extensions
-    allowed_extensions = ["webm", "mp4", "mp3", "ogg", "wav"]
-    file_extension = file.filename.split(".")[-1].lower() if "." in file.filename else "webm"
+    allowed_extensions = ["webm", "mp4", "mp3", "ogg", "wav", "caf", "aac", "3gp", "m4a"]
+    file_extension = file.filename.split(".")[-1].lower() if "." in file.filename else "m4a"
     if file_extension not in allowed_extensions:
-        file_extension = "webm"  # Default to webm
+        file_extension = "m4a"  # Default to m4a (most compatible)
     unique_filename = f"{uuid.uuid4()}.{file_extension}"
 
     file_url = None

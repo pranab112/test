@@ -277,20 +277,24 @@ export default function ChatScreen() {
   // Voice recording
   const startRecording = async () => {
     try {
+      console.log('[Voice] Requesting microphone permission...');
       const { status } = await Audio.requestPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission Required', 'Please allow access to your microphone.');
         return;
       }
+      console.log('[Voice] Permission granted');
 
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
       });
+      console.log('[Voice] Audio mode set for recording');
 
       const { recording: newRecording } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY
       );
+      console.log('[Voice] Recording started');
 
       setRecording(newRecording);
       setIsRecording(true);
@@ -300,8 +304,8 @@ export default function ChatScreen() {
         setRecordingDuration((prev) => prev + 1);
       }, 1000);
     } catch (error) {
-      console.error('Failed to start recording:', error);
-      Alert.alert('Error', 'Failed to start recording');
+      console.error('[Voice] Failed to start recording:', error);
+      Alert.alert('Error', 'Failed to start recording. Please check microphone permissions.');
     }
   };
 
@@ -316,17 +320,20 @@ export default function ChatScreen() {
     setIsRecording(false);
 
     try {
+      console.log('[Voice] Stopping recording...');
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
+      console.log('[Voice] Recording stopped, URI:', uri);
       setRecording(null);
 
       if (uri && friendId && recordingDuration >= 1) {
+        console.log('[Voice] Sending voice message, duration:', recordingDuration);
         await sendVoiceMessage(uri, recordingDuration);
       } else if (recordingDuration < 1) {
         Alert.alert('Too Short', 'Voice message must be at least 1 second');
       }
     } catch (error) {
-      console.error('Failed to stop recording:', error);
+      console.error('[Voice] Failed to stop recording:', error);
     }
 
     setRecordingDuration(0);
@@ -378,7 +385,11 @@ export default function ChatScreen() {
   // Audio playback
   const playAudio = async (audioUrl: string, messageId: number) => {
     try {
+      const fullUrl = getFileUrl(audioUrl);
+      console.log('[Voice Playback] Playing audio from:', fullUrl);
+
       if (sound) {
+        console.log('[Voice Playback] Unloading previous sound');
         await sound.unloadAsync();
       }
 
@@ -387,22 +398,26 @@ export default function ChatScreen() {
         playsInSilentModeIOS: true,
       });
 
+      console.log('[Voice Playback] Creating sound object...');
       const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri: getFileUrl(audioUrl) },
+        { uri: fullUrl },
         { shouldPlay: true }
       );
+      console.log('[Voice Playback] Sound created and playing');
 
       setSound(newSound);
       setPlayingAudio(messageId);
 
       newSound.setOnPlaybackStatusUpdate((status) => {
         if (status.isLoaded && status.didJustFinish) {
+          console.log('[Voice Playback] Playback finished');
           setPlayingAudio(null);
         }
       });
-    } catch (error) {
-      console.error('Error playing audio:', error);
-      Alert.alert('Error', 'Failed to play voice message');
+    } catch (error: any) {
+      console.error('[Voice Playback] Error playing audio:', error);
+      console.error('[Voice Playback] Error details:', JSON.stringify(error, null, 2));
+      Alert.alert('Error', 'Failed to play voice message. The audio file may be unavailable.');
     }
   };
 
