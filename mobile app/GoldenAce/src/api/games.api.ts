@@ -37,9 +37,20 @@ export const gamesApi = {
       console.log('[Games API] Parsed games:', games.length, 'items');
       return games;
     } catch (error: unknown) {
-      const err = error as { response?: { status?: number }; error?: { code?: string } };
-      console.error('[Games API] Error fetching client games:', error);
-      if (err?.response?.status === 404 || err?.error?.code === 'NOT_FOUND') {
+      const err = error as { response?: { status?: number }; error?: { code?: string; message?: string } };
+      console.error('[Games API] Error fetching client games:', JSON.stringify(error, null, 2));
+
+      // Return empty array for expected error cases:
+      // - 404: No games found
+      // - 403: User not a client (shouldn't happen on client screen, but handle gracefully)
+      // - 401: Auth issue (will be handled by interceptor redirect)
+      if (
+        err?.response?.status === 404 ||
+        err?.response?.status === 403 ||
+        err?.error?.code === 'NOT_FOUND' ||
+        err?.error?.code === 'HTTP_403'
+      ) {
+        console.log('[Games API] Returning empty array for status:', err?.response?.status || err?.error?.code);
         return [];
       }
       throw error;

@@ -38,9 +38,18 @@ export default function ManageGamesScreen() {
       const initialSelected = (clientGames || []).map((cg) => cg.game_id);
       setSelectedGameIds(initialSelected);
       console.log('[Games Screen] Data loaded successfully');
-    } catch (error) {
-      console.error('[Games Screen] Error loading games:', error);
-      Alert.alert('Error', 'Failed to load games');
+    } catch (error: any) {
+      console.error('[Games Screen] Error loading games:', JSON.stringify(error, null, 2));
+      // Extract meaningful error message
+      let errorMsg = 'Failed to load games. Please try again.';
+      if (error?.error?.message) {
+        errorMsg = error.error.message;
+      } else if (error?.detail) {
+        errorMsg = error.detail;
+      } else if (error?.message) {
+        errorMsg = error.message;
+      }
+      Alert.alert('Error', errorMsg);
     } finally {
       setLoading(false);
       setRefreshing(false);
