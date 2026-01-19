@@ -4,7 +4,7 @@ import {
   MdDashboard, MdPeople, MdSettings, MdMessage,
   MdCheckCircle, MdFlag, MdStar, MdCardGiftcard,
   MdBroadcastOnPersonal, MdGroup, MdVideogameAsset, MdSupport,
-  MdForum, MdCampaign
+  MdForum, MdCampaign, MdAccountBalanceWallet
 } from 'react-icons/md';
 import { FiLogOut, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { FaUsers, FaGamepad, FaChartLine, FaGift } from 'react-icons/fa';
@@ -74,6 +74,7 @@ export function Sidebar({ activeSection, onSectionChange, isMobile = false }: Si
         { id: 'overview', label: 'Overview', icon: MdDashboard },
         { id: 'users', label: 'Users', icon: FaUsers },
         { id: 'games', label: 'Game Library', icon: MdVideogameAsset },
+        { id: 'crypto', label: 'Crypto Payments', icon: MdAccountBalanceWallet },
         { id: 'approvals', label: 'Approvals', icon: MdCheckCircle },
         { id: 'messages', label: 'Messages', icon: MdMessage },
         { id: 'tickets', label: 'Support Tickets', icon: MdSupport },

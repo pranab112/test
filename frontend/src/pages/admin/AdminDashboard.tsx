@@ -11,6 +11,7 @@ import { ReportsSection } from '@/components/admin/ReportsSection';
 import { ReviewsSection } from '@/components/admin/ReviewsSection';
 import { OffersSection } from '@/components/admin/OffersSection';
 import { BroadcastSection } from '@/components/admin/BroadcastSection';
+import { CryptoSection } from '@/components/admin/CryptoSection';
 
 const STORAGE_KEY = 'admin_active_section';
 
@@ -31,6 +32,8 @@ export default function AdminDashboard() {
         return <UsersSection />;
       case 'games':
         return <GamesSection />;
+      case 'crypto':
+        return <CryptoSection />;
       case 'approvals':
         return <ApprovalsSection />;
       case 'messages':
