@@ -91,7 +91,7 @@ export default function SupportScreen() {
     try {
       await ticketsApi.createTicket({
         subject: newTicketSubject.trim(),
-        description: newTicketDescription.trim(),
+        message: newTicketDescription.trim(),  // Backend expects 'message'
         category: selectedCategory,
       });
       Alert.alert('Success', 'Support ticket created successfully');
