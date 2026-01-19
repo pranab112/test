@@ -11,7 +11,6 @@ import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { chatApi } from '../../src/api/chat.api';
 import { useChat } from '../../src/contexts/ChatContext';
-import { useWebSocket } from '../../src/contexts/WebSocketContext';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { Card, Avatar, Badge, Loading, EmptyState } from '../../src/components/ui';
 import { Colors, FontSize, FontWeight, Spacing } from '../../src/constants/theme';
@@ -21,8 +20,7 @@ export default function ClientMessagesScreen() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const { refreshUnreadCount } = useChat();
-  const { newMessage, clearNewMessage } = useWebSocket();
+  const { refreshUnreadCount, subscribeToConversationUpdates } = useChat();
   const { user } = useAuth();
 
   const loadConversations = async () => {
@@ -50,15 +48,46 @@ export default function ClientMessagesScreen() {
     }
   }, [user]);
 
-  // Listen for new messages via WebSocket and refresh the list
+  // Subscribe to real-time conversation updates via WebSocket
   useEffect(() => {
-    if (newMessage) {
-      // Reload conversations to get updated last message and unread counts
-      loadConversations();
+    if (!user) return;
+
+    const unsubscribe = subscribeToConversationUpdates((update) => {
+      // Update the conversations list with the new data
+      setConversations((prevConversations) => {
+        const existingIndex = prevConversations.findIndex(
+          (conv) => conv.friend.id === update.friend_id
+        );
+
+        if (existingIndex >= 0) {
+          // Update existing conversation
+          const updated = [...prevConversations];
+          updated[existingIndex] = {
+            ...updated[existingIndex],
+            last_message: update.last_message ? {
+              id: update.last_message.id,
+              content: update.last_message.content,
+              message_type: update.last_message.message_type as any,
+              created_at: update.last_message.created_at,
+              sender_id: update.last_message.sender_id,
+            } : updated[existingIndex].last_message,
+            unread_count: update.unread_count ?? updated[existingIndex].unread_count,
+          };
+          // Move to top of list (most recent conversation)
+          const [movedItem] = updated.splice(existingIndex, 1);
+          updated.unshift(movedItem);
+          return updated;
+        } else {
+          // New conversation - reload the full list to get friend details
+          loadConversations();
+          return prevConversations;
+        }
+      });
       refreshUnreadCount();
-      clearNewMessage();
-    }
-  }, [newMessage, clearNewMessage, refreshUnreadCount]);
+    });
+
+    return () => unsubscribe();
+  }, [user, subscribeToConversationUpdates, refreshUnreadCount]);
 
   // Refresh when screen is focused
   useFocusEffect(

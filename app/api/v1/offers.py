@@ -1,12 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 from typing import List, Optional
 from app import models, schemas, auth
 from app.database import get_db
 from app.models import UserType, OfferStatus, OfferClaimStatus, OfferType, MessageType
+from app.websocket import send_credit_update
 from datetime import datetime, timezone
 from decimal import Decimal, ROUND_DOWN
+import asyncio
 
 router = APIRouter(prefix="/offers", tags=["offers"])
 
@@ -492,6 +494,7 @@ def claim_offer(
 @router.post("/transfer-credits")
 def transfer_credits_to_client(
     transfer_data: schemas.CreditTransfer,
+    background_tasks: BackgroundTasks,
     player: models.User = Depends(get_player_user),
     db: Session = Depends(get_db)
 ):
@@ -559,6 +562,23 @@ def transfer_credits_to_client(
     db.add(client_message)
 
     db.commit()
+
+    # Send real-time credit updates via WebSocket
+    player_id = player.id
+    client_id = client.id
+    player_balance = player.credits
+    client_balance = client.credits
+
+    def send_updates():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(send_credit_update(player_id, player_balance, -credits_amount, "transfer_sent"))
+            loop.run_until_complete(send_credit_update(client_id, client_balance, credits_amount, "transfer_received"))
+        finally:
+            loop.close()
+
+    background_tasks.add_task(send_updates)
 
     return {
         "message": "Transfer successful",

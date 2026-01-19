@@ -63,6 +63,12 @@ class WSMessageType(str, Enum):
     FRIEND_REQUEST = "friend_request"
     FRIEND_ACCEPTED = "friend_accepted"
 
+    # Credits
+    CREDIT_UPDATE = "credit:update"
+
+    # Conversations
+    CONVERSATION_UPDATE = "conversation:update"
+
 
 @dataclass
 class WSMessage:
@@ -521,6 +527,31 @@ async def handle_message(user: models.User, message_data: dict, db: Session):
         }
     ))
 
+    # Send conversation update to receiver for their conversation list
+    # Count unread messages from the sender
+    unread_count = db.query(models.Message).filter(
+        models.Message.sender_id == user.id,
+        models.Message.receiver_id == receiver_id,
+        models.Message.is_read == False
+    ).count()
+
+    await manager.send_to_user(receiver_id, WSMessage(
+        type=WSMessageType.CONVERSATION_UPDATE,
+        data={
+            "friend_id": user.id,
+            "friend_name": user.username,
+            "friend_avatar": user.profile_picture,
+            "last_message": {
+                "id": db_message.id,
+                "content": content,
+                "message_type": message_type,
+                "created_at": db_message.created_at.isoformat(),
+                "sender_id": user.id
+            },
+            "unread_count": unread_count
+        }
+    ))
+
     return db_message
 
 
@@ -729,5 +760,47 @@ async def send_friend_accepted_notification(to_user_id: int, friend: models.User
             "friend_username": friend.username,
             "friend_user_type": friend.user_type.value,
             "friend_profile_picture": friend.profile_picture
+        }
+    ))
+
+
+async def send_credit_update(user_id: int, new_balance: int, change_amount: int, reason: str = None):
+    """
+    Send credit balance update to a user via WebSocket.
+
+    Args:
+        user_id: The user whose balance changed
+        new_balance: The new credit balance
+        change_amount: The amount that changed (positive for add, negative for deduct)
+        reason: Optional reason for the change (e.g., 'promotion_claim', 'transfer', 'admin')
+    """
+    await manager.send_to_user(user_id, WSMessage(
+        type=WSMessageType.CREDIT_UPDATE,
+        data={
+            "credits": new_balance,
+            "change_amount": change_amount,
+            "reason": reason,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    ))
+
+
+async def send_conversation_update(user_id: int, friend_id: int, last_message: dict, unread_count: int = 0):
+    """
+    Send conversation list update to a user via WebSocket.
+
+    Args:
+        user_id: The user to notify
+        friend_id: The friend in the conversation
+        last_message: The last message data
+        unread_count: Number of unread messages
+    """
+    await manager.send_to_user(user_id, WSMessage(
+        type=WSMessageType.CONVERSATION_UPDATE,
+        data={
+            "friend_id": friend_id,
+            "last_message": last_message,
+            "unread_count": unread_count,
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
     ))

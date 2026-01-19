@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authApi } from '../api/auth.api';
 import { tokenStorage, userStorage, clearAllStorage } from '../services/storage';
+import { websocketService, WS_EVENTS } from '../services/websocket';
 import { type User, UserType, type LoginRequest, type RegisterRequest } from '../types';
 
 interface AuthContextType {
@@ -53,6 +54,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     loadUser();
   }, [loadUser]);
+
+  // Listen for real-time credit updates via WebSocket
+  useEffect(() => {
+    if (!user) return;
+
+    const unsubscribe = websocketService.on(WS_EVENTS.CREDIT_UPDATE, (data) => {
+      console.log('[AuthContext] Credit update received:', data);
+      if (data && typeof data.credits === 'number') {
+        setUser((prevUser) => {
+          if (!prevUser) return prevUser;
+          return {
+            ...prevUser,
+            credits: data.credits,
+          };
+        });
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [user?.id]);
 
   const login = async (credentials: LoginRequest, fromRegister = false) => {
     // Prevent concurrent auth operations

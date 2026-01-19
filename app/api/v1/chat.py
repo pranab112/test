@@ -18,6 +18,33 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
+
+async def send_conversation_update(sender: models.User, receiver_id: int, message: models.Message, db: Session):
+    """Send conversation update notification to receiver for their conversation list"""
+    # Count unread messages from the sender to receiver
+    unread_count = db.query(models.Message).filter(
+        models.Message.sender_id == sender.id,
+        models.Message.receiver_id == receiver_id,
+        models.Message.is_read == False
+    ).count()
+
+    await manager.send_to_user(receiver_id, WSMessage(
+        type=WSMessageType.CONVERSATION_UPDATE,
+        data={
+            "friend_id": sender.id,
+            "friend_name": sender.username,
+            "friend_avatar": sender.profile_picture,
+            "last_message": {
+                "id": message.id,
+                "content": message.content,
+                "message_type": message.message_type.value,
+                "created_at": message.created_at.isoformat(),
+                "sender_id": sender.id
+            },
+            "unread_count": unread_count
+        }
+    ))
+
 # Create uploads directory if it doesn't exist
 UPLOAD_DIR = "uploads"
 os.makedirs(f"{UPLOAD_DIR}/images", exist_ok=True)
@@ -111,6 +138,9 @@ async def send_text_message(
             "room_id": f"dm-{min(current_user.id, receiver_id)}-{max(current_user.id, receiver_id)}"
         }
     ))
+
+    # Send conversation update for the conversation list
+    await send_conversation_update(current_user, receiver_id, message, db)
 
     return message
 
@@ -214,6 +244,9 @@ async def send_image_message(
             "room_id": f"dm-{min(current_user.id, receiver_id)}-{max(current_user.id, receiver_id)}"
         }
     ))
+
+    # Send conversation update for the conversation list
+    await send_conversation_update(current_user, receiver_id, message, db)
 
     return message
 
@@ -330,6 +363,9 @@ async def send_voice_message(
             "room_id": f"dm-{min(current_user.id, receiver_id)}-{max(current_user.id, receiver_id)}"
         }
     ))
+
+    # Send conversation update for the conversation list
+    await send_conversation_update(current_user, receiver_id, message, db)
 
     return message
 

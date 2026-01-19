@@ -7,7 +7,7 @@ import json
 from app import models, schemas, auth
 from app.database import get_db
 from app.models import UserType, PromotionStatus, PromotionType, ClaimStatus, MessageType
-from app.websocket import manager, WSMessage, WSMessageType
+from app.websocket import manager, WSMessage, WSMessageType, send_credit_update
 
 router = APIRouter(prefix="/promotions", tags=["promotions"])
 
@@ -772,6 +772,10 @@ async def approve_promotion_claim(
             "message": f"Your claim for '{promotion.title}' has been approved!"
         }
     ))
+
+    # Send real-time credit updates to both client and player
+    await send_credit_update(current_user.id, current_user.credits, -claim.claimed_value, "promotion_given")
+    await send_credit_update(player.id, player.credits, claim.claimed_value, "promotion_received")
 
     return {
         "success": True,

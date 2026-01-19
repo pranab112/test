@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, Request, UploadFile, File, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
@@ -7,11 +7,13 @@ import string
 import os
 import uuid
 import shutil
+import asyncio
 from app import models, schemas, auth
 from app.database import get_db
 from app.models import UserType, ReferralStatus, REFERRAL_BONUS_CREDITS
 from app.services import send_referral_bonus_email
 from app.s3_storage import s3_storage
+from app.websocket import send_credit_update
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_, or_
 import logging
@@ -779,6 +781,7 @@ def reset_user_password(
 def add_credits_to_user(
     user_id: int,
     amount: int,
+    background_tasks: BackgroundTasks,
     reason: Optional[str] = None,
     admin: models.User = Depends(get_admin_user),
     db: Session = Depends(get_db)
@@ -833,6 +836,20 @@ def add_credits_to_user(
 
     db.commit()
     db.refresh(user)
+
+    # Send real-time credit update via WebSocket
+    target_user_id = user.id
+    final_balance = new_credits
+
+    def send_ws_update():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(send_credit_update(target_user_id, final_balance, amount, "admin_adjustment"))
+        finally:
+            loop.close()
+
+    background_tasks.add_task(send_ws_update)
 
     return {
         "message": f"Successfully {'added' if amount > 0 else 'deducted'} {abs_amount} credits {'to' if amount > 0 else 'from'} {user.username}",
