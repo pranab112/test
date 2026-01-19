@@ -262,6 +262,69 @@ export default function ClientDashboardScreen() {
           ))}
         </View>
       )}
+
+      {/* Coming Soon Features */}
+      <View style={styles.comingSoonSection}>
+        <View style={styles.comingSoonHeader}>
+          <View style={styles.comingSoonBadge}>
+            <Ionicons name="sparkles" size={20} color="#fff" />
+          </View>
+          <View>
+            <Text style={styles.comingSoonTitle}>Coming Soon</Text>
+            <Text style={styles.comingSoonSubtitle}>Exciting features in v2.0</Text>
+          </View>
+        </View>
+
+        <View style={styles.featuresGrid}>
+          {/* AI Chat */}
+          <View style={styles.featureCard}>
+            <View style={[styles.featureIcon, { backgroundColor: '#8B5CF620' }]}>
+              <Ionicons name="chatbubble-ellipses" size={24} color="#8B5CF6" />
+            </View>
+            <Text style={styles.featureTitle}>AI Chat</Text>
+            <Text style={styles.featureDesc}>24/7 AI support for players</Text>
+            <View style={[styles.featureTag, { backgroundColor: '#8B5CF620' }]}>
+              <Text style={[styles.featureTagText, { color: '#8B5CF6' }]}>v2.0</Text>
+            </View>
+          </View>
+
+          {/* Auto Gamepoint */}
+          <View style={styles.featureCard}>
+            <View style={[styles.featureIcon, { backgroundColor: '#10B98120' }]}>
+              <Ionicons name="refresh-circle" size={24} color="#10B981" />
+            </View>
+            <Text style={styles.featureTitle}>Auto Loadout</Text>
+            <Text style={styles.featureDesc}>Auto gamepoint on deposit</Text>
+            <View style={[styles.featureTag, { backgroundColor: '#10B98120' }]}>
+              <Text style={[styles.featureTagText, { color: '#10B981' }]}>v2.0</Text>
+            </View>
+          </View>
+
+          {/* Payment Verification */}
+          <View style={styles.featureCard}>
+            <View style={[styles.featureIcon, { backgroundColor: '#3B82F620' }]}>
+              <Ionicons name="shield-checkmark" size={24} color="#3B82F6" />
+            </View>
+            <Text style={styles.featureTitle}>Pay Verify</Text>
+            <Text style={styles.featureDesc}>Auto payment validation</Text>
+            <View style={[styles.featureTag, { backgroundColor: '#3B82F620' }]}>
+              <Text style={[styles.featureTagText, { color: '#3B82F6' }]}>v2.0</Text>
+            </View>
+          </View>
+
+          {/* SMS Notification */}
+          <View style={styles.featureCard}>
+            <View style={[styles.featureIcon, { backgroundColor: '#F5990020' }]}>
+              <Ionicons name="chatbox" size={24} color="#F59E0B" />
+            </View>
+            <Text style={styles.featureTitle}>SMS Alerts</Text>
+            <Text style={styles.featureDesc}>Instant SMS notifications</Text>
+            <View style={[styles.featureTag, { backgroundColor: '#F5990020' }]}>
+              <Text style={[styles.featureTagText, { color: '#F59E0B' }]}>v2.0</Text>
+            </View>
+          </View>
+        </View>
+      </View>
       </ScrollView>
     </View>
   );
@@ -420,5 +483,80 @@ const styles = StyleSheet.create({
   levelText: {
     fontSize: FontSize.sm,
     color: Colors.textSecondary,
+  },
+  // Coming Soon Styles
+  comingSoonSection: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.lg,
+    borderWidth: 1,
+    borderColor: '#8B5CF640',
+  },
+  comingSoonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+    gap: Spacing.sm,
+  },
+  comingSoonBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#8B5CF6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  comingSoonTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
+    color: '#8B5CF6',
+  },
+  comingSoonSubtitle: {
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+  },
+  featuresGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -Spacing.xs,
+  },
+  featureCard: {
+    width: '48%',
+    backgroundColor: Colors.background,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.sm,
+    margin: '1%',
+    alignItems: 'center',
+  },
+  featureIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.xs,
+  },
+  featureTitle: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
+    color: Colors.text,
+    textAlign: 'center',
+  },
+  featureDesc: {
+    fontSize: FontSize.xs,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  featureTag: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+    marginTop: Spacing.xs,
+  },
+  featureTagText: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.medium,
   },
 });
