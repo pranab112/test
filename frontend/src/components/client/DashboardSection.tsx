@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { StatCard } from '@/components/common/StatCard';
 import toast from 'react-hot-toast';
 import {
-  MdPeople, MdCardGiftcard, MdGroup, MdAttachMoney
+  MdPeople, MdCardGiftcard, MdGroup, MdAttachMoney,
+  MdSmartToy, MdAutorenew, MdVerified, MdSms
 } from 'react-icons/md';
 import { FaChartLine, FaUserPlus } from 'react-icons/fa';
 import { clientApi, type PlayerStats, type ActivityItem } from '@/api/endpoints';
@@ -167,6 +168,99 @@ export function DashboardSection({ onNavigate }: DashboardSectionProps) {
               Create Promotion
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Coming Soon Features */}
+      <div className="bg-gradient-to-r from-dark-200 to-dark-300 border-2 border-purple-700 rounded-lg p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center">
+            <span className="text-white text-lg">*</span>
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-purple-400">Coming Soon</h2>
+            <p className="text-gray-400 text-sm">Exciting features in our next update</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* AI Chat with Player */}
+          <div className="bg-dark-400/50 border border-purple-700/50 rounded-lg p-4 hover:border-purple-500 transition-all">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                <MdSmartToy className="text-2xl text-white" />
+              </div>
+              <div>
+                <h3 className="text-white font-semibold mb-1">AI Chat with Players</h3>
+                <p className="text-gray-400 text-sm">
+                  Intelligent AI assistant to handle player queries 24/7, provide support, and enhance engagement automatically.
+                </p>
+                <span className="inline-block mt-2 text-xs bg-purple-900/50 text-purple-300 px-2 py-1 rounded-full">
+                  Coming in v2.0
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Auto Gamepoint Loadout */}
+          <div className="bg-dark-400/50 border border-purple-700/50 rounded-lg p-4 hover:border-purple-500 transition-all">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                <MdAutorenew className="text-2xl text-white" />
+              </div>
+              <div>
+                <h3 className="text-white font-semibold mb-1">Auto Gamepoint Loadout</h3>
+                <p className="text-gray-400 text-sm">
+                  Automatically load gamepoints to players based on their deposits. No manual intervention required.
+                </p>
+                <span className="inline-block mt-2 text-xs bg-emerald-900/50 text-emerald-300 px-2 py-1 rounded-full">
+                  Coming in v2.0
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Payment Verification */}
+          <div className="bg-dark-400/50 border border-purple-700/50 rounded-lg p-4 hover:border-purple-500 transition-all">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                <MdVerified className="text-2xl text-white" />
+              </div>
+              <div>
+                <h3 className="text-white font-semibold mb-1">Payment Verification</h3>
+                <p className="text-gray-400 text-sm">
+                  Automatic payment verification system to validate player deposits and prevent fraud instantly.
+                </p>
+                <span className="inline-block mt-2 text-xs bg-blue-900/50 text-blue-300 px-2 py-1 rounded-full">
+                  Coming in v2.0
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* SMS Notification */}
+          <div className="bg-dark-400/50 border border-purple-700/50 rounded-lg p-4 hover:border-purple-500 transition-all">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-orange-600 to-yellow-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                <MdSms className="text-2xl text-white" />
+              </div>
+              <div>
+                <h3 className="text-white font-semibold mb-1">SMS Notifications</h3>
+                <p className="text-gray-400 text-sm">
+                  Send instant SMS alerts to players for deposits, withdrawals, promotions, and important updates.
+                </p>
+                <span className="inline-block mt-2 text-xs bg-orange-900/50 text-orange-300 px-2 py-1 rounded-full">
+                  Coming in v2.0
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 text-center">
+          <p className="text-gray-500 text-sm">
+            Stay tuned for these powerful features to supercharge your platform!
+          </p>
         </div>
       </div>
     </div>
