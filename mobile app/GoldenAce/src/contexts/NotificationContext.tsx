@@ -153,8 +153,22 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         }
         break;
       case 'friend_request':
-        // Navigate to friends screen
-        router.push('/(player)/friends');
+        // Navigate to friends screen (based on user type)
+        if (user?.user_type === 'client') {
+          router.push('/(client)/friends');
+        } else {
+          router.push('/(player)/friends');
+        }
+        break;
+      case 'friend_accepted':
+        // Navigate to profile of the person who accepted
+        if (data?.accepter_id) {
+          router.push(`/profile/${data.accepter_id}`);
+        } else if (user?.user_type === 'client') {
+          router.push('/(client)/friends');
+        } else {
+          router.push('/(player)/friends');
+        }
         break;
       case 'promotion':
         // Navigate to promotions
@@ -273,6 +287,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       case 'message':
         return settings.messages;
       case 'friend_request':
+      case 'friend_accepted':
         return settings.friend_requests;
       case 'promotion':
       case 'claim':

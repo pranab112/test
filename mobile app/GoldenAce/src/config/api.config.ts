@@ -63,7 +63,7 @@ export const API_ENDPOINTS = {
     SEND: '/friends/send',
     ACCEPT: '/friends/accept',
     REJECT: '/friends/reject',
-    REMOVE: '/friends/remove',
+    REMOVE: '/friends',  // DELETE /friends/{friendId}
     SEARCH: '/friends/search',
   },
   CHAT: {

@@ -8,6 +8,7 @@ from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from app import models
 from app.models.push_token import DevicePlatform
+from app.database import SessionLocal
 
 logger = logging.getLogger(__name__)
 
@@ -344,3 +345,93 @@ async def send_claim_notification(
         )
 
     return True
+
+
+async def send_friend_request_notification(
+    receiver_id: int,
+    sender_id: int,
+    sender_name: str,
+    sender_username: str,
+    sender_type: str,  # "player" or "client"
+) -> bool:
+    """
+    Send push notification when someone sends a friend request.
+    Creates its own database session for use in background tasks.
+    """
+    db = SessionLocal()
+    try:
+        tokens = db.query(models.PushToken.token).filter(
+            models.PushToken.user_id == receiver_id,
+            models.PushToken.is_active == True
+        ).all()
+
+        if not tokens:
+            return False
+
+        display_name = sender_name or sender_username
+        sender_label = "Client" if sender_type == "client" else "Player"
+
+        for (token,) in tokens:
+            await push_service.send_notification(
+                token=token,
+                title="New Friend Request",
+                body=f"{display_name} ({sender_label}) wants to connect with you",
+                data={
+                    "sender_id": sender_id,
+                    "sender_name": display_name,
+                    "sender_username": sender_username,
+                    "sender_type": sender_type,
+                    "action": "view_friend_requests",
+                },
+                category="friend_request",
+                channel_id="friends",
+            )
+
+        return True
+    finally:
+        db.close()
+
+
+async def send_friend_request_accepted_notification(
+    sender_id: int,
+    accepter_id: int,
+    accepter_name: str,
+    accepter_username: str,
+    accepter_type: str,  # "player" or "client"
+) -> bool:
+    """
+    Send push notification when a friend request is accepted.
+    Creates its own database session for use in background tasks.
+    """
+    db = SessionLocal()
+    try:
+        tokens = db.query(models.PushToken.token).filter(
+            models.PushToken.user_id == sender_id,
+            models.PushToken.is_active == True
+        ).all()
+
+        if not tokens:
+            return False
+
+        display_name = accepter_name or accepter_username
+        accepter_label = "Client" if accepter_type == "client" else "Player"
+
+        for (token,) in tokens:
+            await push_service.send_notification(
+                token=token,
+                title="Friend Request Accepted!",
+                body=f"{display_name} ({accepter_label}) accepted your friend request",
+                data={
+                    "accepter_id": accepter_id,
+                    "accepter_name": display_name,
+                    "accepter_username": accepter_username,
+                    "accepter_type": accepter_type,
+                    "action": "view_profile",
+                },
+                category="friend_accepted",
+                channel_id="friends",
+            )
+
+        return True
+    finally:
+        db.close()

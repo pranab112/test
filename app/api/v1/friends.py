@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import List, Optional
@@ -6,6 +6,10 @@ from app import models, schemas, auth
 from app.database import get_db
 from app.rate_limit import conditional_rate_limit, RateLimits
 from app.models.enums import UserType
+from app.services.push_notification_service import (
+    send_friend_request_notification,
+    send_friend_request_accepted_notification,
+)
 
 router = APIRouter(prefix="/friends", tags=["friends"])
 
@@ -135,6 +139,7 @@ async def search_user_by_unique_id(
 @conditional_rate_limit(RateLimits.FRIEND_REQUEST)
 async def send_friend_request_by_id(
     request: Request,
+    background_tasks: BackgroundTasks,
     user_id: int,
     current_user: models.User = Depends(auth.get_current_active_user),
     db: Session = Depends(get_db)
@@ -170,12 +175,23 @@ async def send_friend_request_by_id(
     db.add(friend_request)
     db.commit()
 
+    # Send push notification to receiver
+    background_tasks.add_task(
+        send_friend_request_notification,
+        receiver_id=receiver.id,
+        sender_id=current_user.id,
+        sender_name=current_user.full_name,
+        sender_username=current_user.username,
+        sender_type=current_user.user_type.value,
+    )
+
     return {"message": "Friend request sent successfully"}
 
 
 @router.post("/accept/{request_id}")
 async def accept_friend_request(
     request_id: int,
+    background_tasks: BackgroundTasks,
     current_user: models.User = Depends(auth.get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -197,6 +213,16 @@ async def accept_friend_request(
     sender.friends.append(current_user)
 
     db.commit()
+
+    # Send push notification to the original sender that request was accepted
+    background_tasks.add_task(
+        send_friend_request_accepted_notification,
+        sender_id=sender.id,
+        accepter_id=current_user.id,
+        accepter_name=current_user.full_name,
+        accepter_username=current_user.username,
+        accepter_type=current_user.user_type.value,
+    )
 
     return {"message": "Friend request accepted"}
 
@@ -229,6 +255,7 @@ async def reject_friend_request(
 @conditional_rate_limit(RateLimits.FRIEND_REQUEST)
 async def send_friend_request(
     http_request: Request,
+    background_tasks: BackgroundTasks,
     request: schemas.FriendRequestCreate,
     current_user: models.User = Depends(auth.get_current_active_user),
     db: Session = Depends(get_db)
@@ -268,6 +295,16 @@ async def send_friend_request(
     db.add(friend_request)
     db.commit()
     db.refresh(friend_request)
+
+    # Send push notification to receiver
+    background_tasks.add_task(
+        send_friend_request_notification,
+        receiver_id=receiver.id,
+        sender_id=current_user.id,
+        sender_name=current_user.full_name,
+        sender_username=current_user.username,
+        sender_type=current_user.user_type.value,
+    )
 
     return friend_request
 
@@ -352,6 +389,7 @@ async def get_received_friend_requests(
 async def update_friend_request(
     request_id: int,
     update: schemas.FriendRequestUpdate,
+    background_tasks: BackgroundTasks,
     current_user: models.User = Depends(auth.get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -373,6 +411,16 @@ async def update_friend_request(
         sender = db.query(models.User).filter(models.User.id == friend_request.sender_id).first()
         current_user.friends.append(sender)
         sender.friends.append(current_user)
+
+        # Send push notification to the original sender that request was accepted
+        background_tasks.add_task(
+            send_friend_request_accepted_notification,
+            sender_id=sender.id,
+            accepter_id=current_user.id,
+            accepter_name=current_user.full_name,
+            accepter_username=current_user.username,
+            accepter_type=current_user.user_type.value,
+        )
 
     db.commit()
     db.refresh(friend_request)

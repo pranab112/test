@@ -28,10 +28,18 @@ export const reportsApi = {
   },
 
   // Get reports for a specific user (reports made against them)
-  getUserReports: async (userId: number): Promise<Report[]> => {
+  getUserReports: async (userId: number): Promise<{
+    total_reports: number;
+    my_report: Report | null;
+    can_report: boolean;
+  }> => {
     try {
       const response = await api.get(`/reports/user/${userId}`);
-      return response as unknown as Report[];
+      return response as unknown as {
+        total_reports: number;
+        my_report: Report | null;
+        can_report: boolean;
+      };
     } catch (error) {
       throw error;
     }

@@ -10,6 +10,8 @@ import {
   Modal,
   ScrollView,
   TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { promotionsApi, Promotion, PromotionClaim, CreatePromotionData } from '../../src/api/promotions.api';
@@ -393,7 +395,10 @@ export default function ClientPromotionsScreen() {
         resetForm();
       }}
     >
-      <View style={styles.modalOverlay}>
+      <KeyboardAvoidingView
+        style={styles.modalOverlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>
@@ -414,7 +419,7 @@ export default function ClientPromotionsScreen() {
             </TouchableOpacity>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false}>
+          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <Input
               label="Promotion Title *"
               placeholder="Enter title..."
@@ -549,7 +554,7 @@ export default function ClientPromotionsScreen() {
             </View>
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 

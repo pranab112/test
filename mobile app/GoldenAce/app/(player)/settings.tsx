@@ -12,10 +12,12 @@ import {
   Share,
   FlatList,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useNotifications } from '../../src/contexts/NotificationContext';
 import { settingsApi } from '../../src/api/settings.api';
@@ -66,6 +68,90 @@ export default function PlayerSettingsScreen() {
   const [clients, setClients] = useState<Friend[]>([]);
   const [loadingClients, setLoadingClients] = useState(false);
   const [transferring, setTransferring] = useState(false);
+
+  // Profile picture
+  const [uploadingPicture, setUploadingPicture] = useState(false);
+
+  const handlePickProfilePicture = async () => {
+    Alert.alert(
+      'Change Profile Picture',
+      'Choose an option',
+      [
+        {
+          text: 'Take Photo',
+          onPress: async () => {
+            const { status } = await ImagePicker.requestCameraPermissionsAsync();
+            if (status !== 'granted') {
+              Alert.alert('Permission Denied', 'Camera permission is required to take photos');
+              return;
+            }
+            const result = await ImagePicker.launchCameraAsync({
+              mediaTypes: ['images'],
+              allowsEditing: true,
+              aspect: [1, 1],
+              quality: 0.8,
+            });
+            if (!result.canceled && result.assets[0]) {
+              await uploadProfilePicture(result.assets[0].uri);
+            }
+          },
+        },
+        {
+          text: 'Choose from Gallery',
+          onPress: async () => {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+              Alert.alert('Permission Denied', 'Gallery permission is required to select photos');
+              return;
+            }
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ['images'],
+              allowsEditing: true,
+              aspect: [1, 1],
+              quality: 0.8,
+            });
+            if (!result.canceled && result.assets[0]) {
+              await uploadProfilePicture(result.assets[0].uri);
+            }
+          },
+        },
+        {
+          text: 'Remove Photo',
+          style: 'destructive',
+          onPress: async () => {
+            if (!user?.profile_picture) {
+              Alert.alert('Info', 'No profile picture to remove');
+              return;
+            }
+            setUploadingPicture(true);
+            try {
+              await settingsApi.deleteProfilePicture();
+              await refreshUser();
+              Alert.alert('Success', 'Profile picture removed');
+            } catch (error: any) {
+              Alert.alert('Error', error?.detail || 'Failed to remove profile picture');
+            } finally {
+              setUploadingPicture(false);
+            }
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
+  const uploadProfilePicture = async (imageUri: string) => {
+    setUploadingPicture(true);
+    try {
+      await settingsApi.uploadProfilePicture(imageUri);
+      await refreshUser();
+      Alert.alert('Success', 'Profile picture updated');
+    } catch (error: any) {
+      Alert.alert('Error', error?.detail || 'Failed to upload profile picture');
+    } finally {
+      setUploadingPicture(false);
+    }
+  };
 
   const loadReferralData = async () => {
     setLoadingReferrals(true);
@@ -337,11 +423,24 @@ export default function PlayerSettingsScreen() {
       {/* Profile Section */}
       <Card style={styles.profileCard}>
         <View style={styles.profileHeader}>
-          <Avatar
-            source={user?.profile_picture}
-            name={user?.full_name || user?.username}
-            size="xl"
-          />
+          <TouchableOpacity onPress={handlePickProfilePicture} disabled={uploadingPicture}>
+            <View style={styles.avatarContainer}>
+              <Avatar
+                source={user?.profile_picture}
+                name={user?.full_name || user?.username}
+                size="xl"
+              />
+              {uploadingPicture ? (
+                <View style={styles.avatarOverlay}>
+                  <ActivityIndicator color={Colors.text} size="small" />
+                </View>
+              ) : (
+                <View style={styles.avatarCameraIcon}>
+                  <Ionicons name="camera" size={16} color={Colors.text} />
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>
               {user?.full_name || user?.username}
@@ -1091,6 +1190,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: Spacing.md,
+  },
+  avatarContainer: {
+    position: 'relative',
+  },
+  avatarOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 999,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarCameraIcon: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: Colors.primary,
+    borderRadius: 999,
+    width: 28,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: Colors.surface,
   },
   profileInfo: {
     marginLeft: Spacing.md,

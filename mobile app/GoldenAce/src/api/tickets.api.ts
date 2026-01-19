@@ -4,42 +4,65 @@ export type TicketCategory =
   | 'account'
   | 'payment'
   | 'technical'
-  | 'game'
-  | 'report'
+  | 'promotion'
+  | 'report_user'
+  | 'feedback'
   | 'appeal_review'
   | 'appeal_report'
-  | 'promotion'
-  | 'feedback'
   | 'other';
 
-export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
+export type TicketStatus = 'open' | 'in_progress' | 'waiting_user' | 'resolved' | 'closed';
 export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
 
 export interface Ticket {
   id: number;
+  ticket_number: string;
   subject: string;
   description: string;
   category: TicketCategory;
   status: TicketStatus;
   priority: TicketPriority;
   user_id: number;
-  assigned_to?: number;
-  assigned_to_username?: string;
+  assigned_admin_id?: number;
+  assigned_admin?: {
+    id: number;
+    username: string;
+    full_name?: string;
+    user_type: string;
+    profile_picture?: string;
+  };
+  user?: {
+    id: number;
+    username: string;
+    full_name?: string;
+    user_type: string;
+    profile_picture?: string;
+  };
+  message_count?: number;
   created_at: string;
   updated_at: string;
   resolved_at?: string;
+  closed_at?: string;
 }
 
 export interface TicketMessage {
   id: number;
   ticket_id: number;
   sender_id: number;
-  sender_username: string;
-  sender_full_name?: string;
-  sender_profile_picture?: string;
   content: string;
-  is_staff: boolean;
+  file_url?: string;
+  file_name?: string;
+  is_internal_note: boolean;
   created_at: string;
+  sender?: {
+    id: number;
+    username: string;
+    full_name?: string;
+    user_type: string;
+    profile_picture?: string;
+  };
+  // For backwards compatibility - can derive from sender.user_type
+  is_staff?: boolean;
 }
 
 export interface CreateTicketData {
@@ -50,7 +73,7 @@ export interface CreateTicketData {
 }
 
 const TICKET_ENDPOINTS = {
-  BASE: '/tickets',
+  BASE: '/tickets/',  // Trailing slash required for POST
   MY_TICKETS: '/tickets/my-tickets',
   TICKET: (id: number) => `/tickets/${id}`,
   MESSAGES: (id: number) => `/tickets/${id}/messages`,

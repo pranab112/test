@@ -24,8 +24,9 @@ const CATEGORIES: { value: TicketCategory; label: string; icon: string }[] = [
   { value: 'account', label: 'Account', icon: 'person-outline' },
   { value: 'payment', label: 'Payment', icon: 'card-outline' },
   { value: 'technical', label: 'Technical', icon: 'bug-outline' },
-  { value: 'game', label: 'Game Issues', icon: 'game-controller-outline' },
-  { value: 'report', label: 'Report User', icon: 'flag-outline' },
+  { value: 'promotion', label: 'Promotions', icon: 'megaphone-outline' },
+  { value: 'report_user', label: 'Report User', icon: 'flag-outline' },
+  { value: 'feedback', label: 'Feedback', icon: 'chatbox-ellipses-outline' },
   { value: 'other', label: 'Other', icon: 'help-circle-outline' },
 ];
 
@@ -82,16 +83,30 @@ export default function SupportScreen() {
   );
 
   const handleCreateTicket = async () => {
-    if (!newTicketSubject.trim() || !newTicketDescription.trim()) {
+    const subject = newTicketSubject.trim();
+    const message = newTicketDescription.trim();
+
+    if (!subject || !message) {
       Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    // Validate minimum lengths (backend requires subject >= 5, message >= 10)
+    if (subject.length < 5) {
+      Alert.alert('Error', 'Subject must be at least 5 characters');
+      return;
+    }
+
+    if (message.length < 10) {
+      Alert.alert('Error', 'Description must be at least 10 characters');
       return;
     }
 
     setCreating(true);
     try {
       await ticketsApi.createTicket({
-        subject: newTicketSubject.trim(),
-        message: newTicketDescription.trim(),  // Backend expects 'message'
+        subject: subject,
+        message: message,
         category: selectedCategory,
       });
       Alert.alert('Success', 'Support ticket created successfully');
@@ -101,7 +116,28 @@ export default function SupportScreen() {
       setSelectedCategory('other');
       await loadTickets();
     } catch (error: any) {
-      const errorMsg = error?.detail || error?.error?.message || error?.message || 'Failed to create ticket';
+      console.log('Ticket creation error:', JSON.stringify(error, null, 2));
+      // Extract error message from various possible formats
+      let errorMsg = 'Failed to create ticket. Please try again.';
+      if (typeof error === 'string') {
+        errorMsg = error;
+      } else if (error?.error?.message) {
+        errorMsg = error.error.message;
+        // Include details if available (validation errors)
+        if (error?.error?.details?.length > 0) {
+          const fields = error.error.details.map((d: any) => d.field || d.message).join(', ');
+          errorMsg = `${error.error.message}: ${fields}`;
+        }
+      } else if (error?.detail) {
+        // FastAPI validation error format
+        if (Array.isArray(error.detail)) {
+          errorMsg = error.detail.map((d: any) => d.msg || d.message).join(', ');
+        } else {
+          errorMsg = error.detail;
+        }
+      } else if (error?.message) {
+        errorMsg = error.message;
+      }
       Alert.alert('Error', errorMsg);
     } finally {
       setCreating(false);
@@ -146,6 +182,7 @@ export default function SupportScreen() {
       case 'closed':
         return 'success';
       case 'in_progress':
+      case 'waiting_user':
         return 'warning';
       case 'open':
         return 'default';
@@ -344,22 +381,28 @@ export default function SupportScreen() {
               <FlatList
                 data={messages}
                 keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item }) => (
-                  <View
-                    style={[
-                      styles.messageItem,
-                      item.is_staff ? styles.staffMessage : styles.userMessage,
-                    ]}
-                  >
-                    <View style={styles.messageBubble}>
-                      {item.is_staff && (
-                        <Text style={styles.staffLabel}>Support Team</Text>
-                      )}
-                      <Text style={styles.messageText}>{item.content}</Text>
-                      <Text style={styles.messageTime}>{formatDate(item.created_at)}</Text>
+                renderItem={({ item }) => {
+                  // Determine if message is from staff (admin user type)
+                  const isStaff = item.sender?.user_type === 'admin' || item.is_staff;
+                  return (
+                    <View
+                      style={[
+                        styles.messageItem,
+                        isStaff ? styles.staffMessage : styles.userMessage,
+                      ]}
+                    >
+                      <View style={styles.messageBubble}>
+                        {isStaff && (
+                          <Text style={styles.staffLabel}>
+                            {item.sender?.full_name || item.sender?.username || 'Support Team'}
+                          </Text>
+                        )}
+                        <Text style={styles.messageText}>{item.content}</Text>
+                        <Text style={styles.messageTime}>{formatDate(item.created_at)}</Text>
+                      </View>
                     </View>
-                  </View>
-                )}
+                  );
+                }}
                 contentContainerStyle={styles.messagesList}
                 ListHeaderComponent={
                   selectedTicket ? (

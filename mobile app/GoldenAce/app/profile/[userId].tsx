@@ -8,6 +8,8 @@ import {
   Alert,
   TextInput,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,6 +38,8 @@ export default function ProfileScreen() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewStats, setReviewStats] = useState<ReviewStats | null>(null);
   const [canReview, setCanReview] = useState(false);
+  const [canReviewReason, setCanReviewReason] = useState<string>('');
+  const [existingReviewId, setExistingReviewId] = useState<number | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewTitle, setReviewTitle] = useState('');
@@ -47,6 +51,8 @@ export default function ProfileScreen() {
   const [reportReason, setReportReason] = useState('');
   const [reportEvidence, setReportEvidence] = useState('');
   const [submittingReport, setSubmittingReport] = useState(false);
+  const [canReport, setCanReport] = useState(true);
+  const [existingReport, setExistingReport] = useState<Report | null>(null);
 
   // Games state (for client profiles)
   const [clientGames, setClientGames] = useState<Game[]>([]);
@@ -91,8 +97,27 @@ export default function ProfileScreen() {
         setReviews(reviewsData.reviews || []);
         setReviewStats(statsData);
         setCanReview(canReviewData.can_review);
+        setCanReviewReason(canReviewData.reason || '');
+        // If there's an existing review, store its ID for editing
+        if ((canReviewData as any).existing_review_id) {
+          setExistingReviewId((canReviewData as any).existing_review_id);
+        }
       } catch (err) {
         console.error('Error loading reviews:', err);
+      }
+
+      // Load report status (check if user already reported this person)
+      try {
+        const reportData = await reportsApi.getUserReports(parseInt(userId));
+        setCanReport(reportData.can_report);
+        setExistingReport(reportData.my_report);
+        // Pre-fill report form if editing existing report
+        if (reportData.my_report) {
+          setReportReason(reportData.my_report.reason || '');
+          setReportEvidence(reportData.my_report.evidence || '');
+        }
+      } catch (err) {
+        console.error('Error loading report status:', err);
       }
 
       // Load games if this is a client profile and current user is a player
@@ -171,25 +196,41 @@ export default function ProfileScreen() {
 
     setSubmittingReview(true);
     try {
-      await reviewsApi.createReview({
-        reviewee_id: parseInt(userId),
-        rating: reviewRating,
-        title: reviewTitle.trim(),
-        comment: reviewComment.trim() || undefined,
-      });
-      Alert.alert('Success', 'Review submitted successfully!');
+      if (existingReviewId) {
+        // Update existing review
+        await reviewsApi.updateReview(existingReviewId, {
+          rating: reviewRating,
+          title: reviewTitle.trim(),
+          comment: reviewComment.trim() || undefined,
+        });
+        Alert.alert('Success', 'Review updated successfully!');
+      } else {
+        // Create new review
+        await reviewsApi.createReview({
+          reviewee_id: parseInt(userId),
+          rating: reviewRating,
+          title: reviewTitle.trim(),
+          comment: reviewComment.trim() || undefined,
+        });
+        Alert.alert('Success', 'Review submitted successfully!');
+      }
       setShowReviewModal(false);
       setReviewRating(5);
       setReviewTitle('');
       setReviewComment('');
-      // Reload reviews
-      const [reviewsData, statsData] = await Promise.all([
+      // Reload reviews and can_review status
+      const [reviewsData, statsData, canReviewData] = await Promise.all([
         reviewsApi.getUserReviews(parseInt(userId)),
         reviewsApi.getReviewStats(parseInt(userId)),
+        reviewsApi.canReview(parseInt(userId)),
       ]);
       setReviews(reviewsData.reviews || []);
       setReviewStats(statsData);
-      setCanReview(false);
+      setCanReview(canReviewData.can_review);
+      setCanReviewReason(canReviewData.reason || '');
+      if ((canReviewData as any).existing_review_id) {
+        setExistingReviewId((canReviewData as any).existing_review_id);
+      }
     } catch (error: any) {
       Alert.alert('Error', error?.detail || 'Failed to submit review');
     } finally {
@@ -211,20 +252,60 @@ export default function ProfileScreen() {
 
     setSubmittingReport(true);
     try {
-      await reportsApi.createReport({
-        reported_user_id: parseInt(userId),
-        reason: reportReason.trim(),
-        evidence: reportEvidence.trim() || undefined,
-      });
-      Alert.alert('Success', 'Report submitted successfully. Our team will review it.');
+      if (existingReport) {
+        // Update existing report
+        await reportsApi.updateReport(existingReport.id, {
+          reason: reportReason.trim(),
+        });
+        Alert.alert('Success', 'Report updated successfully.');
+      } else {
+        // Create new report
+        await reportsApi.createReport({
+          reported_user_id: parseInt(userId),
+          reason: reportReason.trim(),
+          evidence: reportEvidence.trim() || undefined,
+        });
+        Alert.alert('Success', 'Report submitted successfully. Our team will review it.');
+      }
       setShowReportModal(false);
-      setReportReason('');
-      setReportEvidence('');
+      // Refresh report status
+      const reportData = await reportsApi.getUserReports(parseInt(userId));
+      setCanReport(reportData.can_report);
+      setExistingReport(reportData.my_report);
     } catch (error: any) {
       Alert.alert('Error', error?.detail || 'Failed to submit report');
     } finally {
       setSubmittingReport(false);
     }
+  };
+
+  const handleDeleteReport = async () => {
+    if (!existingReport) return;
+
+    Alert.alert(
+      'Delete Report',
+      'Are you sure you want to delete your report?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await reportsApi.deleteReport(existingReport.id);
+              Alert.alert('Success', 'Report deleted');
+              setShowReportModal(false);
+              setReportReason('');
+              setReportEvidence('');
+              setExistingReport(null);
+              setCanReport(true);
+            } catch (error: any) {
+              Alert.alert('Error', error?.detail || 'Failed to delete report');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const renderStars = (rating: number, interactive: boolean = false) => {
@@ -437,24 +518,51 @@ export default function ProfileScreen() {
 
         {/* Review/Report Actions */}
         {!isOwnProfile && (
-          <View style={styles.reviewReportActions}>
-            {canReview && (
+          <View style={styles.reviewReportSection}>
+            <View style={styles.reviewReportActions}>
+              {existingReviewId ? (
+                <Button
+                  title="Edit Review"
+                  onPress={() => {
+                    // Find user's existing review in the reviews list
+                    const myReview = reviews.find(r => r.reviewer?.id === user?.id);
+                    if (myReview) {
+                      setReviewRating(myReview.rating);
+                      setReviewTitle(myReview.title);
+                      setReviewComment(myReview.comment || '');
+                    }
+                    setShowReviewModal(true);
+                  }}
+                  variant="outline"
+                  icon={<Ionicons name="create" size={18} color={Colors.warning} />}
+                  style={[styles.reviewReportButton, styles.editReviewButton]}
+                  textStyle={{ color: Colors.warning }}
+                />
+              ) : (
+                <Button
+                  title="Write Review"
+                  onPress={() => setShowReviewModal(true)}
+                  variant="outline"
+                  disabled={!canReview}
+                  icon={<Ionicons name="star" size={18} color={canReview ? Colors.primary : Colors.textMuted} />}
+                  style={[styles.reviewReportButton, !canReview && styles.disabledButton]}
+                  textStyle={{ color: canReview ? Colors.primary : Colors.textMuted }}
+                />
+              )}
               <Button
-                title="Write Review"
-                onPress={() => setShowReviewModal(true)}
+                title={existingReport ? "Edit Report" : "Report User"}
+                onPress={() => setShowReportModal(true)}
                 variant="outline"
-                icon={<Ionicons name="star" size={18} color={Colors.primary} />}
-                style={styles.reviewReportButton}
+                icon={<Ionicons name={existingReport ? "create" : "flag"} size={18} color={existingReport ? Colors.warning : Colors.error} />}
+                style={[styles.reviewReportButton, existingReport ? styles.editReportButton : styles.reportButton]}
+                textStyle={{ color: existingReport ? Colors.warning : Colors.error }}
               />
+            </View>
+            {!canReview && !existingReviewId && canReviewReason && (
+              <Text style={styles.cannotReviewText}>
+                <Ionicons name="information-circle-outline" size={14} color={Colors.textMuted} /> {canReviewReason}
+              </Text>
             )}
-            <Button
-              title="Report User"
-              onPress={() => setShowReportModal(true)}
-              variant="outline"
-              icon={<Ionicons name="flag" size={18} color={Colors.error} />}
-              style={[styles.reviewReportButton, styles.reportButton]}
-              textStyle={{ color: Colors.error }}
-            />
           </View>
         )}
 
@@ -516,48 +624,59 @@ export default function ProfileScreen() {
         animationType="slide"
         onRequestClose={() => setShowReviewModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Write a Review</Text>
-              <TouchableOpacity onPress={() => setShowReviewModal(false)}>
-                <Ionicons name="close" size={24} color={Colors.text} />
-              </TouchableOpacity>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <ScrollView
+            contentContainerStyle={styles.modalScrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  {existingReviewId ? 'Edit Review' : 'Write a Review'}
+                </Text>
+                <TouchableOpacity onPress={() => setShowReviewModal(false)}>
+                  <Ionicons name="close" size={24} color={Colors.text} />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.modalLabel}>Rating</Text>
+              {renderStars(reviewRating, true)}
+
+              <Text style={styles.modalLabel}>Title</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={reviewTitle}
+                onChangeText={setReviewTitle}
+                placeholder="Summary of your experience"
+                placeholderTextColor={Colors.textMuted}
+                maxLength={100}
+              />
+
+              <Text style={styles.modalLabel}>Comment (Optional)</Text>
+              <TextInput
+                style={[styles.modalInput, styles.modalTextArea]}
+                value={reviewComment}
+                onChangeText={setReviewComment}
+                placeholder="Share more details about your experience..."
+                placeholderTextColor={Colors.textMuted}
+                multiline
+                numberOfLines={4}
+                maxLength={500}
+              />
+
+              <Button
+                title={existingReviewId ? 'Update Review' : 'Submit Review'}
+                onPress={handleSubmitReview}
+                loading={submittingReview}
+                style={styles.submitButton}
+              />
             </View>
-
-            <Text style={styles.modalLabel}>Rating</Text>
-            {renderStars(reviewRating, true)}
-
-            <Text style={styles.modalLabel}>Title</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={reviewTitle}
-              onChangeText={setReviewTitle}
-              placeholder="Summary of your experience"
-              placeholderTextColor={Colors.textMuted}
-              maxLength={100}
-            />
-
-            <Text style={styles.modalLabel}>Comment (Optional)</Text>
-            <TextInput
-              style={[styles.modalInput, styles.modalTextArea]}
-              value={reviewComment}
-              onChangeText={setReviewComment}
-              placeholder="Share more details about your experience..."
-              placeholderTextColor={Colors.textMuted}
-              multiline
-              numberOfLines={4}
-              maxLength={500}
-            />
-
-            <Button
-              title="Submit Review"
-              onPress={handleSubmitReview}
-              loading={submittingReview}
-              style={styles.submitButton}
-            />
-          </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Report Modal */}
@@ -567,47 +686,81 @@ export default function ProfileScreen() {
         animationType="slide"
         onRequestClose={() => setShowReportModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Report User</Text>
-              <TouchableOpacity onPress={() => setShowReportModal(false)}>
-                <Ionicons name="close" size={24} color={Colors.text} />
-              </TouchableOpacity>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <ScrollView
+            contentContainerStyle={styles.modalScrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  {existingReport ? 'Edit Report' : 'Report User'}
+                </Text>
+                <TouchableOpacity onPress={() => setShowReportModal(false)}>
+                  <Ionicons name="close" size={24} color={Colors.text} />
+                </TouchableOpacity>
+              </View>
+
+              {existingReport && (
+                <View style={styles.existingReportBanner}>
+                  <Ionicons name="information-circle" size={20} color={Colors.info} />
+                  <Text style={styles.existingReportText}>
+                    You already have an existing report. You can edit or delete it.
+                  </Text>
+                </View>
+              )}
+
+              <Text style={styles.modalLabel}>Reason</Text>
+              <TextInput
+                style={[styles.modalInput, styles.modalTextArea]}
+                value={reportReason}
+                onChangeText={setReportReason}
+                placeholder="Describe why you are reporting this user..."
+                placeholderTextColor={Colors.textMuted}
+                multiline
+                numberOfLines={4}
+                maxLength={500}
+              />
+
+              {!existingReport && (
+                <>
+                  <Text style={styles.modalLabel}>Evidence (Optional)</Text>
+                  <TextInput
+                    style={[styles.modalInput, styles.modalTextArea]}
+                    value={reportEvidence}
+                    onChangeText={setReportEvidence}
+                    placeholder="Provide any evidence or additional details..."
+                    placeholderTextColor={Colors.textMuted}
+                    multiline
+                    numberOfLines={3}
+                    maxLength={500}
+                  />
+                </>
+              )}
+
+              <Button
+                title={existingReport ? "Update Report" : "Submit Report"}
+                onPress={handleSubmitReport}
+                loading={submittingReport}
+                style={[styles.submitButton, existingReport ? styles.updateReportButton : styles.reportSubmitButton]}
+              />
+
+              {existingReport && (
+                <Button
+                  title="Delete Report"
+                  onPress={handleDeleteReport}
+                  variant="outline"
+                  style={styles.deleteReportButton}
+                  textStyle={{ color: Colors.error }}
+                />
+              )}
             </View>
-
-            <Text style={styles.modalLabel}>Reason</Text>
-            <TextInput
-              style={[styles.modalInput, styles.modalTextArea]}
-              value={reportReason}
-              onChangeText={setReportReason}
-              placeholder="Describe why you are reporting this user..."
-              placeholderTextColor={Colors.textMuted}
-              multiline
-              numberOfLines={4}
-              maxLength={500}
-            />
-
-            <Text style={styles.modalLabel}>Evidence (Optional)</Text>
-            <TextInput
-              style={[styles.modalInput, styles.modalTextArea]}
-              value={reportEvidence}
-              onChangeText={setReportEvidence}
-              placeholder="Provide any evidence or additional details..."
-              placeholderTextColor={Colors.textMuted}
-              multiline
-              numberOfLines={3}
-              maxLength={500}
-            />
-
-            <Button
-              title="Submit Report"
-              onPress={handleSubmitReport}
-              loading={submittingReport}
-              style={[styles.submitButton, styles.reportSubmitButton]}
-            />
-          </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
     </>
   );
@@ -714,16 +867,34 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   // Review/Report actions
+  reviewReportSection: {
+    marginBottom: Spacing.md,
+  },
   reviewReportActions: {
     flexDirection: 'row',
     gap: Spacing.sm,
-    marginBottom: Spacing.md,
   },
   reviewReportButton: {
     flex: 1,
   },
   reportButton: {
     borderColor: Colors.error,
+  },
+  editReportButton: {
+    borderColor: Colors.warning,
+  },
+  editReviewButton: {
+    borderColor: Colors.warning,
+  },
+  disabledButton: {
+    borderColor: Colors.border,
+    opacity: 0.6,
+  },
+  cannotReviewText: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    marginTop: Spacing.sm,
+    textAlign: 'center',
   },
   // Reviews section
   reviewsCard: {
@@ -811,6 +982,9 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: Colors.overlayMedium,
+  },
+  modalScrollContent: {
+    flexGrow: 1,
     justifyContent: 'flex-end',
   },
   modalContent: {
@@ -855,6 +1029,27 @@ const styles = StyleSheet.create({
   },
   reportSubmitButton: {
     backgroundColor: Colors.error,
+  },
+  updateReportButton: {
+    backgroundColor: Colors.warning,
+  },
+  deleteReportButton: {
+    marginTop: Spacing.sm,
+    borderColor: Colors.error,
+  },
+  existingReportBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.info + '15',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  existingReportText: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    color: Colors.info,
   },
   // Games section styles
   gamesCard: {

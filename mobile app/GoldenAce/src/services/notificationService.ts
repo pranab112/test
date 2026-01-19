@@ -13,6 +13,7 @@ export type NotificationCategory =
   | 'message'
   | 'credit_transfer'
   | 'friend_request'
+  | 'friend_accepted'
   | 'promotion'
   | 'broadcast'
   | 'claim'
@@ -121,6 +122,15 @@ class NotificationService {
     await Notifications.setNotificationChannelAsync('promotions', {
       name: 'Promotions & Rewards',
       importance: Notifications.AndroidImportance.DEFAULT,
+      lightColor: '#00D09C',
+      sound: 'default',
+    });
+
+    // Friends channel (for friend requests and accepts)
+    await Notifications.setNotificationChannelAsync('friends', {
+      name: 'Friend Requests',
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 250, 250],
       lightColor: '#00D09C',
       sound: 'default',
     });
@@ -390,6 +400,9 @@ class NotificationService {
       case 'promotion':
       case 'claim':
         return 'promotions';
+      case 'friend_request':
+      case 'friend_accepted':
+        return 'friends';
       case 'broadcast':
         return 'broadcasts';
       default:
