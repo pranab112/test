@@ -113,8 +113,9 @@ export function GamesSection() {
       await gamesApi.deleteGame(pendingDeleteGame.id);
       toast.success('Game deleted successfully');
       loadGames();
-    } catch (error) {
-      toast.error('Failed to delete game');
+    } catch (error: any) {
+      const errorMessage = error?.detail || error?.message || 'Failed to delete game';
+      toast.error(errorMessage);
       console.error(error);
     } finally {
       setShowDeleteModal(false);
