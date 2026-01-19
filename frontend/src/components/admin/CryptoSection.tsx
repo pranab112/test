@@ -175,7 +175,7 @@ export function CryptoSection() {
       case 'rejected':
         return <Badge variant="danger">Rejected</Badge>;
       case 'expired':
-        return <Badge variant="secondary">Expired</Badge>;
+        return <Badge variant="default">Expired</Badge>;
       default:
         return <Badge>{status}</Badge>;
     }
@@ -217,7 +217,7 @@ export function CryptoSection() {
       key: 'is_active',
       label: 'Status',
       render: (wallet: CryptoWallet) => (
-        <Badge variant={wallet.is_active ? 'success' : 'secondary'}>
+        <Badge variant={wallet.is_active ? 'success' : 'default'}>
           {wallet.is_active ? 'Active' : 'Inactive'}
         </Badge>
       ),
