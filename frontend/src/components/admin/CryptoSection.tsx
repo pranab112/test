@@ -57,11 +57,13 @@ export function CryptoSection() {
         cryptoApi.getWallets(),
         cryptoApi.getPurchases(),
       ]);
-      setWallets(walletsData);
-      setPurchases(purchasesData);
+      setWallets(walletsData || []);
+      setPurchases(purchasesData || []);
     } catch (error) {
       console.error('Failed to load crypto data:', error);
       toast.error('Failed to load data');
+      setWallets([]);
+      setPurchases([]);
     } finally {
       setLoading(false);
     }
@@ -70,9 +72,10 @@ export function CryptoSection() {
   const loadPurchases = async () => {
     try {
       const data = await cryptoApi.getPurchases(statusFilter || undefined);
-      setPurchases(data);
+      setPurchases(data || []);
     } catch (error) {
       toast.error('Failed to load purchases');
+      setPurchases([]);
     }
   };
 
@@ -359,7 +362,7 @@ export function CryptoSection() {
               : 'text-gray-400 hover:text-gray-300'
           }`}
         >
-          My Wallets ({wallets.length})
+          My Wallets ({wallets?.length || 0})
         </button>
         <button
           onClick={() => setActiveTab('purchases')}
@@ -369,7 +372,7 @@ export function CryptoSection() {
               : 'text-gray-400 hover:text-gray-300'
           }`}
         >
-          Purchase Requests ({purchases.filter(p => p.status === 'pending').length} pending)
+          Purchase Requests ({purchases?.filter(p => p.status === 'pending').length || 0} pending)
         </button>
       </div>
 
@@ -389,7 +392,7 @@ export function CryptoSection() {
             </Button>
           </div>
 
-          {wallets.length === 0 ? (
+          {!wallets?.length ? (
             <div className="text-center py-12 bg-dark-300 rounded-lg">
               <FaBitcoin className="text-5xl text-gray-600 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-400">No wallets configured</h3>
@@ -401,7 +404,7 @@ export function CryptoSection() {
           ) : (
             <DataTable
               columns={walletColumns}
-              data={wallets}
+              data={wallets || []}
               loading={loading}
             />
           )}
@@ -427,7 +430,7 @@ export function CryptoSection() {
 
           <DataTable
             columns={purchaseColumns}
-            data={purchases}
+            data={purchases || []}
             loading={loading}
           />
         </div>
