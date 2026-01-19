@@ -8,6 +8,7 @@ from app import models, schemas, auth
 from app.database import get_db
 from app.models import UserType, PromotionStatus, PromotionType, ClaimStatus, MessageType
 from app.websocket import manager, WSMessage, WSMessageType, send_credit_update
+from app.services.push_notification_service import send_promotion_notification, send_claim_notification
 
 router = APIRouter(prefix="/promotions", tags=["promotions"])
 
@@ -60,8 +61,41 @@ async def create_promotion(
     db.commit()
     db.refresh(db_promotion)
 
-    # Send notifications to eligible players (via WebSocket later)
-    # For now, just return the created promotion
+    # Send push notifications to eligible players
+    try:
+        # Get eligible player IDs
+        if promotion.target_player_ids:
+            # Targeted promotion - notify specific players
+            eligible_player_ids = promotion.target_player_ids
+        else:
+            # Get all players connected to this client
+            connected_players = db.query(models.User.id).join(
+                models.friends_association,
+                or_(
+                    and_(models.friends_association.c.user_id == current_user.id,
+                         models.friends_association.c.friend_id == models.User.id),
+                    and_(models.friends_association.c.friend_id == current_user.id,
+                         models.friends_association.c.user_id == models.User.id)
+                )
+            ).filter(
+                models.User.user_type == UserType.PLAYER,
+                models.User.player_level >= db_promotion.min_player_level
+            ).all()
+            eligible_player_ids = [p[0] for p in connected_players]
+
+        if eligible_player_ids:
+            # Send push notifications in background
+            await send_promotion_notification(
+                db=db,
+                user_ids=eligible_player_ids,
+                promotion_title=db_promotion.title,
+                promotion_value=db_promotion.value,
+                client_name=current_user.full_name or current_user.username,
+                promotion_id=db_promotion.id,
+            )
+    except Exception as e:
+        # Don't fail promotion creation if notifications fail
+        print(f"[Promotions] Error sending push notifications: {e}")
 
     return _format_promotion_response(db_promotion, current_user, db)
 
@@ -777,6 +811,19 @@ async def approve_promotion_claim(
     await send_credit_update(current_user.id, current_user.credits, -claim.claimed_value, "promotion_given")
     await send_credit_update(player.id, player.credits, claim.claimed_value, "promotion_received")
 
+    # Send push notification to player
+    try:
+        await send_claim_notification(
+            db=db,
+            player_id=player.id,
+            promotion_title=promotion.title,
+            status="approved",
+            value=claim.claimed_value,
+            client_name=current_user.full_name or current_user.username,
+        )
+    except Exception as e:
+        print(f"[Promotions] Error sending push notification for claim approval: {e}")
+
     return {
         "success": True,
         "message": f"Claim approved! Player can now use the promotion.",
@@ -881,6 +928,19 @@ async def reject_promotion_claim(
             "message": f"Your claim for '{promotion.title}' was rejected." + (f" Reason: {reason}" if reason else "")
         }
     ))
+
+    # Send push notification to player
+    try:
+        await send_claim_notification(
+            db=db,
+            player_id=player.id,
+            promotion_title=promotion.title,
+            status="rejected",
+            value=claim.claimed_value,
+            client_name=current_user.full_name or current_user.username,
+        )
+    except Exception as e:
+        print(f"[Promotions] Error sending push notification for claim rejection: {e}")
 
     return {
         "success": True,

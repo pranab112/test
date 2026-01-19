@@ -38,6 +38,7 @@ from app.models.referral import Referral, REFERRAL_BONUS_CREDITS
 from app.models.bet_transaction import BetTransaction
 from app.models.community import CommunityPost, PostComment, PostLike, PostVisibility
 from app.models.crypto import AdminCryptoWallet, CreditPurchaseRequest, DEFAULT_CREDIT_RATES
+from app.models.push_token import PushToken, DevicePlatform
 
 __all__ = [
     # Base
@@ -90,4 +91,6 @@ __all__ = [
     "AdminCryptoWallet",
     "CreditPurchaseRequest",
     "DEFAULT_CREDIT_RATES",
+    "PushToken",
+    "DevicePlatform",
 ]
