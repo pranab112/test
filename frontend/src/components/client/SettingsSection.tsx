@@ -578,7 +578,7 @@ export function SettingsSection() {
                 <div className="bg-dark-300 p-6 rounded-lg">
                   <h3 className="text-lg font-bold text-white mb-3">About Green Palace</h3>
                   <div className="space-y-3">
-                    <p className="text-gray-400">Version 1.0.0</p>
+                    <p className="text-gray-400">Version 1.0.1</p>
                     <div className="flex flex-wrap gap-2">
                       <span className="bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full text-sm font-medium">
                         Privacy-Focused

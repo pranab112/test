@@ -591,7 +591,7 @@ export default function PlayerSettingsScreen() {
       />
 
       <View style={styles.aboutSection}>
-        <Text style={styles.versionText}>Green Palace v1.0.0</Text>
+        <Text style={styles.versionText}>Green Palace v1.0.1</Text>
         <Text style={styles.privacyBadge}>Privacy-Focused • Decentralized DB • Encrypted Data</Text>
       </View>
 
