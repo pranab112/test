@@ -226,6 +226,16 @@ export default function ChatScreen() {
   const handleSend = async () => {
     if (!newMessage.trim() || sending || !friendId) return;
 
+    // Check if users are still friends before sending
+    if (!isFriend) {
+      Alert.alert(
+        'Message Not Delivered',
+        'You can no longer send messages to this user because you are not friends.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     setSending(true);
     try {
       const sentMessage = await chatApi.sendTextMessage(
@@ -239,8 +249,19 @@ export default function ChatScreen() {
       setTimeout(() => {
         flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
       }, 100);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending message:', error);
+      // Handle case where friendship was removed while chat was open
+      if (error?.status === 403 || error?.detail?.includes('friends')) {
+        setIsFriend(false);
+        Alert.alert(
+          'Message Not Delivered',
+          'You can no longer send messages to this user because you are not friends.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to send message. Please try again.');
+      }
     } finally {
       setSending(false);
     }
@@ -289,6 +310,18 @@ export default function ChatScreen() {
   const handleSendImage = async () => {
     if (!selectedImage || !friendId || sendingImage) return;
 
+    // Check if users are still friends before sending
+    if (!isFriend) {
+      Alert.alert(
+        'Message Not Delivered',
+        'You can no longer send messages to this user because you are not friends.',
+        [{ text: 'OK' }]
+      );
+      setSelectedImage(null);
+      setImageCaption('');
+      return;
+    }
+
     setSendingImage(true);
     try {
       const sentMessage = await chatApi.sendImageMessage(
@@ -304,7 +337,17 @@ export default function ChatScreen() {
         flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
       }, 100);
     } catch (error: any) {
-      Alert.alert('Error', error?.detail || 'Failed to send image');
+      // Handle case where friendship was removed while chat was open
+      if (error?.status === 403 || error?.detail?.includes('friends')) {
+        setIsFriend(false);
+        Alert.alert(
+          'Message Not Delivered',
+          'You can no longer send messages to this user because you are not friends.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Error', error?.detail || 'Failed to send image');
+      }
     } finally {
       setSendingImage(false);
     }
@@ -397,6 +440,16 @@ export default function ChatScreen() {
   const sendVoiceMessage = async (uri: string, duration: number) => {
     if (!friendId) return;
 
+    // Check if users are still friends before sending
+    if (!isFriend) {
+      Alert.alert(
+        'Message Not Delivered',
+        'You can no longer send messages to this user because you are not friends.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     setSending(true);
     try {
       const sentMessage = await chatApi.sendVoiceMessage(
@@ -410,9 +463,19 @@ export default function ChatScreen() {
         flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
       }, 100);
     } catch (error: any) {
-      const errorMsg = error?.detail || error?.error?.message || error?.message || 'Failed to send voice message';
-      console.error('Voice message error:', error);
-      Alert.alert('Error', errorMsg);
+      // Handle case where friendship was removed while chat was open
+      if (error?.status === 403 || error?.detail?.includes('friends')) {
+        setIsFriend(false);
+        Alert.alert(
+          'Message Not Delivered',
+          'You can no longer send messages to this user because you are not friends.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        const errorMsg = error?.detail || error?.error?.message || error?.message || 'Failed to send voice message';
+        console.error('Voice message error:', error);
+        Alert.alert('Error', errorMsg);
+      }
     } finally {
       setSending(false);
     }
@@ -964,7 +1027,7 @@ export default function ChatScreen() {
       </View>
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
         <FlatList
@@ -972,7 +1035,10 @@ export default function ChatScreen() {
           data={messages}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderMessage}
-          contentContainerStyle={styles.messagesList}
+          contentContainerStyle={[
+            styles.messagesList,
+            messages.length === 0 && styles.emptyMessagesList,
+          ]}
           inverted={true}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
@@ -981,6 +1047,8 @@ export default function ChatScreen() {
               <Text style={styles.emptySubtext}>Start the conversation!</Text>
             </View>
           }
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         />
 
         {/* Input Area - Single container to prevent duplicate renders */}
@@ -1408,8 +1476,12 @@ const styles = StyleSheet.create({
     marginRight: Spacing.sm,
   },
   messagesList: {
-    padding: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  emptyMessagesList: {
     flexGrow: 1,
+    justifyContent: 'center',
   },
   messageContainer: {
     flexDirection: 'row',
