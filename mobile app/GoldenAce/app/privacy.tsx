@@ -65,9 +65,19 @@ export default function PrivacyPolicyScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>4. Data Security</Text>
+          <Text style={styles.sectionTitle}>4. Data Security & Privacy Architecture</Text>
           <Text style={styles.paragraph}>
-            We implement appropriate technical and organizational security measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction. However, no method of transmission over the Internet or electronic storage is 100% secure.
+            We are committed to protecting your privacy through advanced security measures:
+          </Text>
+          <View style={styles.list}>
+            <Text style={styles.listItem}>• Privacy-focused decentralized database architecture</Text>
+            <Text style={styles.listItem}>• End-to-end encryption for all sensitive data</Text>
+            <Text style={styles.listItem}>• Encrypted data storage and transmission</Text>
+            <Text style={styles.listItem}>• Zero-knowledge security protocols where applicable</Text>
+            <Text style={styles.listItem}>• Regular security audits and penetration testing</Text>
+          </View>
+          <Text style={[styles.paragraph, { marginTop: Spacing.sm }]}>
+            Our decentralized approach ensures that your data is not stored in a single vulnerable location, significantly reducing the risk of data breaches. All personal information is encrypted both at rest and in transit using industry-standard encryption protocols.
           </Text>
         </View>
 

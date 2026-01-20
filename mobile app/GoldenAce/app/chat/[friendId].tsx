@@ -21,6 +21,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Audio } from 'expo-av';
 import { chatApi } from '../../src/api/chat.api';
 import { friendsApi } from '../../src/api/friends.api';
+import { usersApi } from '../../src/api/users.api';
 import { gameCredentialsApi } from '../../src/api/gameCredentials.api';
 import { gamesApi } from '../../src/api/games.api';
 import { useAuth } from '../../src/contexts/AuthContext';
@@ -41,6 +42,7 @@ export default function ChatScreen() {
   const { setActiveChat } = useWebSocket();
   const insets = useSafeAreaInsets();
   const [friend, setFriend] = useState<Friend | null>(null);
+  const [isFriend, setIsFriend] = useState(true);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -92,7 +94,30 @@ export default function ChatScreen() {
 
       const friendInfo = friendsData.find((f) => f.id === parseInt(friendId));
       console.log('[Chat] Friend info loaded:', JSON.stringify(friendInfo, null, 2));
-      setFriend(friendInfo || null);
+
+      if (friendInfo) {
+        // User is still a friend
+        setFriend(friendInfo);
+        setIsFriend(true);
+      } else {
+        // User is no longer a friend - try to load their profile for display
+        setIsFriend(false);
+        try {
+          const userProfile = await usersApi.getUserProfile(parseInt(friendId));
+          // Convert user profile to Friend-like object for display
+          setFriend({
+            id: userProfile.id,
+            username: userProfile.username,
+            full_name: userProfile.full_name,
+            profile_picture: userProfile.profile_picture,
+            is_online: userProfile.is_online || false,
+            user_type: userProfile.user_type,
+          } as Friend);
+        } catch (profileError) {
+          console.error('Error loading user profile:', profileError);
+          setFriend(null);
+        }
+      }
 
       // For inverted FlatList (WhatsApp style): data[0] appears at BOTTOM
       // We need: newest message at index 0 -> appears at bottom
@@ -101,22 +126,24 @@ export default function ChatScreen() {
       // Reverse so newest is at index 0 for inverted list display
       setMessages([...loadedMessages].reverse());
 
-      // Mark unread messages from the friend as read
-      const unreadMessages = loadedMessages.filter(
-        (msg) => msg.sender_id === parseInt(friendId) && !msg.is_read
-      );
-
-      if (unreadMessages.length > 0) {
-        // Mark each unread message as read
-        await Promise.all(
-          unreadMessages.map((msg) =>
-            chatApi.markMessageAsRead(msg.id).catch((err) => {
-              console.error('Error marking message as read:', err);
-            })
-          )
+      // Mark unread messages from the friend as read (only if still friends)
+      if (friendInfo) {
+        const unreadMessages = loadedMessages.filter(
+          (msg) => msg.sender_id === parseInt(friendId) && !msg.is_read
         );
-        // Refresh the global unread count
-        refreshUnreadCount();
+
+        if (unreadMessages.length > 0) {
+          // Mark each unread message as read
+          await Promise.all(
+            unreadMessages.map((msg) =>
+              chatApi.markMessageAsRead(msg.id).catch((err) => {
+                console.error('Error marking message as read:', err);
+              })
+            )
+          );
+          // Refresh the global unread count
+          refreshUnreadCount();
+        }
       }
     } catch (error) {
       console.error('Error loading chat:', error);
@@ -956,57 +983,66 @@ export default function ChatScreen() {
           }
         />
 
-        {/* Recording UI */}
-        {isRecording ? (
-          <View style={[styles.recordingContainer, { paddingBottom: Math.max(insets.bottom, Spacing.md) }]}>
-            <TouchableOpacity style={styles.cancelRecordButton} onPress={cancelRecording}>
-              <Ionicons name="close" size={24} color={Colors.error} />
-            </TouchableOpacity>
-            <View style={styles.recordingInfo}>
-              <View style={styles.recordingDot} />
-              <Text style={styles.recordingText}>Recording...</Text>
-              <Text style={styles.recordingDuration}>{formatDuration(recordingDuration)}</Text>
+        {/* Input Area - Single container to prevent duplicate renders */}
+        <View style={[styles.inputWrapper, { paddingBottom: Math.max(insets.bottom, Spacing.md) }]}>
+          {!isFriend ? (
+            <View key="not-friend-ui" style={styles.notFriendContainer}>
+              <Ionicons name="person-remove-outline" size={20} color={Colors.textMuted} />
+              <Text style={styles.notFriendText}>
+                You can no longer send messages to this user
+              </Text>
             </View>
-            <TouchableOpacity style={styles.sendRecordButton} onPress={stopRecording}>
-              <Ionicons name="send" size={20} color={Colors.background} />
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, Spacing.md) }]}>
-            <TouchableOpacity
-              style={styles.attachButton}
-              onPress={() => setShowAttachMenu(true)}
-            >
-              <Ionicons name="add-circle" size={28} color={Colors.primary} />
-            </TouchableOpacity>
-            <TextInput
-              style={styles.input}
-              value={newMessage}
-              onChangeText={setNewMessage}
-              placeholder="Type a message..."
-              placeholderTextColor={Colors.textMuted}
-              multiline
-              maxLength={1000}
-            />
-            {newMessage.trim() ? (
+          ) : isRecording ? (
+            <View key="recording-ui" style={styles.recordingContainer}>
+              <TouchableOpacity style={styles.cancelRecordButton} onPress={cancelRecording}>
+                <Ionicons name="close" size={24} color={Colors.error} />
+              </TouchableOpacity>
+              <View style={styles.recordingInfo}>
+                <View style={styles.recordingDot} />
+                <Text style={styles.recordingText}>Recording...</Text>
+                <Text style={styles.recordingDuration}>{formatDuration(recordingDuration)}</Text>
+              </View>
+              <TouchableOpacity style={styles.sendRecordButton} onPress={stopRecording}>
+                <Ionicons name="send" size={20} color={Colors.background} />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View key="input-ui" style={styles.inputContainer}>
               <TouchableOpacity
-                style={[styles.sendButton, sending && styles.sendButtonDisabled]}
-                onPress={handleSend}
-                disabled={sending}
+                style={styles.attachButton}
+                onPress={() => setShowAttachMenu(true)}
               >
-                <Ionicons
-                  name="send"
-                  size={20}
-                  color={!sending ? Colors.background : Colors.textMuted}
-                />
+                <Ionicons name="add-circle" size={28} color={Colors.primary} />
               </TouchableOpacity>
-            ) : (
-              <TouchableOpacity style={styles.micButton} onPress={startRecording}>
-                <Ionicons name="mic" size={24} color={Colors.primary} />
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
+              <TextInput
+                style={styles.input}
+                value={newMessage}
+                onChangeText={setNewMessage}
+                placeholder="Type a message..."
+                placeholderTextColor={Colors.textMuted}
+                multiline
+                maxLength={1000}
+              />
+              {newMessage.trim() ? (
+                <TouchableOpacity
+                  style={[styles.sendButton, sending && styles.sendButtonDisabled]}
+                  onPress={handleSend}
+                  disabled={sending}
+                >
+                  <Ionicons
+                    name="send"
+                    size={20}
+                    color={!sending ? Colors.background : Colors.textMuted}
+                  />
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity style={styles.micButton} onPress={startRecording}>
+                  <Ionicons name="mic" size={24} color={Colors.primary} />
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+        </View>
       </KeyboardAvoidingView>
 
       {/* Attach Menu Modal */}
@@ -1458,13 +1494,27 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     marginTop: Spacing.xs,
   },
+  inputWrapper: {
+    backgroundColor: Colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  notFriendContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.md,
+    gap: Spacing.sm,
+  },
+  notFriendText: {
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
+    textAlign: 'center',
+  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     padding: Spacing.md,
-    backgroundColor: Colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
   },
   input: {
     flex: 1,
@@ -1505,9 +1555,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: Spacing.md,
-    backgroundColor: Colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
   },
   cancelRecordButton: {
     width: 44,

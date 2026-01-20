@@ -590,7 +590,10 @@ export default function PlayerSettingsScreen() {
         textStyle={{ color: Colors.error }}
       />
 
-      <Text style={styles.versionText}>Green Palace v1.0.0</Text>
+      <View style={styles.aboutSection}>
+        <Text style={styles.versionText}>Green Palace v1.0.0</Text>
+        <Text style={styles.privacyBadge}>Privacy-Focused • Decentralized DB • Encrypted Data</Text>
+      </View>
 
       {/* Password Change Modal */}
       <Modal
@@ -946,11 +949,21 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
     borderColor: Colors.error,
   },
+  aboutSection: {
+    alignItems: 'center',
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.md,
+  },
   versionText: {
     textAlign: 'center',
     fontSize: FontSize.sm,
     color: Colors.textMuted,
-    marginTop: Spacing.lg,
+  },
+  privacyBadge: {
+    textAlign: 'center',
+    fontSize: FontSize.xs,
+    color: Colors.primary,
+    marginTop: Spacing.xs,
   },
   modalOverlay: {
     flex: 1,

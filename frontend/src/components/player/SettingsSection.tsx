@@ -1116,6 +1116,28 @@ export function SettingsSection() {
         </div>
       )}
 
+      {/* About Section - Always visible at bottom */}
+      <div className="bg-dark-200 border-2 border-emerald-700 rounded-lg p-6 mt-6">
+        <h2 className="text-xl font-bold text-emerald-500 mb-4">About Green Palace</h2>
+        <div className="space-y-3">
+          <p className="text-gray-400">Version 1.0.0</p>
+          <div className="flex flex-wrap gap-2">
+            <span className="bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full text-sm font-medium">
+              Privacy-Focused
+            </span>
+            <span className="bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full text-sm font-medium">
+              Decentralized DB
+            </span>
+            <span className="bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full text-sm font-medium">
+              Encrypted Data
+            </span>
+          </div>
+          <p className="text-gray-500 text-sm mt-2">
+            Your data is protected with end-to-end encryption and stored securely using our privacy-focused decentralized database architecture.
+          </p>
+        </div>
+      </div>
+
       {/* Delete Account Confirmation Modal */}
       <Modal
         isOpen={showDeleteModal}

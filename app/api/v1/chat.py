@@ -469,13 +469,18 @@ async def get_messages(
     current_user: models.User = Depends(auth.get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Get messages with a specific friend"""
+    """Get messages with a specific user (friend or former friend)
 
-    # Check if they are friends
-    if not check_friendship(current_user.id, friend_id, db):
+    Note: Messages are preserved even after unfriending. Users can view
+    their chat history but cannot send new messages to non-friends.
+    """
+
+    # Verify the other user exists
+    other_user = db.query(models.User).filter(models.User.id == friend_id).first()
+    if not other_user:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only view messages with friends"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
         )
 
     # Get messages
