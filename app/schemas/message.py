@@ -34,6 +34,7 @@ class ConversationResponse(BaseModel):
     friend: UserResponse
     last_message: Optional[MessageResponse] = None
     unread_count: int
+    is_friend: bool = True  # Indicates if users are still friends
 
 class ConversationsListResponse(BaseModel):
     conversations: List[ConversationResponse]

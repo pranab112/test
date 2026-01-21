@@ -423,10 +423,16 @@ async def get_conversations(
     current_user: models.User = Depends(auth.get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Get all conversations with friends"""
+    """Get all conversations including those with former friends.
+
+    Conversations are preserved even after unfriending. The is_friend field
+    indicates whether users are still friends (can send messages) or not.
+    """
 
     conversations = []
+    friend_ids = {friend.id for friend in current_user.friends}
 
+    # First, add conversations with current friends
     for friend in current_user.friends:
         # Get last message
         last_message = db.query(models.Message).filter(
@@ -448,7 +454,56 @@ async def get_conversations(
         conversations.append({
             "friend": friend,
             "last_message": last_message,
-            "unread_count": unread_count
+            "unread_count": unread_count,
+            "is_friend": True
+        })
+
+    # Find all users who have message history with current user but are not friends
+    # Get all unique user IDs from messages where current user is sender or receiver
+    sent_to_users = db.query(models.Message.receiver_id).filter(
+        models.Message.sender_id == current_user.id
+    ).distinct().all()
+
+    received_from_users = db.query(models.Message.sender_id).filter(
+        models.Message.receiver_id == current_user.id
+    ).distinct().all()
+
+    # Combine and get unique user IDs
+    all_conversation_user_ids = set(
+        [u[0] for u in sent_to_users] + [u[0] for u in received_from_users]
+    )
+
+    # Filter to only non-friends (former friends with message history)
+    former_friend_ids = all_conversation_user_ids - friend_ids
+
+    # Add conversations with former friends
+    for user_id in former_friend_ids:
+        user = db.query(models.User).filter(models.User.id == user_id).first()
+        if not user:
+            continue
+
+        # Get last message
+        last_message = db.query(models.Message).filter(
+            or_(
+                and_(models.Message.sender_id == current_user.id,
+                     models.Message.receiver_id == user_id),
+                and_(models.Message.sender_id == user_id,
+                     models.Message.receiver_id == current_user.id)
+            )
+        ).order_by(models.Message.created_at.desc()).first()
+
+        # Count unread messages
+        unread_count = db.query(models.Message).filter(
+            models.Message.sender_id == user_id,
+            models.Message.receiver_id == current_user.id,
+            models.Message.is_read == False
+        ).count()
+
+        conversations.append({
+            "friend": user,
+            "last_message": last_message,
+            "unread_count": unread_count,
+            "is_friend": False
         })
 
     # Sort by last message time (handle both timezone-aware and naive datetimes)

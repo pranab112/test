@@ -137,23 +137,35 @@ export default function ClientMessagesScreen() {
 
   const renderConversation = ({ item }: { item: Conversation }) => (
     <TouchableOpacity
-      style={styles.conversationCard}
+      style={[styles.conversationCard, !item.is_friend && styles.conversationCardInactive]}
       onPress={() => router.push(`/chat/${item.friend.id}`)}
       activeOpacity={0.7}
     >
-      <Avatar
-        source={item.friend.profile_picture}
-        name={item.friend.full_name || item.friend.username}
-        size="lg"
-        showOnlineStatus
-        isOnline={item.friend.is_online}
-      />
+      <View style={styles.avatarContainer}>
+        <Avatar
+          source={item.friend.profile_picture}
+          name={item.friend.full_name || item.friend.username}
+          size="lg"
+          showOnlineStatus={item.is_friend}
+          isOnline={item.is_friend ? item.friend.is_online : false}
+        />
+        {!item.is_friend && (
+          <View style={styles.notFriendBadge}>
+            <Ionicons name="person-remove" size={12} color={Colors.background} />
+          </View>
+        )}
+      </View>
       <View style={styles.conversationInfo}>
         <View style={styles.conversationHeader}>
-          <Text style={styles.conversationName} numberOfLines={1}>
-            {item.friend.full_name || item.friend.username}
-          </Text>
-          {item.friend.user_type === 'player' && (
+          <View style={styles.nameContainer}>
+            <Text style={[styles.conversationName, !item.is_friend && styles.conversationNameInactive]} numberOfLines={1}>
+              {item.friend.full_name || item.friend.username}
+            </Text>
+            {!item.is_friend && (
+              <Text style={styles.notFriendLabel}>Not friends</Text>
+            )}
+          </View>
+          {item.friend.user_type === 'player' && item.is_friend && (
             <Badge text="Player" variant="emerald" size="sm" />
           )}
         </View>
@@ -232,6 +244,25 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
+  conversationCardInactive: {
+    opacity: 0.7,
+  },
+  avatarContainer: {
+    position: 'relative',
+  },
+  notFriendBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: Colors.textMuted,
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: Colors.background,
+  },
   conversationInfo: {
     flex: 1,
     marginLeft: Spacing.md,
@@ -239,15 +270,25 @@ const styles = StyleSheet.create({
   },
   conversationHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: Spacing.sm,
     marginBottom: Spacing.xs,
+  },
+  nameContainer: {
+    flex: 1,
   },
   conversationName: {
     fontSize: FontSize.md,
     fontWeight: FontWeight.semibold,
     color: Colors.text,
-    flex: 1,
+  },
+  conversationNameInactive: {
+    color: Colors.textSecondary,
+  },
+  notFriendLabel: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    marginTop: 2,
   },
   conversationMeta: {
     marginBottom: Spacing.xs,

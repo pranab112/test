@@ -179,6 +179,7 @@ export interface Conversation {
   friend: Friend;
   last_message?: Message;
   unread_count: number;
+  is_friend: boolean;  // Indicates if users are still friends
 }
 
 export interface MessageListResponse {
